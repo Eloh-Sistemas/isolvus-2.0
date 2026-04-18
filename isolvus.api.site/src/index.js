@@ -29,6 +29,7 @@ import auditarLocalizacaoRoutes from './routes/auditarLocalizacaoRoutes.js';
 import instituicaoBancariaRoutes from './routes/instituicaoBancariaRoutes.js';
 import caixabancoRoutes from "./routes/caixabancoRoutes.js";
 import valeRoutes from "./routes/valeRoutes.js";
+import comunicadoRoutes from "./routes/comunicadoRoutes.js";
 import formaDePagamentoRoutes from "./routes/formaDePagamentoRoutes.js";
 import swaggerRoutes from './routes/swaggerRoutes.js';
 
@@ -74,6 +75,7 @@ const rotas = [
   instituicaoBancariaRoutes,
   caixabancoRoutes,
   valeRoutes,
+  comunicadoRoutes,
   formaDePagamentoRoutes,
   swaggerRoutes,
   notificacaoRoutes

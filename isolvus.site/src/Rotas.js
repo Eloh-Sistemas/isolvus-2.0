@@ -23,12 +23,14 @@ import RelatorioControleDeDespesa from "./paginas/RelatorioControleDeDespesa/Rel
 import RelatorioAutorizacaoDePagamento from "./paginas/RelatorioAutorizacaoDePagamento/RelatorioAutorizacaoDePagamento.jsx";
 import ImportacaoDespesa from "./paginas/ImportacaoDespesa/ImportacaoDespesa.jsx";
 import IATreinamento from './paginas/IATreinamento/IATreinamento.jsx';
+import MuralAdmin from './paginas/Mural/MuralAdmin.jsx';
 
 function Rotas () {
     return <BrowserRouter>
              <Routes>
                 <Route path="/" element={<Login />}  />
-                <Route path="/Home" element={<Home />}  />                
+                <Route path="/Home" element={<Home />}  />
+                <Route path="/Mural" element={<MuralAdmin />}  />                
                 
                 {/*Rotas solicitações de despesas*/}
                 <Route path="/SolicitacaoDeDespesa/:tipoConsulta" element={<SolicitacaoDeDespesaConsultar />}  />                                 
