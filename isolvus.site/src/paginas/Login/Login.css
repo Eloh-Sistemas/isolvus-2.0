@@ -223,12 +223,19 @@ body, html, #root { height: 100%; margin: 0; }
   .login-wrapper {
     flex-direction: column;
     background: #f0f4fb;
+    min-height: 100dvh;
+    height: 100dvh;
   }
   .login-panel-right {
+    flex: 1 1 auto;
     max-width: 100%;
+    width: 100%;
     background: #f0f4fb;
     align-items: stretch;
+    justify-content: flex-start;
     padding: 2rem 1.25rem;
+    overflow-y: auto;
+    min-height: 0;
   }
   .login-card {
     max-width: 100%;
