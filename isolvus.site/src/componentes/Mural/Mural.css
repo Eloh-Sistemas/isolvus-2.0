@@ -1041,6 +1041,198 @@
 }
 
 /* ── Kebab menu (3 pontos) ── */
+/* ─── Novas features: Pin, Lido, Busca, Enquete, Paginação ─────── */
+
+/* Card fixado */
+.bs-card--fixado {
+  border-top: 3px solid #6366f1;
+}
+.bs-pin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #6366f1;
+  background: #6366f118;
+  padding: 3px 10px;
+  border-bottom: 1px solid #6366f120;
+  letter-spacing: 0.4px;
+}
+
+/* Card lido — leve opacidade */
+.bs-card--lido { opacity: 0.88; }
+
+/* Contador de leituras no rodapé */
+.bs-leituras {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+/* ── Barra de busca no feed ── */
+.mural-busca {
+  margin-bottom: 20px;
+}
+.mural-busca-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.mural-busca-icon {
+  position: absolute;
+  left: 14px;
+  color: #94a3b8;
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+.mural-busca-input {
+  width: 100%;
+  padding: 10px 40px 10px 38px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  background: #fff;
+  color: #1e293b;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.mural-busca-input:focus { border-color: #6366f1; }
+.mural-busca-limpar {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.1rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px;
+}
+.mural-busca-limpar:hover { color: #ef4444; }
+
+/* ── Enquete no card ── */
+.bs-enquete {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0 4px;
+}
+.bs-enquete-opcao {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.875rem;
+  color: #1e293b;
+  transition: border-color 0.2s, background 0.2s;
+  width: 100%;
+}
+.bs-enquete-opcao:hover:not(:disabled) { border-color: #6366f1; background: #f1f5ff; }
+.bs-enquete-opcao.ativo { border-color: #6366f1; color: #6366f1; font-weight: 700; }
+.bs-enquete-opcao.votado { cursor: default; }
+.bs-enquete-opcao:disabled { cursor: default; }
+.bs-enquete-barra {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  background: #6366f120;
+  border-radius: 10px 0 0 10px;
+  transition: width 0.5s cubic-bezier(.22,1,.36,1);
+  pointer-events: none;
+}
+.bs-enquete-label { position: relative; z-index: 1; }
+.bs-enquete-pct {
+  position: relative;
+  z-index: 1;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #6366f1;
+}
+.bs-enquete-total {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  text-align: right;
+  margin: 0;
+}
+
+/* ── Enquete no admin form ── */
+.mural-enquete-wrap {
+  margin-bottom: 16px;
+  border: 1.5px dashed #e2e8f0;
+  border-radius: 12px;
+  padding: 14px;
+}
+.mural-enquete-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  color: #64748b;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.mural-enquete-add-btn {
+  background: none;
+  border: 1.5px solid #6366f1;
+  color: #6366f1;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 3px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.mural-enquete-add-btn:hover { background: #6366f110; }
+.mural-enquete-add-btn--danger { border-color: #ef4444; color: #ef4444; }
+.mural-enquete-add-btn--danger:hover { background: #ef444410; }
+.mural-enquete-opcoes { display: flex; flex-direction: column; gap: 8px; }
+.mural-enquete-opcao-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mural-enquete-remover {
+  background: none;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 50%;
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  color: #94a3b8;
+  flex-shrink: 0;
+  font-size: 1rem;
+}
+.mural-enquete-remover:hover { border-color: #ef4444; color: #ef4444; }
+
+/* ── Scroll infinito sentinela ── */
+.mural-sentinela {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0 8px;
+  min-height: 40px;
+}
+.mural-fim {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin: 0;
+}
+.mural-spinner--sm {
+  width: 20px; height: 20px;
+  border-width: 2px;
+}
+
+/* ──────────────────────────────────────────────────────────── */
+
 /* ─── GravadorVideo ─────────────────────────────────────────── */
 .gv-overlay {
   position: fixed;
@@ -1400,3 +1592,34 @@
   }
 }
 
+
+/* Lista de publica��es do admin */
+.mural-admin-lista-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.mural-admin-lista-titulo {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #495057;
+  margin: 0;
+}
+
+.mural-admin-lista-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  background-color: #0d6efd;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 20px;
+}

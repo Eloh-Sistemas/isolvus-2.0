@@ -37,11 +37,14 @@ export function isVideo(src) {
 
 /* ─── Card individual do comunicado ─── */
 export function ComunicadoCard({ c, onExcluir, excluindo, podeModerarOuDono, onEditar }) {
+  const idComunicadoAtual = c.id_comunicado || c.ID_COMUNICADO;
+
   const [fotoAtiva, setFotoAtiva] = useState(0);
   const [pausado, setPausado] = useState(false);
   const [menuAberto, setMenuAberto] = useState(false);
   const [posterMap, setPosterMap] = useState({});
-  const menuRef = useRef(null);
+
+  const menuRef  = useRef(null);
   const videoRef = useRef(null);
 
   useEffect(() => {
@@ -299,25 +302,26 @@ export function ComunicadoCard({ c, onExcluir, excluindo, podeModerarOuDono, onE
 /* ─── Feed de visualização (usado na Home — somente leitura) ─── */
 export default function Mural() {
   const idGrupoEmpresa = Number(localStorage.getItem('id_grupo_empresa'));
+  const idUsuario      = Number(localStorage.getItem('id_usuario'));
 
   const [comunicados, setComunicados] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]         = useState(true);
+
+  async function carregar(silencioso = false) {
+    if (!silencioso) setLoading(true);
+    try {
+      const { data } = await api.post('/v1/comunicado/listar', {
+        id_grupo_empresa: idGrupoEmpresa, id_usuario: idUsuario,
+      });
+      setComunicados(Array.isArray(data) ? data : []);
+    } catch {}
+    finally { setLoading(false); }
+  }
 
   useEffect(() => {
-    async function carregar(inicial = false) {
-      if (inicial) setLoading(true);
-      try {
-        const { data } = await api.post('/v1/comunicado/listar', { id_grupo_empresa: idGrupoEmpresa });
-        setComunicados(Array.isArray(data) ? data : []);
-      } catch {
-        // silencia erros de refresh automático
-      } finally {
-        if (inicial) setLoading(false);
-      }
-    }
-    carregar(true);
-    const intervalo = setInterval(() => carregar(false), 60000);
-    return () => clearInterval(intervalo);
+    carregar();
+    const iv = setInterval(() => carregar(true), 60000);
+    return () => clearInterval(iv);
   }, []);
 
   return (

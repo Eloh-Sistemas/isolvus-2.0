@@ -5,18 +5,11 @@ export async function listarComunicadosModel({ id_grupo_empresa, admin = false }
   const filtroPeriodo = admin ? '' : `
     AND (c.DATA_DISPONIVEL IS NULL OR c.DATA_DISPONIVEL <= SYSDATE)
     AND (c.DATA_EXPIRACAO IS NULL OR c.DATA_EXPIRACAO >= SYSDATE)`;
+
   const sql = `
     SELECT
-      c.ID_COMUNICADO,
-      c.TITULO,
-      c.CONTEUDO,
-      c.TIPO,
-      c.NOME_AUTOR,
-      c.SETOR_AUTOR,
-      c.DATA_PUBLICACAO,
-      c.DATA_DISPONIVEL,
-      c.DATA_EXPIRACAO,
-      c.ID_USUARIO_AUTOR,
+      c.ID_COMUNICADO, c.TITULO, c.CONTEUDO, c.TIPO, c.NOME_AUTOR, c.SETOR_AUTOR,
+      c.DATA_PUBLICACAO, c.DATA_DISPONIVEL, c.DATA_EXPIRACAO, c.ID_USUARIO_AUTOR,
       c.FOTOS,
       (SELECT U.FOTO FROM BSTAB_USUSARIOS U WHERE U.ID_USUARIO = c.ID_USUARIO_AUTOR AND U.ID_GRUPO_EMPRESA = c.ID_GRUPO_EMPRESA) AS FOTO_AUTOR
     FROM BSTAB_COMUNICADOS c
@@ -54,23 +47,17 @@ export async function criarComunicadoModel({ titulo, conteudo, tipo, fotos, id_u
       data_expiracao:  dataExpiracao,
     };
 
-    let sql;
-    if (fotos) {
-      sql = `
-        INSERT INTO BSTAB_COMUNICADOS
-          (ID_COMUNICADO, TITULO, CONTEUDO, TIPO, FOTOS, ID_USUARIO_AUTOR, NOME_AUTOR, SETOR_AUTOR, DATA_PUBLICACAO, DATA_DISPONIVEL, DATA_EXPIRACAO, ATIVO, ID_GRUPO_EMPRESA)
-        VALUES
-          (:id_comunicado, :titulo, :conteudo, :tipo, :fotos, :id_usuario_autor, :nome_autor, :setor_autor, SYSDATE, :data_disponivel, :data_expiracao, 1, :id_grupo_empresa)
-      `;
-      binds.fotos = { type: oracledb.CLOB, val: fotos };
-    } else {
-      sql = `
-        INSERT INTO BSTAB_COMUNICADOS
-          (ID_COMUNICADO, TITULO, CONTEUDO, TIPO, ID_USUARIO_AUTOR, NOME_AUTOR, SETOR_AUTOR, DATA_PUBLICACAO, DATA_DISPONIVEL, DATA_EXPIRACAO, ATIVO, ID_GRUPO_EMPRESA)
-        VALUES
-          (:id_comunicado, :titulo, :conteudo, :tipo, :id_usuario_autor, :nome_autor, :setor_autor, SYSDATE, :data_disponivel, :data_expiracao, 1, :id_grupo_empresa)
-      `;
-    }
+    const colsFotos = fotos ? ', FOTOS' : '';
+    const valsFotos = fotos ? ', :fotos' : '';
+
+    if (fotos) binds.fotos = { type: oracledb.CLOB, val: fotos };
+
+    const sql = `
+      INSERT INTO BSTAB_COMUNICADOS
+        (ID_COMUNICADO, TITULO, CONTEUDO, TIPO ${colsFotos}, ID_USUARIO_AUTOR, NOME_AUTOR, SETOR_AUTOR, DATA_PUBLICACAO, DATA_DISPONIVEL, DATA_EXPIRACAO, ATIVO, ID_GRUPO_EMPRESA)
+      VALUES
+        (:id_comunicado, :titulo, :conteudo, :tipo ${valsFotos}, :id_usuario_autor, :nome_autor, :setor_autor, SYSDATE, :data_disponivel, :data_expiracao, 1, :id_grupo_empresa)
+    `;
 
     await connection.execute(sql, binds, { autoCommit: true });
     return { success: true };
@@ -112,3 +99,4 @@ export async function editarComunicadoModel({ id_comunicado, id_grupo_empresa, t
     id_grupo_empresa,
   }, true);
 }
+

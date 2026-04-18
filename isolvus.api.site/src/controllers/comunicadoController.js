@@ -1,4 +1,6 @@
-import { listarComunicadosModel, criarComunicadoModel, excluirComunicadoModel, editarComunicadoModel } from "../models/comunicadoModel.js";
+﻿import {
+  listarComunicadosModel, criarComunicadoModel, excluirComunicadoModel, editarComunicadoModel,
+} from "../models/comunicadoModel.js";
 
 export async function listarComunicados(req, res) {
   try {
@@ -6,8 +8,8 @@ export async function listarComunicados(req, res) {
     if (!id_grupo_empresa) {
       return res.status(400).json({ error: 'Grupo de empresa não informado!' });
     }
-    const dados = await listarComunicadosModel({ id_grupo_empresa, admin: !!admin });
-    res.json(dados);
+    const comunicados = await listarComunicadosModel({ id_grupo_empresa, admin: !!admin });
+    res.json(comunicados);
   } catch (error) {
     res.status(500).json({ error: 'Erro ao listar comunicados', message: error.message });
   }
@@ -21,7 +23,6 @@ export async function criarComunicado(req, res) {
       return res.status(400).json({ error: 'Dados obrigatórios não informados!' });
     }
 
-    // fotos é um array de base64 — serializa como JSON string para salvar no CLOB
     const fotosJson = fotos && fotos.length > 0 ? JSON.stringify(fotos) : null;
 
     await criarComunicadoModel({ titulo, conteudo, tipo: tipo || 'AVISO', fotos: fotosJson, id_usuario_autor, nome_autor, setor_autor, id_grupo_empresa, data_disponivel: data_disponivel || null, data_expiracao: data_expiracao || null });

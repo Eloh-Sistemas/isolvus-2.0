@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import Menu from '../../componentes/Menu/Menu';
 import api from '../../servidor/api.jsx';
 import {
@@ -43,7 +43,9 @@ export default function MuralAdmin() {
   async function carregar() {
     setLoading(true);
     try {
-      const { data } = await api.post('/v1/comunicado/listar', { id_grupo_empresa: idGrupoEmpresa, admin: true });
+      const { data } = await api.post('/v1/comunicado/listar', {
+        id_grupo_empresa: idGrupoEmpresa, admin: true,
+      });
       setComunicados(Array.isArray(data) ? data : []);
     } catch {
       setComunicados([]);
@@ -146,11 +148,11 @@ export default function MuralAdmin() {
       const dt = new Date(d);
       return new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     };
-    setEditandoId(c.ID_COMUNICADO || c.id_comunicado);
+    setEditandoId(c.id_comunicado || c.ID_COMUNICADO);
     setFormEdicao({
-      titulo:         c.TITULO         || c.titulo         || '',
-      conteudo:       c.CONTEUDO       || c.conteudo       || '',
-      tipo:           c.TIPO           || c.tipo           || 'AVISO',
+      titulo: c.titulo || c.TITULO || '',
+      conteudo: c.conteudo || c.CONTEUDO || '',
+      tipo: c.tipo || c.TIPO || 'AVISO',
       data_disponivel: toLocal(c.DATA_DISPONIVEL || c.data_disponivel),
       data_expiracao:  toLocal(c.DATA_EXPIRACAO  || c.data_expiracao),
     });
@@ -304,29 +306,30 @@ export default function MuralAdmin() {
             </p>
 
             {erroFoto && (
-              <p style={{ color: '#ef4444', fontSize: '0.8rem', marginBottom: '10px' }}>{erroFoto}</p>
+              <div className="mural-erro-foto">
+                <i className="bi bi-exclamation-triangle" /> {erroFoto}
+              </div>
             )}
 
+            {/* Prévia das fotos */}
             {form.fotos.length > 0 && (
-              <div className="mural-preview-grid">
-                {form.fotos.map((src, i) => (
-                  <div key={i} className="mural-preview-item">
-                    {src.startsWith('data:video/')
-                      ? <video src={src} className="mural-preview-video" muted playsInline preload="metadata" />
-                      : <img src={src} alt={`preview-${i}`} />
-                    }
-                    <button
-                      type="button"
-                      className="mural-preview-remover"
-                      onClick={() => removerFoto(i)}
-                    >
-                      ×
+              <div className="mural-preview-fotos">
+                {form.fotos.map((src, idx) => (
+                  <div key={idx} className="mural-preview-item">
+                    {src.startsWith('data:video') ? (
+                      <video src={src} className="mural-preview-img" muted />
+                    ) : (
+                      <img src={src} alt={`prévia ${idx + 1}`} className="mural-preview-img" />
+                    )}
+                    <button type="button" className="mural-preview-remover" onClick={() => removerFoto(idx)}>
+                      <i className="bi bi-x" />
                     </button>
                   </div>
                 ))}
               </div>
             )}
 
+            {/* Botões */}
             <div className="mural-post-actions">
               <button type="button" className="mural-btn-limpar" onClick={limparForm} disabled={salvando}>
                 Limpar
@@ -343,156 +346,154 @@ export default function MuralAdmin() {
           </div>
         )}
 
-        {/* Lista de publicações existentes */}
-        {(() => {
-          const minhas = comunicados.filter((c) => (c.ID_USUARIO_AUTOR || c.id_usuario_autor) === idUsuario);
-          return (
-            <>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1e293b', marginBottom: '16px' }}>
-                Minhas publicações ({minhas.length})
-              </h3>
+        {/* Lista de comunicados */}
+        <div className="mural-admin-lista">
+          <div className="mural-admin-lista-header">
+            <h3 className="mural-admin-lista-titulo">Minhas publicações</h3>
+            {comunicados.length > 0 && (
+              <span className="mural-admin-lista-badge">{comunicados.length}</span>
+            )}
+          </div>
 
-              {loading && (
-                <div className="mural-estado">
-                  <div className="mural-spinner" />
-                  <span>Carregando...</span>
-                </div>
-              )}
+          {loading && (
+            <div className="mural-estado">
+              <div className="mural-spinner" />
+              <span>Carregando...</span>
+            </div>
+          )}
 
-              {!loading && minhas.length === 0 && (
-                <div className="mural-estado">
-                  <i className="bi bi-inbox mural-estado-icon" />
-                  <span>Nenhuma publicação ainda.</span>
-                </div>
-              )}
+          {!loading && comunicados.length === 0 && (
+            <div className="mural-estado">
+              <i className="bi bi-inbox mural-estado-icon" />
+              <span>Nenhuma publicação ainda.</span>
+            </div>
+          )}
 
-              <div className="mural-feed">
-                {minhas.map((c) => {
-                  const id = c.id_comunicado || c.ID_COMUNICADO;
-                  const dataDisp = c.DATA_DISPONIVEL || c.data_disponivel;
-                  const dataExp  = c.DATA_EXPIRACAO  || c.data_expiracao;
-                  const agendado = dataDisp && new Date(dataDisp) > new Date();
-                  const emEdicao = editandoId === id;
-                  return (
-                    <div key={id} style={{ marginBottom: '8px' }}>
-                      {(agendado || dataExp) && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', fontSize: '0.78rem', marginBottom: '6px', paddingLeft: '4px' }}>
-                          {agendado && (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#6366f1' }}>
-                              <i className="bi bi-calendar-check" />
-                              Inicia em: <strong>{formatarData(dataDisp)}</strong>
-                            </span>
-                          )}
-                          {dataExp && (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#ef4444' }}>
-                              <i className="bi bi-calendar-x" />
-                              Expira em: <strong>{formatarData(dataExp)}</strong>
-                            </span>
-                          )}
-                        </div>
+          <div className="mural-feed">
+            {comunicados.map((c) => {
+              const id = c.id_comunicado || c.ID_COMUNICADO;
+              const dataDisp = c.DATA_DISPONIVEL || c.data_disponivel;
+              const dataExp  = c.DATA_EXPIRACAO  || c.data_expiracao;
+              const agendado = dataDisp && new Date(dataDisp) > new Date();
+              const emEdicao = editandoId === id;
+              return (
+                <div key={id} style={{ marginBottom: '8px' }}>
+                  {(agendado || dataExp) && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', fontSize: '0.78rem', marginBottom: '6px', paddingLeft: '4px' }}>
+                      {agendado && (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#6366f1' }}>
+                          <i className="bi bi-calendar-check" />
+                          Inicia em: <strong>{formatarData(dataDisp)}</strong>
+                        </span>
                       )}
-
-                      <ComunicadoCard
-                        c={c}
-                        onExcluir={excluir}
-                        excluindo={excluindo}
-                        podeModerarOuDono={true}
-                        onEditar={iniciarEdicao}
-                      />
-
-                      {/* Formulário de edição inline */}
-                      {emEdicao && (
-                        <div className="mural-post-form" style={{ marginTop: '8px' }}>
-                          <p className="mural-post-form-titulo">Editando publicação</p>
-
-                          <div className="mural-modal-tipos mb-3">
-                            {TIPOS.map((t) => (
-                              <button
-                                key={t.value}
-                                type="button"
-                                className={`mural-tipo-btn ${formEdicao.tipo === t.value ? 'ativo' : ''}`}
-                                style={{ '--tipo-cor': t.cor }}
-                                onClick={() => setFormEdicao((f) => ({ ...f, tipo: t.value }))}
-                              >
-                                {t.label}
-                              </button>
-                            ))}
-                          </div>
-
-                          <div className="mb-3">
-                            <input
-                              className="mural-post-input mb-0"
-                              placeholder="Título *"
-                              value={formEdicao.titulo}
-                              maxLength={200}
-                              onChange={(e) => setFormEdicao((f) => ({ ...f, titulo: e.target.value }))}
-                            />
-                          </div>
-
-                          <div className="mb-1">
-                            <textarea
-                              className="mural-post-textarea mb-0"
-                              placeholder="Conteúdo..."
-                              value={formEdicao.conteudo}
-                              maxLength={4000}
-                              rows={3}
-                              onChange={(e) => setFormEdicao((f) => ({ ...f, conteudo: e.target.value }))}
-                            />
-                            <span className="mural-post-contador">{formEdicao.conteudo.length}/4000</span>
-                          </div>
-
-                          <div className="row g-3 mt-1 mb-3">
-                            <div className="col-12 col-sm-6">
-                              <label className="form-label fw-semibold" style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                                <i className="bi bi-calendar-check me-1" style={{ color: '#10b981' }} />
-                                Publicar a partir de
-                              </label>
-                              <input
-                                type="datetime-local"
-                                className="form-control"
-                                style={{ fontSize: '0.875rem' }}
-                                value={formEdicao.data_disponivel}
-                                onChange={(e) => setFormEdicao((f) => ({ ...f, data_disponivel: e.target.value }))}
-                              />
-                            </div>
-                            <div className="col-12 col-sm-6">
-                              <label className="form-label fw-semibold" style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                                <i className="bi bi-calendar-x me-1" style={{ color: '#ef4444' }} />
-                                Expirar em
-                              </label>
-                              <input
-                                type="datetime-local"
-                                className="form-control"
-                                style={{ fontSize: '0.875rem' }}
-                                value={formEdicao.data_expiracao}
-                                min={formEdicao.data_disponivel || undefined}
-                                onChange={(e) => setFormEdicao((f) => ({ ...f, data_expiracao: e.target.value }))}
-                              />
-                            </div>
-                          </div>
-
-                          <div className="mural-post-actions">
-                            <button type="button" className="mural-btn-limpar" onClick={cancelarEdicao} disabled={salvandoEdicao}>
-                              Cancelar
-                            </button>
-                            <button
-                              type="button"
-                              className="mural-btn-publicar"
-                              onClick={salvarEdicao}
-                              disabled={salvandoEdicao || !formEdicao.titulo.trim()}
-                            >
-                              {salvandoEdicao ? 'Salvando...' : <><i className="bi bi-check2" /> Salvar</>}
-                            </button>
-                          </div>
-                        </div>
+                      {dataExp && (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#ef4444' }}>
+                          <i className="bi bi-calendar-x" />
+                          Expira em: <strong>{formatarData(dataExp)}</strong>
+                        </span>
                       )}
                     </div>
-                  );
-                })}
-              </div>
-            </>
-          );
-        })()}
+                  )}
+
+                  <ComunicadoCard
+                    c={c}
+                    onExcluir={excluir}
+                    excluindo={excluindo}
+                    podeModerarOuDono={true}
+                    onEditar={iniciarEdicao}
+                  />
+
+                  {/* Formulário de edição inline */}
+                  {emEdicao && (
+                    <div className="mural-post-form" style={{ marginTop: '8px' }}>
+                      <p className="mural-post-form-titulo">Editando publicação</p>
+
+                      <div className="mural-modal-tipos mb-3">
+                        {TIPOS.map((t) => (
+                          <button
+                            key={t.value}
+                            type="button"
+                            className={`mural-tipo-btn ${formEdicao.tipo === t.value ? 'ativo' : ''}`}
+                            style={{ '--tipo-cor': t.cor }}
+                            onClick={() => setFormEdicao((f) => ({ ...f, tipo: t.value }))}
+                          >
+                            {t.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="mb-3">
+                        <input
+                          className="mural-post-input mb-0"
+                          placeholder="Título *"
+                          value={formEdicao.titulo}
+                          maxLength={200}
+                          onChange={(e) => setFormEdicao((f) => ({ ...f, titulo: e.target.value }))}
+                        />
+                      </div>
+
+                      <div className="mb-1">
+                        <textarea
+                          className="mural-post-textarea mb-0"
+                          placeholder="Conteúdo..."
+                          value={formEdicao.conteudo}
+                          maxLength={4000}
+                          rows={3}
+                          onChange={(e) => setFormEdicao((f) => ({ ...f, conteudo: e.target.value }))}
+                        />
+                        <span className="mural-post-contador">{formEdicao.conteudo.length}/4000</span>
+                      </div>
+
+                      <div className="row g-3 mt-1 mb-3">
+                        <div className="col-12 col-sm-6">
+                          <label className="form-label fw-semibold" style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                            <i className="bi bi-calendar-check me-1" style={{ color: '#10b981' }} />
+                            Publicar a partir de
+                          </label>
+                          <input
+                            type="datetime-local"
+                            className="form-control"
+                            style={{ fontSize: '0.875rem' }}
+                            value={formEdicao.data_disponivel}
+                            onChange={(e) => setFormEdicao((f) => ({ ...f, data_disponivel: e.target.value }))}
+                          />
+                        </div>
+                        <div className="col-12 col-sm-6">
+                          <label className="form-label fw-semibold" style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                            <i className="bi bi-calendar-x me-1" style={{ color: '#ef4444' }} />
+                            Expirar em
+                          </label>
+                          <input
+                            type="datetime-local"
+                            className="form-control"
+                            style={{ fontSize: '0.875rem' }}
+                            value={formEdicao.data_expiracao}
+                            min={formEdicao.data_disponivel || undefined}
+                            onChange={(e) => setFormEdicao((f) => ({ ...f, data_expiracao: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mural-post-actions">
+                        <button type="button" className="mural-btn-limpar" onClick={cancelarEdicao} disabled={salvandoEdicao}>
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          className="mural-btn-publicar"
+                          onClick={salvarEdicao}
+                          disabled={salvandoEdicao || !formEdicao.titulo.trim()}
+                        >
+                          {salvandoEdicao ? 'Salvando...' : <><i className="bi bi-check2" /> Salvar</>}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </>
   );
