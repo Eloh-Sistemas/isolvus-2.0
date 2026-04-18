@@ -1,0 +1,32 @@
+/* Garante que o scroll é escondido para todos os elementos relevantes dentro do modal */
+.react-modal-content,
+.bsmodal-content {
+  overflow: auto; /* Mantém a funcionalidade de rolagem */
+}
+
+/* Esconde a barra visualmente (Chrome, Safari, Edge) */
+.react-modal-content::-webkit-scrollbar,
+.bsmodal-content::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Esconde a barra visualmente (Firefox) */
+.react-modal-content,
+.bsmodal-content {
+  scrollbar-width: none !important;
+}
+
+.mobile-list {
+    padding-left: 0px;  /* mesmo padding que o container bootstrap */
+    padding-right: 0px;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.mobile-card {
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px;
+}

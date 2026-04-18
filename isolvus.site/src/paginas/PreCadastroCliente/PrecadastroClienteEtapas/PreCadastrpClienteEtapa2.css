@@ -1,0 +1,52 @@
+.resumo-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.resumo-card {
+    background: #ffffff;
+    padding: 30px 40px;
+    border-radius: 16px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    width: 100%;
+    max-width: 600px;
+    transition: transform 0.2s ease;
+}
+
+.resumo-card:hover {
+    transform: scale(1.02);
+}
+
+.resumo-titulo {
+    font-size: 1.6rem;
+    font-weight: 600;
+    margin-bottom: 25px;
+    text-align: center;
+    color: #2f3e46;
+    border-bottom: 2px solid #e3e7eb;
+    padding-bottom: 10px;
+}
+
+.resumo-item {
+    display: flex;
+    flex-direction: column; /* <-- muda de linha para coluna */
+    margin-bottom: 18px;
+    padding: 10px;
+    background: #f8f9fb;
+    border-radius: 8px;
+}
+
+
+.resumo-label {
+    font-weight: 500;
+    color: #555;
+    margin-bottom: 4px; /* <-- espaço entre label e valor */
+}
+
+
+.resumo-value {
+    font-weight: 600;
+    color: #1d3557;
+}

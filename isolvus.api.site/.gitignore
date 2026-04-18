@@ -1,0 +1,24 @@
+/node_modules
+
+# Variáveis de ambiente
+.env
+.env.local
+.env.production
+
+# Configuração sensível do banco
+src/config/dbConfig.js
+
+# Certificados e chaves privadas (NUNCA subir para o repositório)
+src/certificados/
+
+# Arquivos de integração de fornecedor (dados de clientes)
+arquivodeintegracaofornecedor/
+src/arquivodeintegracaofornecedor/
+
+# Documentos e remessas gerados
+src/documentos/
+src/remessas/
+
+# Logs
+*.log
+npm-debug.log*

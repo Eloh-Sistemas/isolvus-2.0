@@ -1,0 +1,87 @@
+.Aberto {
+    background-color: #a1a1a1;
+    padding: 5px 12px;
+    border-radius: 3px;
+    margin-bottom: 10px;
+    color: #ffffff;
+    text-align: center;      
+}
+
+.Gestor {
+    background-color: #34ca667a;
+    padding: 5px 12px;
+    border-radius: 3px;
+    margin-bottom: 10px;
+    color: #FFFFFF;
+    text-align: center;  
+}
+
+.Finalizado {
+    background-color: #0d5fd7;
+    padding: 5px 12px;
+    border-radius: 3px;
+    margin-bottom: 10px;
+    color: #FFFFFF;
+    text-align: center;  
+}
+
+.Integrado {
+    background-color: #3a3a3a;
+    padding: 5px 12px;
+    border-radius: 3px;
+    margin-bottom: 10px;
+    color: #FFFFFF;
+    text-align: center;  
+}
+
+.Analise {
+    background-color: #27bcc7f5;
+    padding: 5px 12px;
+    border-radius: 3px;
+    margin-bottom: 10px;
+    color: #FFFFFF;
+    text-align: center;  
+}
+
+.ajustar {
+    background-color: #f17d9a;
+    padding: 5px 12px;
+    border-radius: 3px;
+    margin-bottom: 10px;
+    color: #FFFFFF;
+    text-align: center;  
+}
+
+.Liberado {
+    background-color: #2bb110f3;
+    padding: 5px 12px;
+    border-radius: 3px;
+    margin-bottom: 10px;
+    color: #FFFFFF;
+    text-align: center;
+    justify-items: center;  
+}
+
+.Negado {
+    background-color: #ff00007a;
+    padding: 5px 12px;
+    border-radius: 3px;
+    margin-bottom: 10px;
+    color: #FFFFFF;
+    text-align: center;  
+}
+
+.Pedenete {
+    background-color: #bc49f1c9;
+    padding: 5px 12px;
+    border-radius: 3px;
+    margin-bottom: 10px;
+    color: #FFFFFF;
+    text-align: center;  
+}
+
+.FW600 {
+    font-weight: 700;
+    font-size: 12px;
+    width: 90px;
+}

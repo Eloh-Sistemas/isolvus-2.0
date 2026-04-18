@@ -1,0 +1,32 @@
+.FW600 {
+    font-weight: 700;
+    font-size: 11px;
+    width: 90px;
+}
+
+.Livre{
+    background-color: #0a6fb3;
+    padding: 5px 12px;
+    border-radius: 2px;
+    margin-bottom: 10px;
+    color: #FFFFFF;
+    text-align: center;  
+}
+
+.Viajando {
+    background-color: #0fc75b;
+    padding: 5px 12px;
+    border-radius: 2px;
+    margin-bottom: 10px;
+    color: #FFFFFF;
+    text-align: center;  
+}
+
+.Inativo {
+    background-color: #e21111;
+    padding: 5px 12px;
+    border-radius: 2px;
+    margin-bottom: 10px;
+    color: #FFFFFF;
+    text-align: center;  
+}

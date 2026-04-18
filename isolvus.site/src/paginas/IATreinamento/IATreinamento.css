@@ -1,0 +1,286 @@
+.ia-training-page {
+  padding-bottom: 24px;
+}
+
+.ia-training-subtitle {
+  color: #6c757d;
+  font-size: 0.95rem;
+}
+
+.ia-training-card {
+  background: #fff;
+  border: 1px solid #e9ecef;
+  border-radius: 0.5rem;
+  box-shadow: none !important;
+}
+
+.ia-training-card .card-body {
+  padding: 0.9rem;
+}
+
+.ia-training-card .card-title {
+  color: #6f1d1b;
+  font-weight: 700;
+}
+
+.ia-rag-assistant {
+  border: 1px solid #f3d9d8;
+  background: #fff8f7;
+  border-radius: 0.5rem;
+  padding: 12px;
+}
+
+.ia-rag-assistant h6 {
+  color: #7f1d1d;
+  font-weight: 700;
+}
+
+.ia-training-page .btn {
+  transition: all 0.2s ease;
+}
+
+.ia-training-tags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ia-table-chip {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.ia-table-list-cell {
+  max-width: 260px;
+  white-space: normal;
+  font-size: 0.88rem;
+}
+
+.ia-agent-modal-open {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 1050;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.ia-agent-modal-dialog {
+  position: relative;
+  z-index: 1;
+  width: min(88vw, 1280px);
+  max-width: min(88vw, 1280px);
+  min-width: 320px;
+  height: auto;
+  margin: 0 !important;
+}
+
+.ia-agent-modal-content {
+  position: relative;
+  background-color: #fff;
+  border-radius: 12px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 100% !important;
+  height: 92vh;
+  max-height: 92vh !important;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.2) !important;
+  display: flex !important;
+  flex-direction: column;
+}
+
+.ia-agent-modal-dialog .modal-body {
+  flex: 1 1 auto;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0.75rem 0.25rem;
+  background: #fff;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.ia-agent-modal-dialog .modal-body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.ia-agent-modal-dialog .modal-body > .row,
+.ia-agent-modal-dialog .modal-body > .table-responsive,
+.ia-agent-modal-dialog .modal-body > .card {
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.ia-agent-modal-dialog .modal-body .card.bg-light {
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+@media (max-width: 768px) {
+  .ia-agent-modal-open {
+    padding: 0.75rem;
+  }
+
+  .ia-agent-modal-dialog {
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+    min-width: unset;
+    height: auto;
+    margin: 0 !important;
+  }
+
+  .ia-agent-modal-content {
+    height: calc(100vh - 24px);
+    max-height: calc(100vh - 24px) !important;
+    border-radius: 0.75rem !important;
+  }
+}
+
+.ia-training-page .modal-header,
+.ia-training-page .modal-footer {
+  border-color: #e9ecef;
+  background: #ffffff;
+}
+
+.ia-training-page .modal-header {
+  padding: 1rem 0.75rem 0.85rem;
+}
+
+.ia-agent-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ia-agent-modal-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #212529;
+}
+
+.ia-agent-modal-subtitle {
+  font-size: 0.92rem;
+}
+
+.ia-training-page .modal-footer {
+  padding: 0.75rem 0.5rem 1rem;
+}
+
+.ia-table-autocomplete {
+  position: relative;
+}
+
+.ia-table-autocomplete-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 25;
+  background: #ffffff;
+  border: 1px solid #d6dae1;
+  border-radius: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+}
+
+.ia-table-autocomplete-item {
+  width: 100%;
+  border: 0;
+  background: #ffffff;
+  text-align: left;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ia-table-autocomplete-item:hover {
+  background: #f7f8fa;
+}
+
+.ia-table-autocomplete-name {
+  font-size: 0.92rem;
+  color: #202939;
+  font-weight: 600;
+}
+
+.ia-table-autocomplete-business {
+  font-size: 0.82rem;
+  color: #5d6472;
+}
+
+.ia-columns-grid-wrap {
+  border: 1px solid #dfe3ea;
+  border-radius: 0.5rem;
+  background: #fff;
+  max-height: min(42vh, 460px);
+}
+
+.ia-columns-grid {
+  width: 100%;
+  min-width: 100%;
+  table-layout: fixed;
+}
+
+.ia-columns-grid th {
+  font-size: 0.85rem;
+  color: #495057;
+  background: #f8f9fa;
+}
+
+.ia-columns-grid td,
+.ia-columns-grid th {
+  vertical-align: middle;
+}
+
+.ia-columns-grid input,
+.ia-columns-grid select,
+.ia-training-page textarea,
+.ia-training-page .form-control,
+.ia-training-page .form-select {
+  width: 100%;
+  min-width: 100%;
+}
+
+.ia-action-header,
+.ia-action-cell {
+  width: 110px;
+  white-space: nowrap;
+}
+
+.ia-training-page .table thead th {
+  background: #f8f9fa;
+  color: #495057;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.ia-training-page .table tbody td {
+  vertical-align: middle;
+  font-size: 0.92rem;
+}
+
+.ia-training-page .table tbody tr:hover {
+  background: #f8fbff;
+}
+
+.ia-training-page .card.bg-light {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}

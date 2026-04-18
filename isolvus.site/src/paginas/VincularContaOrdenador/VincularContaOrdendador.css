@@ -1,0 +1,12 @@
+.marg-botao-add{
+    margin-top: 25px;
+}
+
+
+@media  (max-width: 769px) {
+
+    .table-font{
+        font-size: 11px;
+    }
+    
+}

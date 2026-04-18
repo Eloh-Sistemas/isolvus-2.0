@@ -1,0 +1,22 @@
+
+.bsmodal-header{
+    
+    border-bottom-style: solid;
+    border-bottom-width: 1px;
+    border-block-color: #d3d3d3;
+    padding: 12px 0px 12px 0px;
+    color: #545454; 
+    font-size: 18px;   
+    margin-bottom: 30px;
+    
+    
+}
+
+.bsmodal-body {
+    border-bottom-style: solid;
+    border-bottom-width: 1px;
+    border-block-color: #d3d3d3;
+    color: #6b6b6b;  
+    margin-bottom: 18px;
+    font-size: 14px;      
+}

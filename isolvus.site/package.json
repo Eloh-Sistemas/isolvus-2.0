@@ -1,0 +1,73 @@
+{
+  "name": "isolvus",
+  "version": "1.0.32",
+  "private": true,
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@inovua/reactdatagrid-community": "^5.10.2",
+    "@mui/material": "^6.4.1",
+    "@mui/styled-engine-sc": "^6.4.0",
+    "@react-leaflet/core": "^3.0.0",
+    "@react-pdf/renderer": "^4.3.1",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.2",
+    "ag-grid-react": "^33.0.4",
+    "apexcharts": "^4.3.0",
+    "axios": "^1.7.9",
+    "browser-image-compression": "^2.0.2",
+    "chart.js": "^4.4.8",
+    "cpf-cnpj-validator": "^1.0.3",
+    "leaflet": "^1.9.3",
+    "leaflet.heat": "^0.2.0",
+    "leaflet.markercluster": "^1.5.3",
+    "markdown-it": "^14.1.0",
+    "moment": "^2.30.1",
+    "postcss": "^8.5.1",
+    "react": "^19.1.0",
+    "react-apexcharts": "^1.7.0",
+    "react-chartjs-2": "^5.3.0",
+    "react-data-grid": "^7.0.0-beta.47",
+    "react-dom": "^19.1.0",
+    "react-google-charts": "^5.2.1",
+    "react-input-mask": "^2.0.4",
+    "react-leaflet": "^4.2.1",
+    "react-leaflet-cluster": "^3.1.0",
+    "react-leaflet-markercluster": "^5.0.0-rc.0",
+    "react-modal": "^3.16.3",
+    "react-number-format": "^5.4.3",
+    "react-router-dom": "^7.1.1",
+    "react-scripts": "^5.0.1",
+    "react-sweetalert2": "^0.6.0",
+    "react-toastify": "^11.0.3",
+    "recharts": "^2.15.2",
+    "styled-components": "^6.1.14",
+    "web-vitals": "^4.2.4",
+    "xlsx": "^0.18.5"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}

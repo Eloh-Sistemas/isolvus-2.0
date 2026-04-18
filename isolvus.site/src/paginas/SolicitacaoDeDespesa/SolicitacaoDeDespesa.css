@@ -1,0 +1,70 @@
+
+/*tela */
+
+.marg-botao-incluir-rateio{
+    margin-top: 29px;
+}
+
+@media  (min-width: 769px) {
+    .list-group{
+        overflow-y: scroll;
+        height: 658px;
+    }
+    .linha-fim{
+        margin-bottom: 10px;    
+    }
+    .margem-check-solicitante{
+        margin-top: 41px;
+        padding-left: 15px;
+    }
+}
+
+.CaixaLabel{
+    font-size: 14px;
+    font-weight: 400; 
+    padding: 2px; 
+    margin-top: 8px;
+    width: 90px;    
+    text-align: center;    
+}
+
+/*tela pequena*/
+@media  (max-width: 769px) {
+    .list-group{
+        overflow-y: scroll;
+        height: 555px;
+    }
+
+    .margem-check-solicitante{
+        margin-top: 20px;
+        margin-bottom: 30px;
+        padding-left: 15px;
+    }
+    
+    .linha-fim{
+        margin-bottom: 10px;    
+    }
+    
+    .s1{
+        margin-top: 8px;
+        width: 150px;
+    }
+    
+    .s2{
+        margin-top: 8px;
+        display: grid;
+        align-items: center;
+        text-align: center;
+        width: 90px;
+    }
+    
+    .Preco{
+        display:grid;
+        align-items: center;
+    }
+
+    .marg-botao-incluir-rateio{
+        margin-top: 6px;
+    }
+    
+    }

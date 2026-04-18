@@ -1,0 +1,170 @@
+.EditComplete {
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* O container principal que terá a rolagem horizontal */
+.input-multiselecao {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #ced4da;
+  border-radius: 0.25rem;
+  padding: 0.375rem 0.75rem;
+  background-color: #fff;
+  height: 45px;
+  
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  cursor: grab;
+}
+
+/* Estilo para o modo de seleção única */
+.input-multiselecao.single-select {
+  overflow-x: hidden;
+  cursor: text;
+}
+
+.input-multiselecao::-webkit-scrollbar {
+  display: none;
+}
+
+.input-multiselecao:active {
+  cursor: grabbing;
+}
+
+/* Estilo do input */
+.multiselect-input {
+  flex-grow: 1;
+  flex-shrink: 0;
+  min-width: 50px;
+  
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  padding: 0;
+  height: auto;
+  
+  user-select: auto;
+  -webkit-user-select: auto;
+}
+
+.tag-selecionada {
+  display: flex;
+  align-items: center;
+  background-color: #55a0e0;
+  border-radius: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  color: #fff;
+  
+  flex-shrink: 0;
+}
+
+.btn-remover-tag {
+  background: transparent;
+  border: none;
+  font-size: 1rem;
+  margin-left: 0.5rem;
+  cursor: pointer;
+  color: #fff;
+  padding: 0;
+  font-weight: bold;
+}
+
+.filial-count {
+  font-size: 0.8rem;
+  color: #6c757d;
+  background-color: #f0f0f0;
+  border-radius: 12px;
+  padding: 3px 8px;
+  margin-left: auto;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.EditComplete-items {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  border: 1px solid #ced4da;
+  border-top: none;
+  border-radius: 0 0 0.25rem 0.25rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  background-color: #fff;
+}
+
+.container-lista {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.item {
+  list-style: none;
+  padding: 0.5rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8rem;
+}
+
+.item:hover, .item.selecionado {
+  background-color: #f8f9fa;
+}
+
+.item.selecionado {
+  background-color: #eaf5ff;
+  border-left: 3px solid #007bff;
+}
+
+.item label {
+  font-weight: bold;
+  font-size: 0.8rem;
+}
+
+.item span {
+  font-size: 0.7rem;
+  color: #6c757d;
+}
+
+.selected-branches-container {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  border: 1px solid #ced4da;
+  border-top: none;
+  border-radius: 0 0 0.25rem 0.25rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  background-color: #fff;
+  padding: 0.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.selected-branches-container ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.selected-branches-container li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.selected-branches-container li:last-child {
+  border-bottom: none;
+}

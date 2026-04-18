@@ -1,0 +1,13 @@
+/node_modules
+
+# Variáveis de ambiente
+.env
+.env.local
+.env.production
+
+# Configuração sensível do banco
+src/config/dbConfig.js
+
+# Logs
+*.log
+npm-debug.log*

@@ -1,0 +1,64 @@
+.EditComplete{
+    position: relative;
+    width: 100%;
+}
+
+.EditComplete-items{
+    position: absolute;
+    width: 100%;
+    z-index: 800;
+    box-shadow: 4px 4px 5px rgb(171, 184, 189);    
+}
+
+.item{
+    display: block;      
+}
+
+.item:hover{    
+    background-color: #f3f3f3;     
+}
+
+.item:active {
+    background-color: #f0f7fa;
+}
+
+/* tela pequena*/
+@media  (max-width: 769px) {
+    .item label {
+        margin-bottom: -0px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+}
+
+/* tela grande*/
+@media  (min-width: 769px) {
+    .item label {
+        margin-bottom: -0px;
+        font-size: 14px;
+        font-weight: 600;
+    }
+}
+
+.item span {
+    display: flex;
+    font-size: 12px;
+    color: #797979;
+    margin-left: 4px;       
+}
+
+#btn-editcomplete{
+    height: 40px;
+}
+
+.EditComplete-clear{
+  position: absolute;  
+  top: 2px;
+  right: 3px;
+  border-radius: 3px;  
+  z-index: 200;
+  border: none;
+  cursor: pointer;
+  background-color: transparent;
+}
+

@@ -1,0 +1,132 @@
+/* Botão da análise de despesa */
+
+/* Avatar do solicitante na grid */
+.grid-solicitante-avatar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.grid-solicitante-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.grid-solicitante-filial {
+  font-size: .75rem;
+  color: #6b7280;
+}
+
+.grid-solicitante-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: .78rem;
+  flex-shrink: 0;
+  border: 1.5px solid rgba(0,0,0,.1);
+  overflow: hidden;
+}
+
+.grid-solicitante-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.table-desktop-consultasolicitacao {
+    color: #000;
+}
+
+.btn-analisedespesa {
+    margin-top: 32px;
+}
+
+/* Botões dentro da grid */
+#button-grid-desktop-despesas {
+    margin: 0px;
+    height: 32px;
+    width: 35px;
+    padding: 0;
+}
+
+/* Estilo geral da tabela */
+.table-desktop-consultasolicitacao .table {
+    width: 100%;
+    border-collapse: collapse;
+    border:  1px dashed #b9b9b9;
+}
+
+/* Cabeçalho da tabela */
+.table-desktop-consultasolicitacao .table th {
+    font-size: 13px;
+    font-weight: 600;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    line-height: 1.2;
+    vertical-align: middle;
+    background-color: #f3f7f8;
+    border-top:  1px dashed #b9b9b9;
+    border-bottom: 1px dashed #b9b9b9;
+}
+
+/* Células da tabela */
+.table-desktop-consultasolicitacao .table td {
+    font-size: 14px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    line-height: 1.3;
+    vertical-align: middle;
+    border-bottom: 1px solid #eee;
+}
+
+/* Linhas com hover */
+.table-desktop-consultasolicitacao .table-hover tbody tr:hover {
+    background-color: #f6f6f6;
+}
+
+/* Linha da grid de análise de despesa */
+.table-desktop-consultasolicitacao .linha-grid-desktop-analisedespesa {
+    transition: background-color 0.2s ease-in-out;
+}
+
+/* Centralização de colunas */
+.table-desktop-consultasolicitacao .table .text-center {
+    text-align: center;
+}
+
+/* Botões dentro das ações */
+.table-desktop-consultasolicitacao .table .btn {
+    padding: 2px 6px;
+    font-size: 12px;
+    height: 26px;
+    line-height: 1;
+    border-radius: 4px;
+}
+
+/* Ícones menores dentro dos botões */
+.table-desktop-consultasolicitacao .table-desktop-consultasolicitacao .table .btn i {
+    font-size: 14px;
+}
+
+/* Opcional: Deixar o espaçamento geral da tabela mais compacto */
+.table-desktop-consultasolicitacao .grid-despesa td,
+.grid-despesa th {
+    padding-top: 3px;
+    padding-bottom: 4px;
+    line-height: 1.2;
+}
+
+/* Ajuste de quebra de texto em colunas longas */
+.table-desktop-consultasolicitacao .table td div {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

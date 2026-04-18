@@ -1,0 +1,36 @@
+.item-consulta-solicitacao{
+    background-color: #ffffff;
+    box-shadow: 0px 0px 3px #b3b3b3;
+    padding: 15px;
+    margin-bottom: 8px;
+}
+
+.item-consulta-solicitacao p{
+    font-size: 14px;
+    margin-bottom: 2px;
+}
+
+.grid-mobile-solicitante-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.item-mobile-topo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.item-mobile-avatar {
+    width: 38px !important;
+    height: 38px !important;
+    font-size: .9rem !important;
+    flex-shrink: 0;
+}
+
+.item-mobile-nome {
+    font-weight: 600;
+    font-size: .85rem;
+}

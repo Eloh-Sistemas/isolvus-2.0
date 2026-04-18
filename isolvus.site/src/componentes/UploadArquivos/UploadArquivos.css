@@ -1,0 +1,200 @@
+/* Container geral dos arquivos (caixas) */
+.saved-box, .preview-box {
+  position: relative;
+  width: 1px;
+  min-width: 170px;
+  min-height: 200px; /* você pode ajustar conforme desejar */
+  border: 1px solid #ddd;
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  background-color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.1);
+  cursor: default;
+  user-select: none;
+  transition: box-shadow 0.2s ease;
+}
+
+
+.saved-box:hover, .preview-box:hover {
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
+}
+
+/* Imagem ou ícone centralizados e dimensionados */
+.image-fit {
+  width: 100%;
+  height: 100px;
+  object-fit: contain;
+  border-radius: 0.3rem;
+  background-color: #f8f9fa;
+  cursor: pointer;
+}
+
+.file-icon {
+  font-size: 5rem;
+  color: #6c757d;
+  cursor: default;
+}
+
+/* Botões excluir/remover no canto superior direito */
+.button-circle {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 44px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 10;
+}
+
+/* Informações do arquivo - nome e download alinhados */
+.file-info {
+  width: 100%;
+  display: flex;
+  flex-direction: column; /* mantém nome acima do botão */
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: auto;
+}
+
+
+/* Nome do arquivo - truncado com tooltip */
+.file-name {
+  width: 100%;
+  font-size: 0.85rem;
+  color: #212529;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  cursor: default;
+  user-select: text;
+}
+
+/* Botão download - ocupa toda a largura do container, alinhado ao centro */
+.file-info a.btn {
+  width: 100%;
+  font-size: 0.8rem;
+  padding: 0.25rem 0;
+  text-align: center;
+  white-space: nowrap;
+  user-select: none;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.25rem;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Ícone download no botão */
+.file-info a.btn i {
+  font-size: 1rem;
+}
+
+/* Prevenir que clique no botão download abra modal */
+.file-info a.btn:active, .file-info a.btn:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Upload box (botão de adicionar arquivo) */
+.upload-box {
+  width: 170px;
+  min-width: 170px;  
+  height: 220px;
+  border: 2px dashed #6c757d;
+  border-radius: 0.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #6c757d;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+.upload-box:hover {
+  background-color: #e9f0ff;
+  border-color: #375aeb;
+  color: #375aeb;
+}
+
+/* Estilos do modal - MANTENHA ESTES EXATAMENTE IGUAIS */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 80000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  position: relative;
+  max-width: 90%;
+  max-height: 90%;
+  background: #fff;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  display: flex; /* Adicionado para centralizar a imagem */
+  justify-content: center;
+  align-items: center;
+}
+
+/* ----- ESTILO DA IMAGEM DENTRO DO MODAL - AJUSTADO ----- */
+.modal-image {
+  max-width: 100%;
+  max-height: 80vh;
+  width: auto; /* Permite que a largura se ajuste automaticamente */
+  height: auto; /* Permite que a altura se ajuste automaticamente */
+  border-radius: 4px;
+  object-fit: contain; /* Garante que a imagem mantenha a proporção dentro do container */
+}
+/* -------------------------------------------------------- */
+
+.close-button {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  font-size: 2rem;
+  background: transparent;
+  border: none;
+  color: #000;
+  cursor: pointer;
+}
+
+.modal-nav-button {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 2rem;
+  background: transparent;
+  border: none;
+  color: #000;
+  cursor: pointer;
+}
+
+.modal-prev-button {
+  left: 10px;
+}
+
+.modal-next-button {
+  right: 10px;
+}
+
+.close-button {  
+  color: #000000; /* ou uma cor visível */
+}

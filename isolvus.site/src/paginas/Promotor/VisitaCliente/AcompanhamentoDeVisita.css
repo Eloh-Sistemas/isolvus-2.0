@@ -1,0 +1,10 @@
+.mapacontaioner{
+    height: 379px;
+    width: 100%
+}
+
+/* CSS adicional */
+div::-webkit-scrollbar {
+  display: none;
+}
+

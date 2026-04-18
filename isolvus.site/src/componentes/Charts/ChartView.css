@@ -1,0 +1,24 @@
+.ChartTitle{
+    font-size: 15px;        
+    font-weight: 600;
+    margin-top: 4px; 
+    margin-left: 10px;   
+    color: #505050;
+    text-align: left;       
+    width: 93%;    
+}
+
+.Chartlinha{
+    margin-top: 5px;
+    color: #d6d6d6;
+}
+
+.ChartFundo{
+    background-color: #fff;
+    box-shadow: 1px 1px 5px #00000015;
+    border-width: 1px;
+    border-radius: 2px;
+    border-color: #d8d8d8;
+    height: 100%;
+}
+

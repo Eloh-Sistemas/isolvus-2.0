@@ -1,0 +1,27 @@
+input[type="file"] {
+    display: none;       
+}
+
+#edtArquivo{
+    margin-top: 20px;
+    border-style:double;
+    border-width:0.1cap;
+    border-color: rgb(223, 223, 223);
+    padding: 8px;
+    border-radius: 4px 0px 0px 4px;      
+}
+
+.btnarquivo{
+    position: relative;
+    border-radius: 0px 3px 3px 0px;
+    margin-top: -5px;
+    margin-left: -1px;
+}
+
+.tablefont{
+    font-size: 14px;
+}
+
+.bolt{
+    font-weight: 700;
+}

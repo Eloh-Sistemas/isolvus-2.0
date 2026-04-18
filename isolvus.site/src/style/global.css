@@ -1,0 +1,167 @@
+/* Estilo global para overlay */
+.react-modal-overlay {
+  background: rgba(0, 0, 0, 0.5); /* Fundo semi-transparente */
+  position: fixed; /* Fixa o overlay em toda a tela */
+  top: 0;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1080; /* Garante que esteja acima de outros elementos */
+}
+
+
+.swal2-container {
+  z-index: 99999 !important;
+}
+
+
+/* Estilo global para os modais */
+.react-modal-content {
+  width: calc(100% - 100px); /* Largura total menos 50px de cada lado */
+  max-width: calc(100% - 40px); /* Define um limite máximo para largura do modal */
+  height: auto; /* Altura automática para se ajustar ao conteúdo */
+  max-height: calc(100% - 40px); /* Garante que o modal nunca ultrapasse 100% da altura da tela */
+  background: #fff; /* Fundo branco */
+  padding: 1rem; /* Espaçamento interno */
+  position: relative; /* Necessário para o botão de fechamento */
+  border-radius: 0.24rem; /* Bordas levemente arredondadas */
+  margin: 20px; /* Margem de 20px ao redor */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Sombra para destaque */
+  z-index: 1055; /* Acima do overlay */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Corpo do modal (onde vai o conteúdo rolável) */
+.bsmodal-content {
+  flex: 1;
+  overflow-y: auto; /* Permite rolagem no conteúdo */
+  padding: 0 50px; /* Afastando o conteúdo 50px das laterais */
+}
+
+/* Cabeçalho fixo no topo */
+.bsmodal-header {
+  z-index: 5000;
+  position: sticky;
+  top: 0;
+  background: white;
+  padding: 15px 0;
+  border-bottom: 1px solid #ddd; /* Linha de separação */
+}
+
+/* Rodapé fixo */
+.bsmodal-footer {
+  z-index: 9999;
+  position: sticky;
+  bottom: 0;
+  background: white;
+  padding: 15px 0;
+  border-top: 1px solid #ddd; /* Linha de separação */
+}
+
+/* Media Query para dispositivos móveis */
+@media (max-width: 768px) {
+  .react-modal-content {
+    width: 100%; /* Modal ocupa a largura total em telas pequenas */
+    margin: 0; /* Remove as margens laterais para ocupar a tela toda */
+    max-width: 100%; /* Não limita a largura no celular */
+    max-height: 100%;
+    height: 100%; /* Modal ocupa 100% da altura da tela */
+    border-radius: 0; /* Remover bordas arredondadas para tela pequena */
+  }
+
+  .bsmodal-content {
+    padding: 0 20px; /* Afastando o conteúdo 20px das laterais em telas pequenas */
+  }
+
+  .bsmodal-footer {
+    padding: 10px; /* Menor padding para dispositivos móveis */
+  }
+
+  .margem-botao{
+    margin-top: 10px;
+  }
+}
+
+/* Botão de fechar */
+.react-modal-close {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  border: 0;
+  background: transparent;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+/* Para outros elementos gerais */
+html,
+body,
+div#root {
+  background-color: #F8FAFD;    
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  zoom: 100%;
+  transform-origin: top left;
+}
+
+.Containe-Tela {
+  padding-top: 110px;
+  width: 98%;
+}
+
+.titulo-da-pagina {
+  font-size: 20px;
+}
+
+input,
+select {
+  height: 45px;  
+}
+
+.btn {
+  height: 45px;
+}
+
+.section-title {    
+    font-weight: bold;        
+    color: #222;
+    border-bottom: dashed 0.1rem #5e5e5e;
+    padding-bottom: 10px;
+ }
+
+@media (min-width: 768px) {
+
+  .margem-botao{
+    margin-top: 30px;
+  }
+
+}
+
+.modal-title{
+  font-size: 25px;      
+  color: #000000;
+  font-weight: 400;
+}
+
+/* Para navegadores baseados em Webkit (Chrome, Safari) */
+body::-webkit-scrollbar {
+  width: 0;
+  background: transparent; /* Torna a barra de rolagem invisível */
+}
+
+/* Para Firefox */
+html {
+  scrollbar-width: none; /* Oculta a barra de rolagem para Firefox */
+}
+
+/* Para Microsoft Edge */
+body {
+  -ms-overflow-style: none; /* Oculta a barra de rolagem para o Edge */
+}
+
