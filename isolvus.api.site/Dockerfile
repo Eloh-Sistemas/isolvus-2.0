@@ -2,11 +2,11 @@ FROM node:20
 
 # Instala dependências do Oracle Instant Client
 RUN apt-get update && apt-get install -y libaio1 wget unzip && \
-    wget https://download.oracle.com/otn_software/linux/instantclient/instantclient-basiclite-linux.x64-21.13.0.0.0dbru.zip \
+    wget https://download.oracle.com/otn_software/linux/instantclient/2112000/instantclient-basiclite-linux.x64-21.12.0.0.0dbru.zip \
          -O /tmp/ic.zip && \
     unzip /tmp/ic.zip -d /opt/oracle && \
     rm /tmp/ic.zip && \
-    echo /opt/oracle/instantclient_21_13 > /etc/ld.so.conf.d/oracle-instantclient.conf && \
+    echo /opt/oracle/instantclient_21_12 > /etc/ld.so.conf.d/oracle-instantclient.conf && \
     ldconfig
 
 WORKDIR /app
