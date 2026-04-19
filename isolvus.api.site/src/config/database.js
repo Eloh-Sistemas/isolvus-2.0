@@ -4,7 +4,7 @@ import oracledb from 'oracledb';
 import { dbConfig } from './dbConfig.js'; // Configurações do banco de dados
 
 oracledb.initOracleClient({
-  libDir: 'C:\\app\\Desenvolvimento\\product\\12.1.0\\client_1\\BIN'
+  libDir: '/opt/oracle/instantclient_21_13'
 });
 
 export async function getConnection() {
