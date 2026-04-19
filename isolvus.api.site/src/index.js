@@ -42,7 +42,11 @@ const portahttps = 58624;
 const apiVersion = "/v1"; // Variável para a versão da API
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Aumentando o limite de requisição para 50MB (modifique conforme necessário)
 app.use(express.json({ limit: '1gb' }));
