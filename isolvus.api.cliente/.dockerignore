@@ -1,0 +1,7 @@
+node_modules
+.git
+.env
+*.log
+src/certificados/
+src/documentos/
+src/remessas/

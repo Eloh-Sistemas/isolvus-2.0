@@ -3,6 +3,10 @@
 import oracledb from 'oracledb';
 import { dbConfig } from './dbConfig.js'; // Configurações do banco de dados
 
+oracledb.initOracleClient({
+  libDir: '/opt/oracle/instantclient_21_12'
+});
+
 export async function getConnection() {
   try {
     const connection = await oracledb.getConnection(dbConfig);    
