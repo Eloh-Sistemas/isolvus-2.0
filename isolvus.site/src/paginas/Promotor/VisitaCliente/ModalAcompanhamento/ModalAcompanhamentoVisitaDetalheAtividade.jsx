@@ -5,6 +5,15 @@ import UploadArquivos from "../../../../componentes/UploadArquivos/UploadArquivo
 import { useRef } from "react";
 import TabItem from "../../../../componentes/tabItem/tabitem";
 
+function fixEncoding(str) {
+    if (!str) return str;
+    try {
+        return decodeURIComponent(escape(str));
+    } catch {
+        return str;
+    }
+}
+
 function ModalAcompanhamentoVisitaDetalheAtividade(props){
     const uploadRef = useRef();  
 
@@ -18,12 +27,12 @@ function ModalAcompanhamentoVisitaDetalheAtividade(props){
                     className="atividade-modal-content"
                 > 
 
-            <div className="bsmodal-content" >
-                
-                <div className="bsmodal-header">
+            <div className="bsmodal-header">
                     <h3 className="modal-title text-center bolt">Detalhamento da Atividade</h3>
                 </div>
 
+            <div className="detalhe-atividade-body" style={{ overflowY: "scroll", flex: 1, minHeight: 0 }} >
+                
                 <div className="row">
 
                     <div className="col-12">
@@ -243,7 +252,7 @@ function ModalAcompanhamentoVisitaDetalheAtividade(props){
                         id="Comentario"
                         rows="8"                        
                         placeholder="Não foi realizado comentario..."
-                        value={props.atividadeSelecionada.comentario ?? ""}
+                        value={fixEncoding(props.atividadeSelecionada.comentario) ?? ""}
                         />
                     </div>                                                            
                     

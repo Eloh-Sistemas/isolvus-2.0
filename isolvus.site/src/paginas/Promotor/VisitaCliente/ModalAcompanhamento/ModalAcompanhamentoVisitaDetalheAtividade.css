@@ -1,23 +1,55 @@
 .atividade-modal-overlay {
   position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0,0,0,0.5);
-    z-index: 12054;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0,0,0,0.5);
+  z-index: 12054;
 }
 
 .atividade-modal-content {  
-   position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: white;
-    padding: 20px;
-    overflow-y: auto;
-    z-index: 12054;
-    display: flex;
-    flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: white;
+  overflow: hidden;
+  z-index: 12054;
+  display: flex;
+  flex-direction: column;
+}
+
+.atividade-modal-content .bsmodal-header {
+  flex-shrink: 0;
+  padding: 20px 20px 10px 20px;
+  border-bottom: 1px solid #ddd;
+}
+
+.detalhe-atividade-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: scroll;
+  padding: 10px 20px;
+}
+
+.detalhe-atividade-body::-webkit-scrollbar {
+  display: block !important;
+  width: 8px !important;
+}
+
+.detalhe-atividade-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.detalhe-atividade-body::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.atividade-modal-content .bsmodal-footer {
+  flex-shrink: 0;
+  padding: 10px 20px 20px 20px;
+  border-top: 1px solid #ddd;
 }
