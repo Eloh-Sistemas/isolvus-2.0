@@ -133,6 +133,11 @@ function AcompanhamentoDeVisita() {
     setatvcliselecionado(item);
   }
 
+  function onclickItemTabelaPromotor(item) {
+    const jaFiltrado = Array.isArray(id_Promotor) && id_Promotor.length === 1 && id_Promotor[0].codigo === item.id_usuario;
+    Set_id_Promtor(jaFiltrado ? [] : [{ codigo: item.id_usuario, descricao: item.nome }]);
+  }
+
   function onclickCardCliente() {
     //alert("Cliente");
   }
@@ -225,7 +230,8 @@ function AcompanhamentoDeVisita() {
         dataFinal={dataFinal}
       />
 
-      <div className="container-fluid Containe-Tela ">
+      <div className="acompanhamento-visita-wrapper">
+      <div className="container-fluid Containe-Tela">
         <div className="row text-body-secondary mb-4">
           <h1 className="mb-2 titulo-da-pagina">Dashboard - Acompanhamento de Visita</h1>
         </div>
@@ -454,7 +460,7 @@ function AcompanhamentoDeVisita() {
 
 
           {/* Tabela atividade por cliente */}
-          <div className="col-lg-6">
+          <div className="col-lg-6 d-flex flex-column tabela-bloco">
             <table className="table tablefont table-hover mb-0">
               <thead>
                 <tr>
@@ -471,7 +477,7 @@ function AcompanhamentoDeVisita() {
               </thead>
             </table>
 
-            <div style={{ maxHeight: "400px", overflowY: "auto", scrollbarWidth: "none" }}>
+            <div className="tabela-scroll-container">
               <table className="table tablefont table-hover mb-0">
                 <tbody>
                   {dadosTabelaAtividadeporCliente.length > 0 ? (
@@ -494,7 +500,7 @@ function AcompanhamentoDeVisita() {
             </div>
 
             {/* Rodapé fixo fora do scroll */}
-            <table className="table tablefont table-hover">
+            <table className="table tablefont table-hover mb-0">
               <tfoot>
                 <tr>
                   <td className="col-11" colSpan="2">
@@ -509,37 +515,37 @@ function AcompanhamentoDeVisita() {
           </div>
 
           {/* Tabela Checkin por promotor */}
-          <div className="col-lg-6">
-            <div
-              style={{
-                maxHeight: "300px",
-                overflowY: "auto",
-                scrollbarWidth: "none", // Firefox
-                msOverflowStyle: "none", // IE/Edge
-              }}
-              className="tabela-scroll"
-            >
+          <div className="col-lg-6 d-flex flex-column tabela-bloco tabela-checkin-promotor">
+            <table className="table tablefont table-hover mb-0">
+              <thead>
+                <tr>
+                  <th className="col-5" scope="col">
+                    Chekin por Promotor
+                  </th>
+                  <th className="col-1 text-end">
+                    ATD
+                  </th>
+                  <th className="col-1 text-end">
+                    ATF
+                  </th>
+                  <th className="col-1 text-end">
+                    ATT
+                  </th>
+                </tr>
+              </thead>
+            </table>
+
+            <div className="tabela-scroll-container">
               <table className="table tablefont table-hover mb-0">
-                <thead>
-                  <tr>
-                    <th className="col-5" scope="col">
-                      Chekin por Promotor
-                    </th>
-                    <th className="col-1 text-end">
-                      ATD
-                    </th>
-                    <th className="col-1 text-end">
-                      ATF
-                    </th>
-                    <th className="col-1 text-end">
-                      ATT
-                    </th>
-                  </tr>
-                </thead>
                 <tbody>
                   {dadosTabela.length > 0 ? (
                     dadosTabela.map((item) => (
-                      <tr key={item.id_usuario} className="linha-grid-desktop-analisedespesa">
+                      <tr
+                        key={item.id_usuario}
+                        onClick={() => onclickItemTabelaPromotor(item)}
+                        className={`linha-grid-desktop-analisedespesa ${Array.isArray(id_Promotor) && id_Promotor.length === 1 && id_Promotor[0].codigo === item.id_usuario ? 'linha-selecionada' : ''}`}
+                        style={{ cursor: "pointer" }}
+                      >
                         <td className="col-5">{`${item.id_usuario} - ${item.nome}`}</td>
                         <td className="col-1 text-end">{item.atd_dentro}</td>
                         <td className="col-1 text-end">{item.atd_fora}</td>
@@ -558,7 +564,7 @@ function AcompanhamentoDeVisita() {
             </div>
 
             {/* Rodapé fixo fora do scroll */}
-            <table className="table tablefont table-hover mb-2">
+            <table className="table tablefont table-hover mb-0">
               <tfoot>
                 <tr>
                   <td className="col-5">
@@ -578,6 +584,7 @@ function AcompanhamentoDeVisita() {
             </table>
           </div>
         </div>
+      </div>
       </div>
     </>
   );

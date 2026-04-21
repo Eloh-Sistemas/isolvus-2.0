@@ -609,6 +609,7 @@ export async function getdashboardn1(jsonReq) {
      WHERE 1=1
        AND A.DTINATIVO IS NULL
        AND P.ID_ROTINA = 3001
+       AND P.PERMITIR = 'S'
     `;
 
     const paramPromotor = {};

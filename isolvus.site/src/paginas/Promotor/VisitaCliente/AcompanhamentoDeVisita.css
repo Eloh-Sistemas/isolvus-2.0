@@ -4,7 +4,51 @@
 }
 
 /* CSS adicional */
-div::-webkit-scrollbar {
+.acompanhamento-visita-wrapper div::-webkit-scrollbar {
   display: none;
 }
+
+.acompanhamento-visita-wrapper {
+  position: fixed;
+  top: 60px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.acompanhamento-visita-wrapper .Containe-Tela {
+  padding-top: 20px;
+}
+
+.tabela-scroll-container {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.table > tbody > tr.linha-selecionada > td,
+.table > tbody > tr.linha-selecionada:hover > td {
+  --bs-table-bg: #bfdbfe;
+  --bs-table-accent-bg: #bfdbfe;
+  background-color: #bfdbfe !important;
+  font-weight: 600;
+}
+
+.table > tbody > tr.linha-selecionada > td:first-child,
+.table > tbody > tr.linha-selecionada:hover > td:first-child {
+  border-left: 4px solid #2563eb;
+}
+
+.tabela-bloco {
+  height: 100%;
+}
+
+@media (max-width: 768px) {
+  .tabela-checkin-promotor {
+    margin-top: 24px;
+  }
+}
+
+
 
