@@ -39,6 +39,7 @@ export default function MuralAdmin() {
   const [form, setForm] = useState({ titulo: '', conteudo: '', tipo: 'AVISO', fotos: [], data_disponivel: '', data_expiracao: '' });
 
   const inputFotoRef = useRef(null);
+  const edicaoRef = useRef({});
 
   async function carregar() {
     setLoading(true);
@@ -57,6 +58,7 @@ export default function MuralAdmin() {
   useEffect(() => { carregar(); }, []);
 
   function limparForm() {
+    form.fotos.forEach(({ preview }) => URL.revokeObjectURL(preview));
     setForm({ titulo: '', conteudo: '', tipo: 'AVISO', fotos: [], data_disponivel: '', data_expiracao: '' });
     setErroFoto('');
   }
@@ -88,23 +90,17 @@ export default function MuralAdmin() {
       }
     }
 
-    const leitores = selecionados.map(
-      (arquivo) =>
-        new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (ev) => resolve(ev.target.result);
-          reader.readAsDataURL(arquivo);
-        })
-    );
+    const novasMidias = selecionados.map(arquivo => ({
+      file: arquivo,
+      preview: URL.createObjectURL(arquivo),
+    }));
 
-    Promise.all(leitores).then((bases) => {
-      setForm((f) => ({ ...f, fotos: [...f.fotos, ...bases] }));
-    });
-
+    setForm((f) => ({ ...f, fotos: [...f.fotos, ...novasMidias] }));
     e.target.value = '';
   }
 
   function removerFoto(idx) {
+    URL.revokeObjectURL(form.fotos[idx].preview);
     setForm((f) => ({ ...f, fotos: f.fotos.filter((_, i) => i !== idx) }));
   }
 
@@ -112,18 +108,19 @@ export default function MuralAdmin() {
     if (!form.titulo.trim()) return;
     setSalvando(true);
     try {
-      await api.post('/v1/comunicado/criar', {
-        titulo: form.titulo.trim(),
-        conteudo: form.conteudo.trim(),
-        tipo: form.tipo,
-        fotos: form.fotos,
-        id_usuario_autor: idUsuario,
-        nome_autor: nome,
-        setor_autor: localStorage.getItem('setor') || '',
-        id_grupo_empresa: idGrupoEmpresa,
-        data_disponivel: form.data_disponivel || null,
-        data_expiracao: form.data_expiracao || null,
-      });
+      const fd = new FormData();
+      fd.append('titulo', form.titulo.trim());
+      fd.append('conteudo', form.conteudo.trim());
+      fd.append('tipo', form.tipo);
+      fd.append('id_usuario_autor', idUsuario);
+      fd.append('nome_autor', nome);
+      fd.append('setor_autor', localStorage.getItem('setor') || '');
+      fd.append('id_grupo_empresa', idGrupoEmpresa);
+      if (form.data_disponivel) fd.append('data_disponivel', form.data_disponivel);
+      if (form.data_expiracao)  fd.append('data_expiracao', form.data_expiracao);
+      form.fotos.forEach(({ file }) => fd.append('midias', file));
+
+      await api.post('/v1/comunicado/criar', fd);
       limparForm();
       await carregar();
     } finally {
@@ -156,6 +153,10 @@ export default function MuralAdmin() {
       data_disponivel: toLocal(c.DATA_DISPONIVEL || c.data_disponivel),
       data_expiracao:  toLocal(c.DATA_EXPIRACAO  || c.data_expiracao),
     });
+    const id = c.id_comunicado || c.ID_COMUNICADO;
+    setTimeout(() => {
+      edicaoRef.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
   }
 
   function cancelarEdicao() {
@@ -314,12 +315,12 @@ export default function MuralAdmin() {
             {/* Prévia das fotos */}
             {form.fotos.length > 0 && (
               <div className="mural-preview-fotos">
-                {form.fotos.map((src, idx) => (
+                {form.fotos.map(({ file, preview }, idx) => (
                   <div key={idx} className="mural-preview-item">
-                    {src.startsWith('data:video') ? (
-                      <video src={src} className="mural-preview-img" muted />
+                    {file.type.startsWith('video/') ? (
+                      <video src={preview} className="mural-preview-img" muted />
                     ) : (
-                      <img src={src} alt={`prévia ${idx + 1}`} className="mural-preview-img" />
+                      <img src={preview} alt={`prévia ${idx + 1}`} className="mural-preview-img" />
                     )}
                     <button type="button" className="mural-preview-remover" onClick={() => removerFoto(idx)}>
                       <i className="bi bi-x" />
@@ -405,7 +406,7 @@ export default function MuralAdmin() {
 
                   {/* Formulário de edição inline */}
                   {emEdicao && (
-                    <div className="mural-post-form" style={{ marginTop: '8px' }}>
+                    <div ref={el => edicaoRef.current[id] = el} className="mural-post-form" style={{ marginTop: '8px' }}>
                       <p className="mural-post-form-titulo">Editando publicação</p>
 
                       <div className="mural-modal-tipos mb-3">

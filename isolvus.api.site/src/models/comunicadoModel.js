@@ -50,7 +50,7 @@ export async function criarComunicadoModel({ titulo, conteudo, tipo, fotos, id_u
     const colsFotos = fotos ? ', FOTOS' : '';
     const valsFotos = fotos ? ', :fotos' : '';
 
-    if (fotos) binds.fotos = { type: oracledb.CLOB, val: fotos };
+    if (fotos) binds.fotos = fotos;
 
     const sql = `
       INSERT INTO BSTAB_COMUNICADOS
@@ -64,6 +64,17 @@ export async function criarComunicadoModel({ titulo, conteudo, tipo, fotos, id_u
   } finally {
     await connection.close();
   }
+}
+
+export async function getFotosComunicadoModel({ id_comunicado, id_grupo_empresa }) {
+  const sql = `
+    SELECT FOTOS FROM BSTAB_COMUNICADOS
+    WHERE ID_COMUNICADO = :id_comunicado
+      AND ID_GRUPO_EMPRESA = :id_grupo_empresa
+      AND ATIVO = 1
+  `;
+  const rows = await executeQuery(sql, { id_comunicado, id_grupo_empresa });
+  return rows && rows[0] ? (rows[0].FOTOS || rows[0].fotos || null) : null;
 }
 
 export async function excluirComunicadoModel({ id_comunicado, id_grupo_empresa }) {

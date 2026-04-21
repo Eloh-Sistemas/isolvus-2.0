@@ -1,0 +1,32 @@
+services:
+  api-site:
+    build: ./isolvus.api.site
+    ports:
+      - "3011:3011"
+    environment:
+      - DB_USER=bellasistemas
+      - DB_PASSWORD=bella147123
+      - DB_CONNECT=192.168.0.10:1521/XE
+    volumes:
+      - ./isolvus.api.site/arquivodeintegracaofornecedor:/app/arquivodeintegracaofornecedor
+      - ./isolvus.api.site/src/documentos:/app/src/documentos
+      - ./isolvus.api.site/src/remessas:/app/src/remessas
+      - ./isolvus.api.site/src/certificados:/app/src/certificados
+      - ./isolvus.api.site/src/midias:/app/src/midias
+    restart: unless-stopped
+
+  api-cliente:
+    build: ./isolvus.api.cliente
+    ports:
+      - "3020:3020"
+    environment:
+      - DB_USER=bellasistemas
+      - DB_PASSWORD=bella147123
+      - DB_CONNECT=192.168.0.10:1521/XE
+    restart: unless-stopped
+
+  site:
+    build: ./isolvus.site
+    ports:
+      - "80:80"
+    restart: unless-stopped

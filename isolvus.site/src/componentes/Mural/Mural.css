@@ -815,7 +815,6 @@
   display: flex;
   background: #fff;
   border-radius: 16px;
-  overflow: hidden;
   box-shadow: 0 2px 8px rgba(0,0,0,.06), 0 8px 28px rgba(0,0,0,.04);
   margin-bottom: 20px;
   border: 1px solid #f0f4f8;
@@ -935,7 +934,18 @@
 .bs-card--hero {
   flex-direction: column;
   border-radius: 20px;
-  overflow: hidden;
+}
+
+.bs-card--foto-pura {
+  border-radius: 16px;
+}
+
+.bs-card--foto-pura .bs-hero {
+  border-radius: 16px;
+}
+
+.bs-card--foto-pura .bs-card-inner {
+  display: none;
 }
 
 /* Bloco hero da foto */

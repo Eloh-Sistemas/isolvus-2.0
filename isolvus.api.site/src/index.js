@@ -1,5 +1,6 @@
 ﻿import express from 'express';
 import cors from 'cors';
+import path from 'path';
 import usuarioRoutes from './routes/usuarioRoutes.js';
 import permissoesRoutes from './routes/permissoesRoutes.js';
 import filialRoutes from './routes/filialRoutes.js';
@@ -43,6 +44,9 @@ const apiVersion = "/v1"; // Variável para a versão da API
 
 // Middleware
 app.use(cors());
+
+// Servir arquivos de mídia dos comunicados
+app.use('/midias', express.static(path.join(process.cwd(), 'src/midias')));
 
 // Aumentando o limite de requisição para 50MB (modifique conforme necessário)
 app.use(express.json({ limit: '1gb' }));

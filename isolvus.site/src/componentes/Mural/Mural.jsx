@@ -101,7 +101,8 @@ export function ComunicadoCard({ c, onExcluir, excluindo, podeModerarOuDono, onE
   const dataPublic   = c.data_publicacao || c.DATA_PUBLICACAO || '';
   const idComunicado = c.id_comunicado  || c.ID_COMUNICADO;
   const fotosRaw     = c.fotos        || c.FOTOS        || null;
-  const fotos        = parseFotos(fotosRaw);
+  const BASE_URL     = api.defaults.baseURL || '';
+  const fotos        = parseFotos(fotosRaw).map(src => src.startsWith('/') ? `${BASE_URL}${src}` : src);
 
   const t = TIPOS.find((x) => x.value === tipo) || TIPOS[0];
   const temFotos = fotos.length > 0;
@@ -151,7 +152,7 @@ export function ComunicadoCard({ c, onExcluir, excluindo, podeModerarOuDono, onE
   );
 
   return (
-    <article className={`bs-card ${temFotos ? 'bs-card--hero' : ''}`} style={{ '--tipo-cor': t.cor }}>
+    <article className={`bs-card ${temFotos ? 'bs-card--hero' : ''} ${temFotos && !ehVideoAtual && !conteudo ? 'bs-card--foto-pura' : ''}`} style={{ '--tipo-cor': t.cor }}>
 
       {/* ── Modo HERO: apenas quando a mídia ativa é imagem ── */}
       {temFotos && !ehVideoAtual && (
@@ -179,7 +180,6 @@ export function ComunicadoCard({ c, onExcluir, excluindo, podeModerarOuDono, onE
                 <span className="bs-badge-dot" style={{ background: '#fff' }} />
                 {t.label}
               </span>
-              {kebabMenu('hero')}
             </div>
 
             {fotos.length > 1 && (
@@ -222,6 +222,13 @@ export function ComunicadoCard({ c, onExcluir, excluindo, podeModerarOuDono, onE
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── Kebab hero: abaixo do botão maximizar, fora do .bs-hero ── */}
+      {temFotos && !ehVideoAtual && (
+        <div style={{ position: 'absolute', top: '54px', right: '12px', zIndex: 20 }} onClick={(e) => e.stopPropagation()}>
+          {kebabMenu('hero')}
         </div>
       )}
 
