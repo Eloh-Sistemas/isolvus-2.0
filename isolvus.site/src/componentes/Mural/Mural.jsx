@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import api from '../../servidor/api.jsx';
 import './Mural.css';
 
@@ -43,6 +44,8 @@ export function ComunicadoCard({ c, onExcluir, excluindo, podeModerarOuDono, onE
   const [pausado, setPausado] = useState(false);
   const [menuAberto, setMenuAberto] = useState(false);
   const [posterMap, setPosterMap] = useState({});
+  const [lightbox, setLightbox] = useState(false);
+  const [lightboxIdx, setLightboxIdx] = useState(0);
 
   const menuRef  = useRef(null);
   const videoRef = useRef(null);
@@ -55,6 +58,13 @@ export function ComunicadoCard({ c, onExcluir, excluindo, podeModerarOuDono, onE
     document.addEventListener('mousedown', fechar);
     return () => document.removeEventListener('mousedown', fechar);
   }, [menuAberto]);
+
+  useEffect(() => {
+    if (!lightbox) return;
+    function fecharEsc(e) { if (e.key === 'Escape') setLightbox(false); }
+    document.addEventListener('keydown', fecharEsc);
+    return () => document.removeEventListener('keydown', fecharEsc);
+  }, [lightbox]);
 
   // Extrai o primeiro frame dos vídeos para usar como poster
   useEffect(() => {
@@ -154,10 +164,16 @@ export function ComunicadoCard({ c, onExcluir, excluindo, podeModerarOuDono, onE
             src={fotos[fotoAtiva]}
             alt={`foto-${fotoAtiva}`}
             className="bs-hero-img"
+            onClick={() => { setLightboxIdx(fotoAtiva); setLightbox(true); }}
           />
+          <button type="button" className="bs-lightbox-btn-maximize"
+            onClick={() => { setLightboxIdx(fotoAtiva); setLightbox(true); }}
+            title="Maximizar">
+            <i className="bi bi-fullscreen" />
+          </button>
 
           {/* Gradiente + overlay de info */}
-          <div className="bs-hero-overlay">
+          <div className="bs-hero-overlay" onClick={() => { setLightboxIdx(fotoAtiva); setLightbox(true); }}>
             <div className="bs-hero-topbar">
               <span className="bs-badge" style={{ color: '#fff', background: `${t.cor}cc` }}>
                 <span className="bs-badge-dot" style={{ background: '#fff' }} />
@@ -169,11 +185,11 @@ export function ComunicadoCard({ c, onExcluir, excluindo, podeModerarOuDono, onE
             {fotos.length > 1 && (
               <>
                 <button type="button" className="bs-gnav bs-gnav--prev"
-                  onClick={() => setFotoAtiva((p) => (p === 0 ? fotos.length - 1 : p - 1))}>
+                  onClick={(e) => { e.stopPropagation(); setFotoAtiva((p) => (p === 0 ? fotos.length - 1 : p - 1)); }}>
                   <i className="bi bi-chevron-left" />
                 </button>
                 <button type="button" className="bs-gnav bs-gnav--next"
-                  onClick={() => setFotoAtiva((p) => (p === fotos.length - 1 ? 0 : p + 1))}>
+                  onClick={(e) => { e.stopPropagation(); setFotoAtiva((p) => (p === fotos.length - 1 ? 0 : p + 1)); }}>
                   <i className="bi bi-chevron-right" />
                 </button>
               </>
@@ -295,6 +311,31 @@ export function ComunicadoCard({ c, onExcluir, excluindo, podeModerarOuDono, onE
         )}
 
       </div>
+
+      {lightbox && createPortal(
+        <div className="bs-lightbox-overlay" onClick={() => setLightbox(false)}>
+          <div className="bs-lightbox-box" onClick={(e) => e.stopPropagation()}>
+            <button className="bs-lightbox-fechar" onClick={() => setLightbox(false)} title="Fechar (Esc)">
+              <i className="bi bi-x-lg" />
+            </button>
+            <img src={fotos[lightboxIdx]} alt="" className="bs-lightbox-img" />
+            {fotos.length > 1 && (
+              <>
+                <button className="bs-lightbox-nav bs-lightbox-nav--prev"
+                  onClick={() => setLightboxIdx(p => p === 0 ? fotos.length - 1 : p - 1)}>
+                  <i className="bi bi-chevron-left" />
+                </button>
+                <button className="bs-lightbox-nav bs-lightbox-nav--next"
+                  onClick={() => setLightboxIdx(p => p === fotos.length - 1 ? 0 : p + 1)}>
+                  <i className="bi bi-chevron-right" />
+                </button>
+                <div className="bs-lightbox-contador">{lightboxIdx + 1} / {fotos.length}</div>
+              </>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
     </article>
   );
 }
