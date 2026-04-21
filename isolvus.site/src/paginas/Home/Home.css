@@ -1,6 +1,18 @@
 /* Espaço para a navbar fixa de 60px */
 body {
-  padding-top: 60px;
+  padding-top: 0;
+  background: #f1f5f9;
+  overflow: hidden;
+}
+
+/* Container de scroll abaixo do menu */
+.home-scroll-wrap {
+  position: fixed;
+  top: 60px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
   background: #f1f5f9;
 }
 

@@ -8,6 +8,6 @@ const router = express.Router();
 router.post('/comunicado/listar',  listarComunicados);
 router.post('/comunicado/criar',   upload.array('midias', 10), criarComunicado);
 router.post('/comunicado/excluir', excluirComunicado);
-router.post('/comunicado/editar',  editarComunicado);
+router.post('/comunicado/editar',  upload.array('midias', 10), editarComunicado);
 
 export default router;

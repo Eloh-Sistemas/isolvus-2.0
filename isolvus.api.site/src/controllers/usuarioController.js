@@ -1,4 +1,27 @@
-import { GetLogar, GetDadosFuncionario, GetListar, GetUsuarioComplet, SetCadastrarFuncionario, setCredencias, GetRateioFuncionario, SetRateioFuncionario, DeleteRateioFuncionario, SetFotoUsuario, GetFotoUsuario } from "../models/usuarioModel.js";
+import { GetLogar, GetDadosFuncionario, GetListar, GetUsuarioComplet, SetCadastrarFuncionario, setCredencias, GetRateioFuncionario, SetRateioFuncionario, DeleteRateioFuncionario, SetFotoUsuario, GetFotoUsuario, GetFotoAtualUsuario } from "../models/usuarioModel.js";
+import path from 'path';
+import fs from 'fs';
+import multer from 'multer';
+
+const FOTOS_DIR = path.join(process.cwd(), 'src/midias/usuarios');
+if (!fs.existsSync(FOTOS_DIR)) fs.mkdirSync(FOTOS_DIR, { recursive: true });
+
+const storageFoto = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, FOTOS_DIR),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase().replace(/[^a-z0-9.]/g, '');
+    cb(null, `${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`);
+  },
+});
+
+export const uploadFoto = multer({
+  storage: storageFoto,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (/^image\//.test(file.mimetype)) cb(null, true);
+    else cb(new Error('Apenas imagens são permitidas'));
+  },
+});
 
 export async function Logar(req, res) {
 
@@ -182,11 +205,26 @@ export async function credencias(req, res) {
 
 export async function SalvarFoto(req, res) {
     try {
-        const { id_usuario, foto } = req.body;
+        const id_usuario = Number(req.body.id_usuario);
         if (!id_usuario) return res.status(400).json({ error: 'id_usuario não informado' });
-        if (!foto) return res.status(400).json({ error: 'foto não informada' });
-        res.json(await SetFotoUsuario(Number(id_usuario), foto));
+
+        // Remover foto antiga do disco se existir
+        const fotoAtual = await GetFotoAtualUsuario(id_usuario);
+        if (fotoAtual && fotoAtual.startsWith('/midias/')) {
+            const fotoPath = path.join(process.cwd(), 'src', fotoAtual);
+            fs.unlink(fotoPath, () => {});
+        }
+
+        if (!req.file) {
+            // Remover foto (sem arquivo enviado = limpar foto)
+            res.json(await SetFotoUsuario(id_usuario, null));
+            return;
+        }
+
+        const caminho = `/midias/usuarios/${req.file.filename}`;
+        res.json({ ...(await SetFotoUsuario(id_usuario, caminho)), foto: caminho });
     } catch (error) {
+        if (req.file) fs.unlink(req.file.path, () => {});
         console.log(error);
         res.status(500).json({ error: 'Erro ao salvar foto', message: error.message });
     }

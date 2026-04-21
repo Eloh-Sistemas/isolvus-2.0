@@ -21,34 +21,35 @@ function Menu() {
   function handleFotoChange(e) {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const base64 = ev.target.result;
-      setFotoUsuario(base64);
-      localStorage.setItem('foto_usuario', base64);
-      setSalvandoFoto(true);
-      try {
-        await api.post('/v1/usuario/salvarFoto', {
-          id_usuario: Number(localStorage.getItem('id_usuario')),
-          foto: base64
-        });
-      } catch (err) {
+    setSalvandoFoto(true);
+    const preview = URL.createObjectURL(file);
+    setFotoUsuario(preview);
+    const fd = new FormData();
+    fd.append('id_usuario', localStorage.getItem('id_usuario'));
+    fd.append('foto', file);
+    api.post('/v1/usuario/salvarFoto', fd)
+      .then(({ data }) => {
+        const urlFinal = data.foto
+          ? `${api.defaults.baseURL}${data.foto}`
+          : preview;
+        setFotoUsuario(urlFinal);
+        localStorage.setItem('foto_usuario', urlFinal);
+        URL.revokeObjectURL(preview);
+      })
+      .catch(err => {
         console.log('Erro ao salvar foto:', err);
-      } finally {
-        setSalvandoFoto(false);
-      }
-    };
-    reader.readAsDataURL(file);
+        URL.revokeObjectURL(preview);
+      })
+      .finally(() => setSalvandoFoto(false));
   }
 
   async function handleRemoverFoto() {
     setFotoUsuario('');
     localStorage.removeItem('foto_usuario');
     try {
-      await api.post('/v1/usuario/salvarFoto', {
-        id_usuario: Number(localStorage.getItem('id_usuario')),
-        foto: ''
-      });
+      const fd = new FormData();
+      fd.append('id_usuario', localStorage.getItem('id_usuario'));
+      await api.post('/v1/usuario/salvarFoto', fd);
     } catch (err) {
       console.log('Erro ao remover foto:', err);
     }
@@ -129,8 +130,11 @@ function Menu() {
     api.post('/v1/usuario/consultarFoto', { id_usuario: Number(localStorage.getItem('id_usuario')) })
       .then(res => {
         if (res.data?.foto) {
-          setFotoUsuario(res.data.foto);
-          localStorage.setItem('foto_usuario', res.data.foto);
+          const urlFoto = res.data.foto.startsWith('/midias/')
+            ? `${api.defaults.baseURL}${res.data.foto}`
+            : res.data.foto;
+          setFotoUsuario(urlFoto);
+          localStorage.setItem('foto_usuario', urlFoto);
         }
       })
       .catch(err => console.log('Erro ao carregar foto:', err));
@@ -321,14 +325,34 @@ function Menu() {
               <div
                 key={i}
                 className={`notificacao-card ${!n.lida ? 'nao-lida' : ''}`}
-                onClick={() => marcarComoLida(n.id_notificacao)}
+                onClick={() => {
+                  marcarComoLida(n.id_notificacao);
+                  // Navega para o link se a notificação tiver um
+                  try {
+                    const dados = n.dados_tabela ? JSON.parse(n.dados_tabela) : null;
+                    if (dados?.link) {
+                      // Fecha o offcanvas antes de navegar
+                      const el = document.getElementById('offcanvasNotificacao');
+                      if (el) {
+                        const bsOffcanvas = window.bootstrap?.Offcanvas?.getInstance(el);
+                        bsOffcanvas?.hide();
+                      }
+                      setTimeout(() => { window.location.assign(dados.link); }, 150);
+                    }
+                  } catch {}
+                }}
+                style={{ cursor: 'pointer' }}
               >
                 <div className="notificacao-header">
                   <div className="notificacao-remetente-wrap">
                     <div className="notificacao-avatar-wrap">
                       <div className="notificacao-avatar">
                         {n.foto_remetente
-                          ? <img src={n.foto_remetente} alt={n.remetente} className="notificacao-avatar-img" />
+                          ? <img
+                              src={n.foto_remetente.startsWith('/midias/') ? `${api.defaults.baseURL}${n.foto_remetente}` : n.foto_remetente}
+                              alt={n.remetente}
+                              className="notificacao-avatar-img"
+                            />
                           : (n.remetente || 'U').charAt(0).toUpperCase()
                         }
                       </div>
@@ -351,15 +375,21 @@ function Menu() {
                       {n.expandida ? 'Ver menos' : 'Ver mais'}
                     </span>
                   )}
-                  {n.tem_anexo === 1 && (
-                    <button
-                      className="btn btn-sm btn-outline-success mt-2 d-flex align-items-center gap-1"
-                      onClick={(e) => baixarAnexoXLSX(n, e)}
-                      title="Baixar planilha anexada"
-                    >
-                      <i className="bi bi-file-earmark-excel"></i> Baixar Planilha
-                    </button>
-                  )}
+                  {n.tem_anexo === 1 && (() => {
+                    try {
+                      const d = JSON.parse(n.dados_tabela);
+                      if (d?.link) return null; // é link de mural, não planilha
+                    } catch {}
+                    return (
+                      <button
+                        className="btn btn-sm btn-outline-success mt-2 d-flex align-items-center gap-1"
+                        onClick={(e) => baixarAnexoXLSX(n, e)}
+                        title="Baixar planilha anexada"
+                      >
+                        <i className="bi bi-file-earmark-excel"></i> Baixar Planilha
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             ))

@@ -5,9 +5,11 @@ import "./Home.css";
 function Home() {
 
   return (
-    <>      
+    <>
       <Menu />
-      <Mural />
+      <div className="home-scroll-wrap">
+        <Mural />
+      </div>
     </>
   );
 }

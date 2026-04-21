@@ -777,17 +777,27 @@ export async function setCredencias(jsonReq) {
 
 // ---------------------------------------------------------------
 // FOTO DO USUÁRIO
-// Requer coluna FOTO CLOB na tabela BSTAB_USUSARIOS:
-//   ALTER TABLE BSTAB_USUSARIOS ADD (FOTO CLOB);
+// Requer coluna FOTO VARCHAR2(500) na tabela BSTAB_USUSARIOS:
+//   ALTER TABLE BSTAB_USUSARIOS MODIFY FOTO VARCHAR2(500);
 // ---------------------------------------------------------------
 
-export async function SetFotoUsuario(id_usuario, foto_base64) {
+export async function SetFotoUsuario(id_usuario, foto_caminho) {
     const ssql = `UPDATE BSTAB_USUSARIOS SET FOTO = :foto WHERE ID_USUARIO = :id_usuario`;
     try {
-        await executeQuery(ssql, { foto: foto_base64, id_usuario }, true);
+        await executeQuery(ssql, { foto: foto_caminho || null, id_usuario }, true);
         return { mensagem: 'Foto salva com sucesso!' };
     } catch (error) {
         throw error;
+    }
+}
+
+export async function GetFotoAtualUsuario(id_usuario) {
+    const ssql = `SELECT FOTO as "foto" FROM BSTAB_USUSARIOS WHERE ID_USUARIO = :id_usuario`;
+    try {
+        const result = await executeQuery(ssql, { id_usuario });
+        return result[0]?.foto || null;
+    } catch {
+        return null;
     }
 }
 

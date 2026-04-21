@@ -40,7 +40,7 @@ export async function listarComunicados(req, res) {
 
 export async function criarComunicado(req, res) {
   try {
-    const { titulo, conteudo, tipo, id_usuario_autor, nome_autor, setor_autor, id_grupo_empresa, data_disponivel, data_expiracao } = req.body;
+    const { titulo, conteudo, tipo, id_usuario_autor, nome_autor, setor_autor, id_grupo_empresa, data_disponivel, data_expiracao, permite_comentario } = req.body;
 
     if (!titulo || !id_grupo_empresa || !id_usuario_autor) {
       (req.files || []).forEach(f => fs.unlink(f.path, () => {}));
@@ -50,8 +50,8 @@ export async function criarComunicado(req, res) {
     const caminhos = (req.files || []).map(f => `/midias/comunicados/${f.filename}`);
     const fotosJson = caminhos.length > 0 ? JSON.stringify(caminhos) : null;
 
-    await criarComunicadoModel({ titulo, conteudo, tipo: tipo || 'AVISO', fotos: fotosJson, id_usuario_autor, nome_autor, setor_autor, id_grupo_empresa, data_disponivel: data_disponivel || null, data_expiracao: data_expiracao || null });
-    res.json({ success: true, message: 'Comunicado publicado com sucesso!' });
+    const result = await criarComunicadoModel({ titulo, conteudo, tipo: tipo || 'AVISO', fotos: fotosJson, id_usuario_autor, nome_autor, setor_autor, id_grupo_empresa, data_disponivel: data_disponivel || null, data_expiracao: data_expiracao || null, permite_comentario: Number(permite_comentario) === 1 });
+    res.json({ success: true, id_comunicado: result.id_comunicado, message: 'Comunicado publicado com sucesso!' });
   } catch (error) {
     (req.files || []).forEach(f => fs.unlink(f.path, () => {}));
     res.status(500).json({ error: 'Erro ao criar comunicado', message: error.message });
@@ -85,13 +85,41 @@ export async function excluirComunicado(req, res) {
 
 export async function editarComunicado(req, res) {
   try {
-    const { id_comunicado, id_grupo_empresa, titulo, conteudo, tipo, data_disponivel, data_expiracao } = req.body;
+    const { id_comunicado, id_grupo_empresa, titulo, conteudo, tipo, data_disponivel, data_expiracao, permite_comentario, fotos_remover } = req.body;
     if (!id_comunicado || !id_grupo_empresa || !titulo) {
+      (req.files || []).forEach(f => fs.unlink(f.path, () => {}));
       return res.status(400).json({ error: 'Dados obrigatórios não informados!' });
     }
-    await editarComunicadoModel({ id_comunicado, id_grupo_empresa, titulo, conteudo, tipo, data_disponivel: data_disponivel || null, data_expiracao: data_expiracao || null });
+
+    // Carregar fotos atuais do banco
+    const fotosRaw = await getFotosComunicadoModel({ id_comunicado, id_grupo_empresa });
+    let fotosAtuais = [];
+    try { fotosAtuais = fotosRaw ? JSON.parse(fotosRaw) : []; } catch {}
+
+    // Remover arquivos deletados pelo usuário
+    let paraRemover = [];
+    try { paraRemover = fotos_remover ? JSON.parse(fotos_remover) : []; } catch {}
+    paraRemover.forEach(caminho => {
+      const filePath = path.join(process.cwd(), 'src', caminho);
+      fs.unlink(filePath, () => {});
+    });
+
+    // Fotos restantes + novas
+    const fotosRestantes = fotosAtuais.filter(f => !paraRemover.includes(f));
+    const fotasNovas = (req.files || []).map(f => `/midias/comunicados/${f.filename}`);
+    const fotasFinal = [...fotosRestantes, ...fotasNovas];
+    const fotosJson = fotasFinal.length > 0 ? JSON.stringify(fotasFinal) : null;
+
+    await editarComunicadoModel({
+      id_comunicado, id_grupo_empresa, titulo, conteudo, tipo,
+      data_disponivel: data_disponivel || null,
+      data_expiracao:  data_expiracao  || null,
+      permite_comentario: Number(permite_comentario) === 1,
+      fotos: fotosJson,
+    });
     res.json({ success: true, message: 'Comunicado atualizado com sucesso!' });
   } catch (error) {
+    (req.files || []).forEach(f => fs.unlink(f.path, () => {}));
     res.status(500).json({ error: 'Erro ao editar comunicado', message: error.message });
   }
 }

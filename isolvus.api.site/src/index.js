@@ -32,6 +32,9 @@ import caixabancoRoutes from "./routes/caixabancoRoutes.js";
 import valeRoutes from "./routes/valeRoutes.js";
 import comunicadoRoutes from "./routes/comunicadoRoutes.js";
 import formaDePagamentoRoutes from "./routes/formaDePagamentoRoutes.js";
+import enqueteRoutes from "./routes/enqueteRoutes.js";
+import reacaoRoutes from "./routes/reacaoRoutes.js";
+import comentarioRoutes from "./routes/comentarioRoutes.js";
 import swaggerRoutes from './routes/swaggerRoutes.js';
 
 import { errorHandler } from './middlewares/errorHandler.js';
@@ -81,6 +84,9 @@ const rotas = [
   valeRoutes,
   comunicadoRoutes,
   formaDePagamentoRoutes,
+  enqueteRoutes,
+  reacaoRoutes,
+  comentarioRoutes,
   swaggerRoutes,
   notificacaoRoutes
 ];
