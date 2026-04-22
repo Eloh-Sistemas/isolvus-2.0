@@ -388,8 +388,6 @@ export async function getgerararquivoIntegracaoFornecedor(jsonReq) {
       const integracoes = await executeQuery(ssqlintegracoes, { id_intfornec: item.id_intfornec });
       const integracao = integracoes[0];
 
-      console.log(integracao);
-
       //if (!isSqlSelectSafe(integracao.psql)) {
       //  throw new Error(`A consulta SQL fornecida para o item ${item.id_intfornec} não é permitida por razões de segurança, verifique o SQL.`);
       //}
@@ -447,12 +445,11 @@ export async function getgerararquivoIntegracaoFornecedor(jsonReq) {
 
       const nomeBase = await gerarNomeArquivoDinamico(integracao.nomedoarquivo, integracao);
       const nomeArquivo = `${nomeBase}.${integracao.tipodoarquivo}`;
-
-
+      
       const cnpjLimpo = integracao.cnpj_cpf.replace(/[^\d]/g, '');
       const pastaDestino = path.join(
         process.cwd(),
-        '../arquivodeintegracaofornecedor',
+        'arquivodeintegracaofornecedor',
         cnpjLimpo,
         `F${integracao.id_filialerp}`
       );
