@@ -1,5 +1,7 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import { metricsMiddleware, register } from './middlewares/metrics.js';
 /*import fs from 'fs';
 import https from 'https';*/
 import filialRoutes from './routes/filialRoutes.js';
@@ -24,6 +26,13 @@ const apiVersion = "/v1";
 
 // Middleware
 app.use(cors());
+app.use(metricsMiddleware);
+
+// Endpoint de métricas para o Prometheus
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
+});
 
 // Aumentando o limite de requisição para 50MB (modifique conforme necessário)
 app.use(express.json({ limit: '1gb' }));

@@ -3,10 +3,10 @@ services:
     build: ./isolvus.api.site
     ports:
       - "3011:3011"
+    env_file:
+      - ./isolvus.api.site/.env
     environment:
-      - DB_USER=bellasistemas
-      - DB_PASSWORD=bella147123
-      - DB_CONNECT=192.168.0.10:1521/XE
+      - ORACLE_CLIENT_DIR=/opt/oracle/instantclient_21_21
     volumes:
       - ./isolvus.api.site/arquivodeintegracaofornecedor:/app/arquivodeintegracaofornecedor
       - ./isolvus.api.site/src/documentos:/app/src/documentos
@@ -19,10 +19,10 @@ services:
     build: ./isolvus.api.cliente
     ports:
       - "3020:3020"
+    env_file:
+      - ./isolvus.api.cliente/.env
     environment:
-      - DB_USER=bellasistemas
-      - DB_PASSWORD=bella147123
-      - DB_CONNECT=192.168.0.10:1521/XE
+      - ORACLE_CLIENT_DIR=/opt/oracle/instantclient_21_21
     restart: unless-stopped
 
   site:
@@ -30,3 +30,33 @@ services:
     ports:
       - "80:80"
     restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    ports:
+      - "9100:9100"
+    restart: unless-stopped
+
+volumes:
+  grafana_data:

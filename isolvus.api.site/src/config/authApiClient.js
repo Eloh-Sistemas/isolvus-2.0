@@ -1,7 +1,7 @@
 const authApiClient = {
     auth: {
-      username: 'Bellasistema',
-      password: 'bella123'
+      username: process.env.AUTH_API_USERNAME,
+      password: process.env.AUTH_API_PASSWORD,
     }
   };
 

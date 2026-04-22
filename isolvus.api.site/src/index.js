@@ -1,6 +1,8 @@
-﻿import express from 'express';
+﻿import 'dotenv/config';
+import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import { metricsMiddleware, register } from './middlewares/metrics.js';
 import usuarioRoutes from './routes/usuarioRoutes.js';
 import permissoesRoutes from './routes/permissoesRoutes.js';
 import filialRoutes from './routes/filialRoutes.js';
@@ -47,6 +49,13 @@ const apiVersion = "/v1"; // Variável para a versão da API
 
 // Middleware
 app.use(cors());
+app.use(metricsMiddleware);
+
+// Endpoint de métricas para o Prometheus
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
+});
 
 // Servir arquivos de mídia dos comunicados
 app.use('/midias', express.static(path.join(process.cwd(), 'src/midias')));
