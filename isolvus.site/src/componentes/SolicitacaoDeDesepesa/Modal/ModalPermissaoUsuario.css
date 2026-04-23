@@ -96,6 +96,45 @@
 	padding-right: 1rem;
 }
 
+.perm-tabs {
+	display: flex;
+	gap: 0.5rem;
+	border-bottom: 1px solid #e9ecef;
+	padding: 0.25rem 0 0.55rem;
+	margin-top: 0.6rem;
+}
+
+.perm-tab-btn {
+	border: 1px solid #dbe4ef;
+	background: #ffffff;
+	color: #64748b;
+	font-size: 0.82rem;
+	font-weight: 600;
+	padding: 0.48rem 0.75rem;
+	transition: all 0.15s ease;
+}
+
+.perm-tab-btn:hover {
+	background: #f8fafd;
+	border-color: #bfd0e2;
+}
+
+.perm-tab-btn.active {
+	background: #edf3fb;
+	border-color: #9eb7d1;
+	color: #1f2937;
+}
+
+.perm-empty-data-tab {
+	padding: 1.1rem;
+	margin-bottom: 0.75rem;
+}
+
+.perm-empty-data-tab h6 {
+	font-weight: 700;
+	color: #1f2937;
+}
+
 .perm-section-title {
 	font-size: 0.72rem;
 	font-weight: 700;
@@ -182,9 +221,34 @@
 	gap: 0.4rem;
 }
 
+.perm-module-toggle {
+	display: flex;
+	align-items: center;
+	gap: 0.45rem;
+	margin: 0;
+	font-size: 0.8rem;
+	font-weight: 600;
+	color: #334155;
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.perm-module-toggle .form-check-input {
+	margin-top: 0;
+	cursor: pointer;
+}
+
 .perm-module-list {
 	display: flex;
 	flex-direction: column;
+}
+
+.perm-rotina-item {
+	border-top: 1px solid #f1f5f9;
+}
+
+.perm-rotina-item:first-child {
+	border-top: 0;
 }
 
 .perm-rotina-row {
@@ -194,12 +258,24 @@
 	gap: 0.75rem;
 	margin: 0;
 	padding: 0.6rem 0.8rem;
-	border-top: 1px solid #f1f5f9;
 	cursor: pointer;
 }
 
 .perm-rotina-row:hover {
 	background: #f8fafd;
+}
+
+.perm-rotina-main-label {
+	margin: 0;
+	min-width: 0;
+	flex: 1;
+	cursor: pointer;
+}
+
+.perm-rotina-actions {
+	display: flex;
+	align-items: center;
+	gap: 0.55rem;
 }
 
 .perm-rotina-text {
@@ -211,6 +287,65 @@
 	margin-top: 0;
 	cursor: pointer;
 	transform: scale(1.05);
+}
+
+.perm-sub-card {
+	border-top: 1px solid #e5edf6;
+	background: #f8fbff;
+	padding: 0.7rem 0.8rem 0.8rem;
+}
+
+.perm-sub-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 0.6rem;
+	margin-bottom: 0.5rem;
+}
+
+.perm-sub-title {
+	margin: 0;
+	font-size: 0.8rem;
+	font-weight: 700;
+	color: #1f2937;
+}
+
+.perm-sub-empty {
+	padding: 0.55rem 0.65rem;
+	border: 1px dashed #cdd9e8;
+	background: #fff;
+	color: #64748b;
+	font-size: 0.8rem;
+}
+
+.perm-sub-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.45rem;
+}
+
+.perm-sub-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 0.6rem;
+	background: #fff;
+	border: 1px solid #e4edf7;
+	padding: 0.45rem 0.55rem;
+}
+
+.perm-sub-label {
+	margin: 0;
+	font-size: 0.82rem;
+	color: #334155;
+	flex: 1;
+	min-width: 0;
+}
+
+.perm-sub-actions {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
 }
 
 @media (max-width: 768px) {
@@ -243,7 +378,39 @@
 		width: 100%;
 	}
 
-	.perm-module-actions .btn {
-		flex: 1;
+	.perm-module-toggle {
+		justify-content: flex-end;
+		width: 100%;
+	}
+
+	.perm-rotina-row {
+		align-items: flex-start;
+	}
+
+	.perm-rotina-actions {
+		flex-direction: column;
+		align-items: flex-end;
+	}
+
+	.perm-sub-row {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	.perm-sub-actions {
+		width: 100%;
+		justify-content: space-between;
+	}
+
+	.perm-tabs {
+		flex-direction: row;
+		overflow-x: auto;
+		-webkit-overflow-scrolling: touch;
+	}
+
+	.perm-tab-btn {
+		flex: 0 0 auto;
+		white-space: nowrap;
+		text-align: center;
 	}
 }
