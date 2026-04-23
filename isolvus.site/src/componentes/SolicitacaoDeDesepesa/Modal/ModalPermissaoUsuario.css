@@ -1,0 +1,249 @@
+.perm-modal-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: rgba(0, 0, 0, 0.55);
+	backdrop-filter: blur(4px);
+	z-index: 1050;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1rem;
+}
+
+.perm-modal-content {
+	background-color: #f8fafd;
+	border-radius: 0;
+	width: 96vw;
+	max-width: 1400px;
+	height: 94vh;
+	display: flex;
+	flex-direction: column;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+	overflow: hidden;
+}
+
+.perm-modal-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 1rem;
+	padding: 1.1rem 1.75rem;
+	border-bottom: 1px solid #e9ecef;
+	background: #fff;
+	z-index: 900;
+	flex-shrink: 0;
+}
+
+.perm-modal-title {
+	font-size: 1.15rem;
+	font-weight: 700;
+	color: #1a1a2e;
+	margin: 0;
+}
+
+.perm-modal-body {
+	padding: 0.5rem 1.75rem 0;
+	margin: 0 !important;
+	flex: 1;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	scrollbar-width: thin;
+	scrollbar-color: #cbd5e1 transparent;
+}
+
+.perm-modal-body::-webkit-scrollbar {
+	width: 6px;
+}
+
+.perm-modal-body::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.perm-modal-body::-webkit-scrollbar-thumb {
+	background: #cbd5e1;
+	border-radius: 3px;
+}
+
+.perm-modal-footer {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	padding: 1.1rem 1.75rem;
+	border-top: 1px solid #e9ecef;
+	background: #fff;
+	z-index: 900;
+	flex-shrink: 0;
+	margin-top: -1px;
+}
+
+.perm-modal-footer-start {
+	min-width: 0;
+	margin-right: auto;
+}
+
+.perm-modal-footer-actions {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+}
+
+.perm-footer-btn {
+	min-width: 150px;
+	padding-left: 1rem;
+	padding-right: 1rem;
+}
+
+.perm-section-title {
+	font-size: 0.72rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.07em;
+	color: #64748b;
+	margin: 1.1rem 0 0.45rem;
+}
+
+.perm-card {
+	background: #fff;
+	border: 1px solid #e9ecef;
+	border-radius: 0;
+	padding: 1rem;
+}
+
+.perm-card .form-label {
+	font-size: 0.8rem;
+	font-weight: 600;
+	margin-bottom: 0.25rem;
+	color: #374151;
+}
+
+.perm-actions-grid {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 0.5rem;
+}
+
+.perm-summary {
+	margin-top: 0.75rem;
+	padding-top: 0.7rem;
+	border-top: 1px dashed #e2e8f0;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1rem;
+	color: #64748b;
+	font-size: 0.82rem;
+}
+
+.perm-summary strong {
+	color: #1a1a2e;
+}
+
+.perm-permissions-area {
+	margin-bottom: 0.75rem;
+}
+
+.perm-empty-state {
+	text-align: center;
+	color: #64748b;
+	padding: 1.25rem 0.5rem;
+}
+
+.perm-module-card {
+	border: 1px solid #e9ecef;
+	background: #fff;
+	margin-bottom: 0.75rem;
+}
+
+.perm-module-card:last-child {
+	margin-bottom: 0;
+}
+
+.perm-module-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 0.75rem;
+	padding: 0.65rem 0.8rem;
+	border-bottom: 1px solid #eef2f7;
+	background: #f8fafd;
+}
+
+.perm-module-title {
+	margin: 0;
+	font-size: 0.9rem;
+	font-weight: 700;
+	color: #1f2937;
+}
+
+.perm-module-actions {
+	display: flex;
+	gap: 0.4rem;
+}
+
+.perm-module-list {
+	display: flex;
+	flex-direction: column;
+}
+
+.perm-rotina-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 0.75rem;
+	margin: 0;
+	padding: 0.6rem 0.8rem;
+	border-top: 1px solid #f1f5f9;
+	cursor: pointer;
+}
+
+.perm-rotina-row:hover {
+	background: #f8fafd;
+}
+
+.perm-rotina-text {
+	font-size: 0.86rem;
+	color: #374151;
+}
+
+.perm-rotina-row .form-check-input {
+	margin-top: 0;
+	cursor: pointer;
+	transform: scale(1.05);
+}
+
+@media (max-width: 768px) {
+	.perm-modal-footer {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 0.5rem;
+	}
+
+	.perm-modal-footer-start {
+		margin-right: 0;
+	}
+
+	.perm-modal-footer-actions {
+		width: 100%;
+		justify-content: stretch;
+	}
+
+	.perm-footer-btn {
+		width: 100%;
+		min-width: 0;
+	}
+
+	.perm-module-header {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	.perm-module-actions {
+		width: 100%;
+	}
+
+	.perm-module-actions .btn {
+		flex: 1;
+	}
+}

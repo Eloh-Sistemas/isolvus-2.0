@@ -1,17 +1,109 @@
-.btn-consultar{
-    margin-top: 32px;
+.permissao-rotina-page {
+    padding-top: 0.75rem;
+    padding-bottom: 1.25rem;
 }
 
-.form-check-label{
-    font-size: 18px; 
+.permissao-filtros {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 0.5rem;
+    padding: 0.75rem 0.5rem;
+    margin-top: 0.75rem;
 }
 
-.form-check-input{
-    font-size: 18px; 
+.permissao-filtro-col {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding-bottom: 0.35rem;
 }
 
-.form-check{
-    padding-top: 10px;
-    padding-bottom: 10px;
+.permissao-filtros .form-label {
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+    min-height: 24px;
+}
+
+.permissao-filtros .form-control {
+    min-height: 38px;
+}
+
+.permissao-filtros small {
+    display: block;
+    margin-top: 0.35rem;
+    line-height: 1.2;
+    min-height: 32px;
+}
+
+.permissao-section-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #64748b;
+    margin: 1rem 0 0.45rem;
+}
+
+.permissao-card {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 0;
+    padding: 1rem;
+}
+
+.permissao-info-banner {
+    padding: 0.75rem 1rem;
+}
+
+.permissao-info-banner h6 {
+    font-size: 0.84rem;
+    color: #64748b;
+}
+
+.permissao-table-card {
+    overflow: hidden;
+    padding: 0;
+}
+
+.permissao-table thead th {
+    background: #f8fafd;
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.55rem 0.75rem;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.permissao-table tbody td {
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.permissao-row-clickable {
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.permissao-row-clickable:hover {
+    background: #f8fafd;
+}
+
+.permissao-row-clickable:focus {
+    outline: 2px solid #9ec5fe;
+    outline-offset: -2px;
+    background: #eef5ff;
+}
+
+@media (max-width: 768px) {
+    .permissao-rotina-page {
+        padding-top: 0.6rem;
+    }
+
+    .permissao-filtros {
+        padding: 0.7rem 0.45rem;
+    }
 }
 
