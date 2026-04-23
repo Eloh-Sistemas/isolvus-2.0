@@ -1305,7 +1305,7 @@ function ImportacaoDespesa(){
 
                     {modalTipo === 'detalhe' ? (
                         <>
-                            <div className={`alert mb-3 ${Number(registroSelecionado?.TOTAL_ERROS || 0) > 0 ? 'alert-danger' : 'alert-success'}`}>
+                            <div className={`alert mb-3 ${Number(registroSelecionado?.TOTAL_ERROS || 0) > 0 ? 'alert-danger' : 'alert-primary'}`}>
                                 {detalhesLeitura.length > 0 ? (
                                     <>
                                         Foram encontrados <strong>{detalhesLeitura.length}</strong> item(ns) para a leitura <strong>#{registroSelecionado?.IDLEITURA}</strong>, com <strong>{Number(registroSelecionado?.TOTAL_ERROS || 0)}</strong> erro(s).
@@ -1578,7 +1578,7 @@ function ImportacaoDespesa(){
                     ) : (
                         <>
                     {arquivo && !preAnaliseLoading && (dados.length > 0 || totalErrosPreAnalise > 0) && (
-                        <div className={`alert mb-3 ${totalErrosPreAnalise > 0 ? 'alert-danger' : 'alert-success'}`}>
+                        <div className={`alert mb-3 ${totalErrosPreAnalise > 0 ? 'alert-danger' : 'alert-primary'}`}>
                             Foram encontrados <strong>{dados.length}</strong> item(ns) na pré-análise do arquivo <strong>{arquivo.name}</strong>, com <strong>{totalErrosPreAnalise}</strong> erro(s). Status: <strong>{statusPreAnalise}</strong>.
                         </div>
                     )}
@@ -1917,7 +1917,7 @@ function ImportacaoDespesa(){
                             </button>
                             <button
                                 type="button"
-                                className="btn btn-success"
+                                className="btn btn-primary"
                                 onClick={() => processarDespesas(modalTipo === 'detalhe' ? registroSelecionado?.IDLEITURA : idImportacaoPreAnalise)}
                                 disabled={modalTipo === 'detalhe' ? (!podeProcessarDetalhamento || loading || refreshingDetalhes) : (!podeProcessarImportacao || loading)}
                             >

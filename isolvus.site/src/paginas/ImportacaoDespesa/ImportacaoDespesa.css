@@ -198,6 +198,31 @@
     margin-bottom: 0;
 }
 
+.tabela-importacao-historico thead th,
+.tabela-importacao-linha-unica thead th {
+    background: #f8fafd;
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.55rem 0.75rem;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.tabela-importacao-historico tbody td,
+.tabela-importacao-linha-unica tbody td {
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.tabela-importacao-historico.table-striped > tbody > tr:nth-of-type(odd),
+.tabela-importacao-linha-unica.table-striped > tbody > tr:nth-of-type(odd) {
+    --bs-table-accent-bg: transparent;
+    background-color: transparent;
+}
+
 .tabela-importacao-historico thead th:first-child,
 .tabela-importacao-historico tbody td:first-child {
     padding-left: 0.75rem;
@@ -210,12 +235,9 @@
 
 .tabela-importacao-historico thead th {
     white-space: nowrap;
-    vertical-align: middle;
-    font-size: 0.9rem;
 }
 
 .tabela-importacao-historico tbody td {
-    vertical-align: middle;
     font-size: 0.92rem;
 }
 
@@ -256,11 +278,17 @@
 }
 
 .linha-detalhe-importacao:hover {
-    background-color: #f3f8ff !important;
+    background-color: #f8fafd !important;
+}
+
+.linha-detalhe-importacao:focus {
+    outline: 2px solid #9ec5fe;
+    outline-offset: -2px;
+    background: #eef5ff;
 }
 
 .detalhe-importacao-card {
-    background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+    background: #fff;
     border: 1px solid #e9ecef;
     border-radius: 0;
     padding: 0.85rem 1rem;
@@ -268,7 +296,7 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+    box-shadow: none;
 }
 
 .detalhe-importacao-card span {
@@ -318,6 +346,10 @@
 .importacao-card-ordenador,
 .importacao-filtro-box {
     border-radius: 0.9rem;
+}
+
+.importacao-alerta-resumo {
+    border-radius: var(--bs-border-radius);
 }
 
 .importacao-card-ordenador {

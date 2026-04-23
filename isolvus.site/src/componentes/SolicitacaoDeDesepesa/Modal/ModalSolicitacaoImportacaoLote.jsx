@@ -1352,14 +1352,15 @@ function ModalSolicitacaoImportacaoLote({
             overlayClassName="modal-overlay-importacao"
             shouldCloseOnOverlayClick={!detalhesLoading && !refreshingDetalhes}
         >
-            <div ref={modalContentRef}>
-                <div className="importacao-header mb-4">
-                    <div>
-                        <h4 className="mb-1">{tituloAcao} - Lote #{idleitura || '-'}</h4>
-                        <p className="mb-0 text-muted">Os registros desta solicitação foram gerados por arquivo em lote e estão agrupados para conferência.</p>
-                    </div>
-                    <button className="btn btn-outline-secondary btn-fechar-importacao" onClick={onRequestClose}>Fechar</button>
+            <div className="importacao-modal-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h4 className="mb-1">{tituloAcao} - Lote #{idleitura || '-'}</h4>
+                    <p className="mb-0 text-muted">Os registros desta solicitação foram gerados por arquivo em lote e estão agrupados para conferência.</p>
                 </div>
+                <button className="btn btn-outline-secondary btn-fechar-importacao" onClick={onRequestClose}>Fechar</button>
+            </div>
+
+            <div className="importacao-modal-body" ref={modalContentRef}>
 
                 <div className="alert alert-info mb-3 importacao-alerta-resumo">
                     Esta solicitação foi criada por <strong>importação em lote</strong>. Utilize este detalhamento para conferir os itens, remessa e dados bancários antes de seguir com a etapa de {tituloAcao.toLowerCase()}.
@@ -1565,15 +1566,6 @@ function ModalSolicitacaoImportacaoLote({
                                                 ? 'O lote possui solicitações com status ou parecer diferentes. Ao salvar, o novo valor será aplicado para todas.'
                                                 : `Situação atual das solicitações geradas: ${descricaoStatusAtualLote}.`}
                                         </small>
-
-                                        <button
-                                            type="button"
-                                            className="btn btn-primary"
-                                            onClick={salvarOrdenacaoLote}
-                                            disabled={salvandoOrdenacaoLote || detalhesLoading || solicitacoesGeradasLote.length === 0 || !loteLiberadoParaOrdenacao}
-                                        >
-                                            {salvandoOrdenacaoLote ? 'Salvando...' : 'Salvar aprovação do lote'}
-                                        </button>
                                     </div>
                                 </div>
                             ) : (
@@ -1692,15 +1684,6 @@ function ModalSolicitacaoImportacaoLote({
                                                 ? 'O lote possui dados financeiros diferentes entre as solicitações. Ao salvar, o novo preenchimento será aplicado para todas.'
                                                 : 'Os dados financeiros informados abaixo serão replicados para todas as solicitações geradas deste lote.'}
                                         </small>
-
-                                        <button
-                                            type="button"
-                                            className="btn btn-success"
-                                            onClick={salvarFinanceiroLote}
-                                            disabled={salvandoFinanceiroLote || detalhesLoading || solicitacoesGeradasLote.length === 0 || !loteLiberadoParaFinanceiro}
-                                        >
-                                            {salvandoFinanceiroLote ? 'Salvando...' : 'Salvar financeiro do lote'}
-                                        </button>
                                     </div>
                                 </div>
                             ) : (
@@ -1868,6 +1851,37 @@ function ModalSolicitacaoImportacaoLote({
                                 : 'Nenhum registro pendente encontrado para este lote.'
                         )}
                     </div>
+                </div>
+            </div>
+
+            <div className="importacao-modal-footer">
+                <div className="importacao-modal-footer-start">
+                    <small className="text-muted">
+                        Total de registros exibidos: {detalhesFiltrados.length}. Consulte os blocos acima para validar o lote por etapa.
+                    </small>
+                </div>
+                <div className="importacao-modal-footer-actions">
+                    {tipoTela === 'Ordenar' ? (
+                        <button
+                            type="button"
+                            className="btn btn-primary"
+                            onClick={salvarOrdenacaoLote}
+                            disabled={salvandoOrdenacaoLote || detalhesLoading || solicitacoesGeradasLote.length === 0 || !loteLiberadoParaOrdenacao}
+                        >
+                            {salvandoOrdenacaoLote ? 'Salvando...' : 'Salvar aprovação do lote'}
+                        </button>
+                    ) : tipoTela === 'Conformidade' ? (
+                        <button
+                            type="button"
+                            className="btn btn-success"
+                            onClick={salvarFinanceiroLote}
+                            disabled={salvandoFinanceiroLote || detalhesLoading || solicitacoesGeradasLote.length === 0 || !loteLiberadoParaFinanceiro}
+                        >
+                            {salvandoFinanceiroLote ? 'Salvando...' : 'Salvar financeiro do lote'}
+                        </button>
+                    ) : (
+                        <button type="button" className="btn btn-outline-secondary" onClick={onRequestClose}>Fechar</button>
+                    )}
                 </div>
             </div>
         </Modal>
