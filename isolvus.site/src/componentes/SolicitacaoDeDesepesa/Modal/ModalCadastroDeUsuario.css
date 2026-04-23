@@ -1,0 +1,272 @@
+/* ── Overlay ─────────────────────────────────────────── */
+.cad-modal-overlay {
+   position: fixed;
+   top: 0; left: 0; right: 0; bottom: 0;
+   background-color: rgba(0, 0, 0, 0.55);
+   backdrop-filter: blur(4px);
+   z-index: 1050;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   padding: 1rem;
+}
+
+/* ── Container ───────────────────────────────────────── */
+.cad-modal-content {
+   background-color: #f8fafd;
+   border-radius: 0;
+   width: 96vw;
+   max-width: 1400px;
+   height: 94vh;
+   display: flex;
+   flex-direction: column;
+   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+   overflow: hidden;
+}
+
+/* ── Header ──────────────────────────────────────────── */
+.cad-modal-header {
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   gap: 1rem;
+   padding: 1.1rem 1.75rem;
+   border-bottom: 1px solid #e9ecef;
+   background: #fff;
+   z-index: 900;
+   border-radius: 0;
+   flex-shrink: 0;
+}
+
+.cad-modal-title {
+   font-size: 1.15rem;
+   font-weight: 700;
+   color: #1a1a2e;
+   margin: 0;
+}
+
+.cad-modal-header .text-muted {
+   font-size: 0.82rem;
+   margin-top: 0.15rem;
+}
+
+/* ── Body (scroll aqui) ──────────────────────────────── */
+.bsmodal-body {
+   padding: 0.5rem 1.75rem 0;
+   margin: 0 !important;
+   flex: 1;
+   overflow-y: auto;
+   overscroll-behavior: contain;
+   scrollbar-width: thin;
+   scrollbar-color: #cbd5e1 transparent;
+}
+
+.bsmodal-body::-webkit-scrollbar {
+   width: 6px;
+}
+
+.bsmodal-body::-webkit-scrollbar-track {
+   background: transparent;
+}
+
+.bsmodal-body::-webkit-scrollbar-thumb {
+   background: #cbd5e1;
+   border-radius: 3px;
+}
+
+/* ── Footer ──────────────────────────────────────────── */
+.cad-modal-footer {
+   display: flex;
+   justify-content: flex-end;
+   align-items: center;
+   padding: 1.1rem 1.75rem;
+   border-top: 1px solid #e9ecef;
+   background: #fff;
+   z-index: 900;
+   border-radius: 0;
+   flex-shrink: 0;
+   margin-top: -1px;
+}
+
+.cad-modal-footer-start {
+   min-width: 0;
+}
+
+.cad-modal-footer-actions {
+   display: flex;
+   align-items: center;
+   gap: 0.6rem;
+}
+
+.cad-footer-btn {
+   min-width: 112px;
+   padding-left: 1rem;
+   padding-right: 1rem;
+}
+
+@media (max-width: 768px) {
+   .cad-modal-footer {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.5rem;
+   }
+
+   .cad-modal-footer-actions {
+      width: 100%;
+      justify-content: stretch;
+   }
+
+   .cad-footer-btn {
+      flex: 1;
+      min-width: 0;
+   }
+}
+
+/* ── Títulos de seção ────────────────────────────────── */
+.cad-section-title {
+   font-size: 0.72rem;
+   font-weight: 700;
+   text-transform: uppercase;
+   letter-spacing: 0.07em;
+   color: #64748b;
+   margin: 1.1rem 0 0.45rem;
+   padding-bottom: 0;
+   border-bottom: none;
+}
+
+/* ── Card de seção ───────────────────────────────────── */
+.cad-section {
+   background: #fff;
+   border: 1px solid #e9ecef;
+   border-radius: 0;
+   padding: 1rem 1rem 0.5rem;
+}
+
+.bsmodal-body .cad-section:last-child {
+   border-bottom: 1px solid #e9ecef;
+   margin-bottom: 0.75rem;
+}
+
+.cad-section .form-label {
+   font-size: 0.8rem;
+   font-weight: 600;
+   margin-bottom: 0.25rem;
+   color: #374151;
+}
+
+.cad-section .form-control,
+.cad-section .form-select {
+   font-size: 0.875rem;
+   background-color: #fff;
+}
+
+.cad-section .form-control:disabled {
+   background-color: #f1f5f9;
+   color: #94a3b8;
+}
+
+.cad-erp-btn {
+   font-weight: 600;
+   letter-spacing: 0.01em;
+}
+
+.cad-erp-btn:hover:not(:disabled) {
+   background: #e8f1ff;
+   border-color: #7ea4db;
+}
+
+.cad-erp-btn:disabled {
+   opacity: 0.6;
+   cursor: not-allowed;
+}
+
+/* Sub-título (Conta Própria / Conta Terceiro) */
+.cad-subsection-title {
+   font-size: 0.72rem;
+   font-weight: 700;
+   text-transform: uppercase;
+   letter-spacing: 0.06em;
+   color: #64748b;
+   margin-bottom: 0.75rem;
+   padding-bottom: 0.35rem;
+   border-bottom: 1px dashed #dee2e6;
+}
+
+.cad-hr {
+   border-color: #e9ecef;
+   margin: 1rem 0 0.85rem;
+}
+
+/* ── Tabela de Rateio ────────────────────────────────── */
+.cad-rateio-table {
+   width: 100%;
+   font-size: 0.85rem;
+   margin-top: 0.75rem;
+   border-collapse: collapse;
+}
+
+.cad-rateio-table thead th {
+   background-color: #f8fafd;
+   color: #64748b;
+   font-size: 0.72rem;
+   font-weight: 700;
+   text-transform: uppercase;
+   letter-spacing: 0.05em;
+   padding: 0.5rem 0.75rem;
+   border-bottom: 2px solid #e9ecef;
+}
+
+.cad-rateio-table tbody tr {
+   border-bottom: 1px solid #f1f5f9;
+   transition: background 0.12s;
+}
+
+.cad-rateio-table tbody tr:hover {
+   background-color: #f8fafd;
+}
+
+.cad-rateio-table td {
+   padding: 0.5rem 0.75rem;
+   vertical-align: middle;
+}
+
+.cad-rateio-empty {
+   text-align: center;
+   color: #94a3b8;
+   padding: 1.25rem 0;
+   font-size: 0.85rem;
+}
+
+.cad-rateio-totais {
+   display: flex;
+   justify-content: flex-end;
+   gap: 2rem;
+   padding: 0.5rem 0.75rem;
+   background: #f8fafd;
+   border-top: 2px solid #e9ecef;
+   border-radius: 0;
+   font-size: 0.82rem;
+   color: #374151;
+}
+
+.cad-rateio-totais span {
+   font-weight: 700;
+   color: #1a1a2e;
+   margin-left: 0.3rem;
+}
+
+.btn-remove {
+   background: none;
+   border: none;
+   color: #dc3545;
+   cursor: pointer;
+   padding: 0.2rem 0.4rem;
+   border-radius: 0;
+   font-size: 0.9rem;
+   transition: background 0.15s;
+}
+
+.btn-remove:hover {
+   background: #fff1f2;
+}
+

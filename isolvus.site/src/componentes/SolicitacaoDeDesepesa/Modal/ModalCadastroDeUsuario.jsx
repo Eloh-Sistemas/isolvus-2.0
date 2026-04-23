@@ -30,7 +30,6 @@ function ModalCadastroDeUsuario(props) {
    const [numeroCNH, setNumeroCNH] = useState('');
    const [dataExpiracaoCNH, setDataExpiracaoCNH] = useState('');      
    const [endereco, setEndereco] = useState(null);
-   const [erro, setErro] = useState('');
    const [uf, setUf] =useState('');
    const [cidade, setCidade] =useState('');
    const [bairro, setBairro] =useState('');
@@ -59,7 +58,7 @@ function ModalCadastroDeUsuario(props) {
    const [descricaoCentroDeCusto, setDescricaoCentroDeCusto] = useState("");
    const [percentualRateio, setPercentualRateio] = useState("");
 
-   const [disableCentroDecusto, setDisableCentroDeCusto] = useState(false);
+   const disableCentroDecusto = false;
    const [qtRegistro, setQtRegistro] = useState(0);
    const [totalPercentual, setTotalPercentual] = useState(0);
 
@@ -87,6 +86,17 @@ function ModalCadastroDeUsuario(props) {
 
       if (!percentualRateio || percentualRateio === "" || percentualRateio === 0) {
          toast.warn('Informe o percentual do rateio', { position: "top-center" });
+         return;
+      }
+
+      const totalAtual = rateio.reduce((soma, item) => {
+         const percentual = Number(item.percentual || item.percentual_rateio || 0);
+         return soma + (isNaN(percentual) ? 0 : percentual);
+      }, 0);
+
+      const novoPercentual = Number(percentualRateio);
+      if (!isNaN(novoPercentual) && (totalAtual + novoPercentual) > 100) {
+         toast.warn('O rateio não pode ultrapassar 100%.', { position: "top-center" });
          return;
       }
 
@@ -161,7 +171,7 @@ function consultarDadosFuncionario() {
    setchavepixterceiro("");
    setbeneficiadoterceiro("");
 
-   if (props.idUsuario != null & props.idUsuario !=0) {
+   if (props.idUsuario != null && props.idUsuario !== 0) {
 
    api.post('/v1/consultarDadosFuncionario',{matricula: props.idUsuario})
    .then((retorno) =>{
@@ -296,16 +306,10 @@ const buscarEndereco = async () => {
   }
 };
 
-   // Função de validação de email
-   const validarEmail = (email) => {
-      const regex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
-      return regex.test(email);
-   };
-
    // Função de validação de telefone
    const validarTelefone = (telefone) => {
-      const regex = /^\(?\d{2}\)?\s?\d{4,5}-\d{4}$/;
-      return regex.test(telefone);
+      const apenasNumeros = String(telefone || '').replace(/\D/g, '');
+      return apenasNumeros.length === 10 || apenasNumeros.length === 11;
    };
 
    // Função para validar o CPF usando a biblioteca cpf-cnpj-validator
@@ -319,22 +323,90 @@ const buscarEndereco = async () => {
       }
    };
 
-  const formatDate = (date) => {
-   if (!date) return ""; // Retorna vazio se a data for nula ou indefinida
-   const jsDate = new Date(date); // Converte para um objeto Date
-   return jsDate.toLocaleDateString("pt-BR"); // Formata no padrão dd/mm/yyyy
- };
-
-
    // Função para salvar os dados
    function salvarDados() {
+
+      if (!nome.trim()) {
+         toast.warn('Informe o nome do funcionário.', { position: "top-center" });
+         return;
+      }
+
+      if (!cpfInput) {
+         toast.warn('Informe o CPF.', { position: "top-center" });
+         return;
+      }
+
+      if (!validarCPF(cpfInput)) {
+         return;
+      }
+
+      if (!rg || !String(rg).trim()) {
+         toast.warn('RG não informado.', { position: "top-center" });
+         return;
+      }
+
+      if (!sexo) {
+         toast.warn('Sexo não informado.', { position: "top-center" });
+         return;
+      }
+
+      if (!dataNascimento) {
+         toast.warn('Data de nascimento não informada.', { position: "top-center" });
+         return;
+      }
+
+      if (!email || !String(email).trim()) {
+         toast.warn('Email não informado.', { position: "top-center" });
+         return;
+      }
+
+      if (!telefone) {
+         toast.warn('Telefone não informado.', { position: "top-center" });
+         return;
+      }
+
+      if (telefone && !validarTelefone(telefone)) {
+         toast.warn('Informe um telefone válido.', { position: "top-center" });
+         return;
+      }
+
+      if (!id_EmpresaFunc) {
+         toast.warn('Filial não informada.', { position: "top-center" });
+         return;
+      }
+
+      if (!id_setor) {
+         toast.warn('Setor não informado.', { position: "top-center" });
+         return;
+      }
+
+      if (rateio.length === 0) {
+         toast.warn('Informe o rateio de Centro de Custo.', { position: "top-center" });
+         return;
+      }
+
+      if (Math.abs(Number(totalPercentual || 0) - 100) > 0.0001) {
+         toast.warn('O rateio de Centro de Custo deve ser exatamente 100%.', { position: "top-center" });
+         return;
+      }
+
+      if (!admissao) {
+         toast.warn('Data de admissão não informada.', { position: "top-center" });
+         return;
+      }
+
+      const idGrupoEmpresa = localStorage.getItem("id_grupo_empresa");
+      if (!idGrupoEmpresa) {
+         toast.error('Grupo de empresa não identificado. Faça login novamente.', { position: "top-center" });
+         return;
+      }
 
       const json = {
          "id_usuario": codigo,
          "id_usuario_erp": codusuarioErp,
          "id_empresa_erp": id_EmpresaFunc,
          "id_setor_erp": id_setor,
-         "id_grupo_empresa": localStorage.getItem("id_grupo_empresa"),
+         "id_grupo_empresa": idGrupoEmpresa,
          "Nome": nome,
          "email": email,
          "cpf": cpfInput,
@@ -347,15 +419,15 @@ const buscarEndereco = async () => {
          "cidade": cidade,
          "bairro": bairro,
          "complemento": complemento,
-         "datanascimento": formatDate(dataNascimento),
+         "datanascimento": dataNascimento,
          "sexo": sexo,
          "nacionalidade": nacionalidade,
          "naturalidade": naturalidade,
          "cargo": cargo,
-         "dataadmissao": formatDate(admissao),
+         "dataadmissao": admissao,
          "tipodecontrato": tipoContrato,
          "cnh": numeroCNH,
-         "dataexpiracaocnh": formatDate(dataExpiracaoCNH),
+         "dataexpiracaocnh": dataExpiracaoCNH,
          "id_banco": id_banco,
          "agencia": agencia,
          "conta": numconta,
@@ -376,6 +448,11 @@ const buscarEndereco = async () => {
          }
       })
       .then((retorno) => {
+         if (retorno?.data?.sucesso === false) {
+            toast.error(retorno?.data?.mensagem || 'Erro ao salvar cadastro.', { position: "top-center" });
+            return;
+         }
+
          toast.success(retorno.data.mensagem ,
             { position: "top-center" , 
                autoClose: 2000, 
@@ -384,14 +461,19 @@ const buscarEndereco = async () => {
          
       })
       .catch((err) => {
-         console.log(err.response.data.error)
-         toast.error(err.response.data.error, { position: "top-center" });         
+         console.log(err?.response?.data?.error);
+         toast.error(err?.response?.data?.error || 'Erro ao salvar cadastro.', { position: "top-center" });
       });
       
       
    };
 
    function UsarCredenciaisERP(lid_usuario){
+
+         if (!lid_usuario || Number(lid_usuario) === 0) {
+            toast.warn('Salve ou carregue o funcionário antes de usar as credenciais do ERP.', { position: "top-center" });
+            return;
+         }
 
          const jsonReq = {
             id_grupo_empresa: localStorage.getItem('id_grupo_empresa'),
@@ -407,7 +489,7 @@ const buscarEndereco = async () => {
             );   
          })
          .catch((err)=>{
-            toast.success(err.response.error);
+            toast.error(err?.response?.data?.error || 'Erro ao usar credenciais do ERP.', { position: "top-center" });
          })
 
    }
@@ -421,614 +503,405 @@ const buscarEndereco = async () => {
          <Modal
             isOpen={props.isOpen}
             onRequestClose={props.onRequestClose}
-            overlayClassName="react-modal-overlay"
+            overlayClassName="cad-modal-overlay"
             ariaHideApp={false}
-            className="react-modal-content"
+            className="cad-modal-content"
          >
-            <div className="bsmodal-content">
-               <div className="bsmodal-header">
-                  <h3 className="modal-title">Cadastro de Funcionário</h3>
+            <div className="cad-modal-header">
+               <div>
+                  <h4 className="cad-modal-title">Cadastro de Funcionário</h4>
+                  <p className="text-muted mb-0" style={{ fontSize: '0.85rem' }}>Preencha os dados do funcionário e clique em Salvar.</p>
                </div>
+               <button className="btn btn-outline-secondary" onClick={props.onRequestClose}>Fechar</button>
+            </div>
 
                <div className="bsmodal-body">
                   {/* Dados Básicos */}
-                  <h4 className="section-title">Dados Básicos</h4>
-                  <div className="row">
-                     <div className="col-md-2 mb-3">
-                        <label htmlFor="codigo" className="mb-2">Código<span className="text-danger">*</span></label>
-                        <input
-                           type="text"
-                           className="form-control"
-                           id="codigo"
-                           placeholder="Código"
-                           value={codigo}
-                           disabled                           
-                           onChange={(e) => setCodigo(e.target.value)}
-                        />
+                  <p className="cad-section-title">Dados Básicos</p>
+                  <div className="cad-section">
+                     <div className="row g-3 align-items-end">
+                        <div className="col-md-2">
+                           <label htmlFor="codigo" className="form-label">Código</label>
+                           <input type="text" className="form-control" id="codigo"
+                              placeholder="Código" value={codigo} disabled
+                              onChange={(e) => setCodigo(e.target.value)}
+                           />
+                        </div>
+                        <div className="col-md-2">
+                           <label htmlFor="codigo-erp" className="form-label">Código ERP</label>
+                           <input type="text" className="form-control" id="codigo-erp"
+                              placeholder="Código ERP" value={codusuarioErp} disabled
+                              onChange={(e) => setcodusuarioErp(e.target.value)}
+                           />
+                        </div>
+                        <div className="col-md-8">
+                           <label htmlFor="nome" className="form-label">Nome Completo<span className="text-danger">*</span></label>
+                           <input autoFocus type="text" className="form-control" id="nome"
+                              placeholder="Nome Completo" value={nome}
+                              onChange={(e) => setNome(e.target.value.toUpperCase())}
+                           />
+                        </div>
                      </div>
-                     <div className="col-md-2 mb-3">
-                        <label htmlFor="codigo" className="mb-2">Código ERP<span className="text-danger">*</span></label>
-                        <input
-                           type="text"
-                           className="form-control"
-                           id="codigo"
-                           placeholder="Código"
-                           value={codusuarioErp}
-                           disabled                           
-                           onChange={(e) => setcodusuarioErp(e.target.value)}
-                        />
+                     <div className="row g-3 align-items-end mt-1">
+                        <div className="col-md-4">
+                           <label htmlFor="cpf" className="form-label">CPF<span className="text-danger">*</span></label>
+                           <input value={cpfInput} onChange={(e) => setCpf(e.target.value)}
+                              className="form-control" id="cpf" placeholder="CPF"
+                           />
+                        </div>
+                        <div className="col-md-4">
+                           <label htmlFor="rg" className="form-label">RG<span className="text-danger">*</span></label>
+                           <input type="text" className="form-control" id="rg"
+                              placeholder="RG" value={rg} onChange={(e) => setRg(e.target.value)}
+                           />
+                        </div>
+                        <div className="col-md-4">
+                           <label htmlFor="sexo" className="form-label">Sexo<span className="text-danger">*</span></label>
+                           <select className="form-control" id="sexo" value={sexo}
+                              onChange={(e) => setSexo(e.target.value)}>
+                              <option value="">Selecione</option>
+                              <option value="M">MASCULINO</option>
+                              <option value="F">FEMININO</option>
+                              <option value="O">OUTRO</option>
+                           </select>
+                        </div>
                      </div>
-                     <div className="col-md-8 mb-3">
-                        <label htmlFor="nome" className="mb-2">Nome Completo<span className="text-danger">*</span></label>
-                        <input  
-                           autoFocus                         
-                           type="text"
-                           className="form-control"
-                           id="nome"
-                           placeholder="Nome Completo"
-                           value={nome}
-                           onChange={(e) => setNome(e.target.value.toUpperCase())}                
-                        />
-                     </div>
-                  </div>
-
-                  <div className="row">
-                     <div className="col-md-6 mb-3">
-                        <label htmlFor="cpf" className="mb-2">CPF<span className="text-danger">*</span></label>
-                        <input
-                           value={cpfInput}
-                           onChange={(e) => setCpf(e.target.value)}
-                           className="form-control"
-                           id="cpf"
-                           placeholder="CPF"
-                        />
-                     </div>
-                     <div className="col-md-6 mb-3">
-                        <label htmlFor="rg" className="mb-2">RG</label>
-                        <input
-                           type="text"
-                           className="form-control"
-                           id="rg"
-                           placeholder="RG"
-                           value={rg}
-                           onChange={(e) => setRg(e.target.value)}
-                        />
+                     <div className="row g-3 align-items-end mt-1">
+                        <div className="col-md-4">
+                           <label htmlFor="dataNascimento" className="form-label">Data de Nascimento<span className="text-danger">*</span></label>
+                           <input type="date" className="form-control" id="dataNascimento"
+                              value={dataNascimento} onChange={(e) => setDataNascimento(e.target.value)}
+                           />
+                        </div>
+                        <div className="col-md-4">
+                           <label htmlFor="nacionalidade" className="form-label">Nacionalidade</label>
+                           <input type="text" className="form-control" id="nacionalidade"
+                              placeholder="Nacionalidade" value={nacionalidade}
+                              onChange={(e) => setNacionalidade(e.target.value.toUpperCase())}
+                           />
+                        </div>
+                        <div className="col-md-4">
+                           <label htmlFor="naturalidade" className="form-label">Naturalidade</label>
+                           <input type="text" className="form-control" id="naturalidade"
+                              placeholder="Naturalidade" value={naturalidade}
+                              onChange={(e) => setNaturalidade(e.target.value.toUpperCase())}
+                           />
+                        </div>
                      </div>
                   </div>
 
                   {/* Contato */}
-                  <h4 className="section-title">Contato</h4>
-                  <div className="row">
-                     <div className="col-md-6 mb-3">
-                        <label htmlFor="email" className="mb-2">Email</label>
-                        <input
-                           type="email"
-                           className="form-control"
-                           id="email"
-                           placeholder="Email"
-                           value={email}
-                           onChange={(e) => setEmail(e.target.value.toUpperCase())}
-                        />
-                     </div>
-                     <div className="col-md-6 mb-3">
-                        <label htmlFor="telefone" className="mb-2">Telefone<span className="text-danger">*</span></label>
-                        <input
-                           value={telefone}
-                           onChange={(e) => setTelefone(e.target.value)}
-                           className="form-control"
-                           id="telefone"
-                           placeholder="Telefone"
-                        />
+                  <p className="cad-section-title">Contato</p>
+                  <div className="cad-section">
+                     <div className="row g-3 align-items-end">
+                        <div className="col-md-6">
+                           <label htmlFor="email" className="form-label">Email<span className="text-danger">*</span></label>
+                           <input type="email" className="form-control" id="email"
+                              placeholder="Email" value={email}
+                              onChange={(e) => setEmail(e.target.value.toUpperCase())}
+                           />
+                        </div>
+                        <div className="col-md-6">
+                           <label htmlFor="telefone" className="form-label">Telefone<span className="text-danger">*</span></label>
+                           <input value={telefone} onChange={(e) => setTelefone(e.target.value)}
+                              className="form-control" id="telefone" placeholder="Telefone"
+                           />
+                        </div>
                      </div>
                   </div>
 
                   {/* Endereço */}
-                  <h4 className="section-title">Endereço</h4>
-                  <div className="row">
-                     <div className="col-md-2 mb-3">
-                        <label htmlFor="cep" className="mb-2">CEP</label>
-                        <input
-                           value={cep}
-                           onChange={(e) => setCep(e.target.value.toUpperCase())}
-                           className="form-control"
-                           id="cep"
-                           placeholder="CEP"
-                           onBlur={buscarEndereco}
-                        />
+                  <p className="cad-section-title">Endereço</p>
+                  <div className="cad-section">
+                     <div className="row g-3 align-items-end">
+                        <div className="col-md-2">
+                           <label htmlFor="cep" className="form-label">CEP</label>
+                           <input value={cep} onChange={(e) => setCep(e.target.value.toUpperCase())}
+                              className="form-control" id="cep" placeholder="CEP" onBlur={buscarEndereco}
+                           />
+                        </div>
+                        <div className="col-md-7">
+                           <label htmlFor="Rua" className="form-label">Rua</label>
+                           <input type="text" className="form-control" id="Rua"
+                              placeholder="Rua" value={endereco}
+                              onChange={(e) => setEndereco(e.target.value.toUpperCase())}
+                           />
+                        </div>
+                        <div className="col-md-3">
+                           <label htmlFor="numero" className="form-label">Número</label>
+                           <input type="text" className="form-control" id="numero"
+                              value={numero} onChange={(e) => setNumero(e.target.value)} placeholder="Número"
+                           />
+                        </div>
                      </div>
-                     <div className="col-md-6 mb-3">
-                        <label htmlFor="Rua" className="mb-2">Rua</label>
-                        <input
-                           type="text"
-                           className="form-control"
-                           id="Rua"
-                           placeholder="Rua"
-                           value={endereco}
-                           onChange={(e) => setEndereco(e.target.value.toUpperCase())}
-                        />
-                     </div>
-                     <div className="col-md-4 mb-3">
-                        <label htmlFor="numero" className="mb-2">Número</label>
-                        <input
-                           type="text"
-                           className="form-control"
-                           id="numero"
-                           value={numero}
-                           onChange={(e) => setNumero(e.target.value)}
-                           placeholder="Número"
-                        />
-                     </div>
-                  </div>
-                  <div className="row">
-                     <div className="col-md-4 mb-3">
-                        <label htmlFor="UF" className="mb-2" >UF</label>
-                        <input
-                           type="text"
-                           className="form-control"
-                           id="cidade"
-                           placeholder="UF"
-                           value={uf}
-                           onChange={(e) => setUf(e.target.value.toUpperCase())} 
-                        />
-                     </div>
-
-                     <div className="col-md-4 mb-3">
-                        <label htmlFor="cidade" className="mb-2">Cidade</label>
-                        <input
-                           type="text"
-                           className="form-control"
-                           id="cidade"
-                           placeholder="Cidade"
-                           value={cidade}
-                           onChange={(e) => setCidade(e.target.value.toUpperCase())} 
-                        />
-                     </div>
-                     <div className="col-md-4 mb-3">
-                        <label htmlFor="bairro" className="mb-2">Bairro</label>
-                        <input
-                           type="text"
-                           className="form-control"
-                           id="bairro"
-                           placeholder="Bairro"
-                           value={bairro}
-                           onChange={(e) => setBairro(e.target.value.toUpperCase())} 
-                        />
-                     </div>
-                     
-                     <div className="col-md-12 mb-3">
-                        <label htmlFor="complemento" className="mb-2">Complemento</label>
-                        <input
-                           type="text"
-                           className="form-control"
-                           id="complemento"
-                           placeholder="Complemento"
-                           value={complemento}
-                           onChange={(e) => setComplemento(e.target.value.toUpperCase())}
-                        />
+                     <div className="row g-3 align-items-end mt-1">
+                        <div className="col-md-2">
+                           <label htmlFor="uf" className="form-label">UF</label>
+                           <input type="text" className="form-control" id="uf"
+                              placeholder="UF" value={uf} onChange={(e) => setUf(e.target.value.toUpperCase())}
+                           />
+                        </div>
+                        <div className="col-md-4">
+                           <label htmlFor="cidade" className="form-label">Cidade</label>
+                           <input type="text" className="form-control" id="cidade"
+                              placeholder="Cidade" value={cidade}
+                              onChange={(e) => setCidade(e.target.value.toUpperCase())}
+                           />
+                        </div>
+                        <div className="col-md-3">
+                           <label htmlFor="bairro" className="form-label">Bairro</label>
+                           <input type="text" className="form-control" id="bairro"
+                              placeholder="Bairro" value={bairro}
+                              onChange={(e) => setBairro(e.target.value.toUpperCase())}
+                           />
+                        </div>
+                        <div className="col-md-3">
+                           <label htmlFor="complemento" className="form-label">Complemento</label>
+                           <input type="text" className="form-control" id="complemento"
+                              placeholder="Complemento" value={complemento}
+                              onChange={(e) => setComplemento(e.target.value.toUpperCase())}
+                           />
+                        </div>
                      </div>
                   </div>
 
-                  {/* Informações de conta bancaria */}
-                  <h4 className="section-title">Dados Bancaria</h4>
-                  <div className='row'>
-                  <div className="col-md-3 mb-3">
-                        <label htmlFor="setor" className="mb-2">Instituição Bancaria Propria</label>
-                        <EditComplete placeholder={"Banco"} id={"ib"}  
-                                 tipoConsulta={"Banco"} 
-                                 onClickCodigo={setid_banco} 
-                                 onClickDescricao={setbanco}
-                                 value={banco} 
-                                 disabled={false}/>
-            
+                  {/* Dados Bancários */}
+                  <p className="cad-section-title">Dados Bancários</p>
+                  <div className="cad-section">
+                     <p className="cad-subsection-title">Conta Própria</p>
+                     <div className="row g-3 align-items-end">
+                        <div className="col-md-4">
+                           <label htmlFor="ib" className="form-label">Instituição Bancária</label>
+                           <EditComplete placeholder={"Banco"} id={"ib"} tipoConsulta={"Banco"}
+                                    onClickCodigo={setid_banco} onClickDescricao={setbanco}
+                                    value={banco} disabled={false}/>
+                        </div>
+                        <div className="col-md-2">
+                           <label htmlFor="agencia-propria" className="form-label">Agência</label>
+                           <input type="text" className="form-control" id="agencia-propria"
+                              value={agencia} onChange={(e) => setagencia(e.target.value)}
+                           />
+                        </div>
+                        <div className="col-md-2">
+                           <label htmlFor="conta-propria" className="form-label">Conta</label>
+                           <input type="text" className="form-control" id="conta-propria"
+                              value={numconta} onChange={(e) => setnumconta(e.target.value)}
+                           />
+                        </div>
+                        <div className="col-md-2">
+                           <label htmlFor="operacao-propria" className="form-label">Operação</label>
+                           <input type="text" className="form-control" id="operacao-propria"
+                              value={operacao} onChange={(e) => setoperacao(e.target.value)}
+                           />
+                        </div>
+                        <div className="col-md-2">
+                           <label htmlFor="chavepix-propria" className="form-label">Chave Pix</label>
+                           <input type="text" className="form-control" id="chavepix-propria"
+                              value={chavepix} onChange={(e) => setchavepix(e.target.value)}
+                           />
+                        </div>
                      </div>
-                     <div className="col-md-1 mb-3">
-                        <label htmlFor="dataExpiracaoCNH" className="mb-2">Agencia Propria</label>
-                        <input
-                           type="text"
-                           className="form-control"
-                           id="dataExpiracaoCNH"
-                           value={agencia}
-                           onChange={(e) => setagencia(e.target.value)}
-                        />
-                     </div>
-                     <div className="col-md-2 mb-3">
-                        <label htmlFor="dataExpiracaoCNH" className="mb-2">Conta Propria</label>
-                        <input
-                           type="text"
-                           className="form-control"
-                           id="dataExpiracaoCNH"
-                           value={numconta}
-                           onChange={(e) => setnumconta(e.target.value)}
-                        />
-                     </div>
-
-                     <div className="col-md-1 mb-3">
-                        <label htmlFor="operacao" className="mb-2">Operação Propria</label>
-                        <input
-                           type="text"
-                           className="form-control"
-                           id="operacao"
-                           value={operacao}
-                           onChange={(e) => setoperacao(e.target.value)}
-                        />
+                     <div className="row g-3 align-items-end mt-1">
+                        <div className="col-md-12">
+                           <label htmlFor="beneficiado-proprio" className="form-label">Beneficiado</label>
+                           <input disabled type="text" className="form-control" id="beneficiado-proprio" value={nome} />
+                        </div>
                      </div>
 
-                     <div className="col-md-2 mb-3">
-                        <label htmlFor="operacao" className="mb-2">Chave Pix</label>
-                        <input
-                           type="text"
-                           className="form-control"
-                           id="operacao"
-                           value={chavepix}
-                           onChange={(e) => setchavepix(e.target.value)}
-                        />
+                     <hr className="cad-hr" />
+                     <p className="cad-subsection-title">Conta Terceiro</p>
+                     <div className="row g-3 align-items-end">
+                        <div className="col-md-4">
+                           <label htmlFor="ib-terceiro" className="form-label">Instituição Bancária</label>
+                           <EditComplete placeholder={"Banco"} id={"ib-terceiro"} tipoConsulta={"Banco"}
+                                    onClickCodigo={setid_bancoterceiro} onClickDescricao={setbancoterceiro}
+                                    value={bancoterceiro} disabled={false}/>
+                        </div>
+                        <div className="col-md-2">
+                           <label htmlFor="agencia-terceiro" className="form-label">Agência</label>
+                           <input type="text" className="form-control" id="agencia-terceiro"
+                              value={agenciaterceiro} onChange={(e) => setagenciaterceiro(e.target.value)}
+                           />
+                        </div>
+                        <div className="col-md-2">
+                           <label htmlFor="conta-terceiro" className="form-label">Conta</label>
+                           <input type="text" className="form-control" id="conta-terceiro"
+                              value={numcontaterceiro} onChange={(e) => setnumcontaterceiro(e.target.value)}
+                           />
+                        </div>
+                        <div className="col-md-2">
+                           <label htmlFor="operacao-terceiro" className="form-label">Operação</label>
+                           <input type="text" className="form-control" id="operacao-terceiro"
+                              value={operacaoterceiro} onChange={(e) => setoperacaoterceiro(e.target.value)}
+                           />
+                        </div>
+                        <div className="col-md-2">
+                           <label htmlFor="chavepix-terceiro" className="form-label">Chave Pix</label>
+                           <input type="text" className="form-control" id="chavepix-terceiro"
+                              value={chavepixterceiro} onChange={(e) => setchavepixterceiro(e.target.value)}
+                           />
+                        </div>
                      </div>
-
-                     <div className="col-md-3 mb-3">
-                        <label htmlFor="operacao" className="mb-2">Beneficiado:</label>
-                        <input
-                           disabled
-                           type="text"
-                           className="form-control"
-                           id="operacao"
-                           value={nome}                           
-                        />
+                     <div className="row g-3 align-items-end mt-1">
+                        <div className="col-md-12">
+                           <label htmlFor="beneficiado-terceiro" className="form-label">Beneficiado Terceiro</label>
+                           <input type="text" className="form-control" id="beneficiado-terceiro"
+                              value={beneficiadoterceiro}
+                              onChange={(e) => setbeneficiadoterceiro(e.target.value.toUpperCase())}
+                           />
+                        </div>
                      </div>
-                    
-
-
-                  </div>
-
-                  <div className='row'>
-                  <div className="col-md-3 mb-3">
-                        <label htmlFor="setor" className="mb-2">Instituição Bancaria Terceiro</label>
-                        <EditComplete placeholder={"Banco"} id={"ib"}  
-                                 tipoConsulta={"Banco"} 
-                                 onClickCodigo={setid_bancoterceiro} 
-                                 onClickDescricao={setbancoterceiro}
-                                 value={bancoterceiro} 
-                                 disabled={false}/>
-            
-                     </div>
-                     <div className="col-md-1 mb-3">
-                        <label htmlFor="dataExpiracaoCNH" className="mb-2">Agencia Terceiro</label>
-                        <input
-                           type="text"
-                           className="form-control"
-                           id="dataExpiracaoCNH"
-                           value={agenciaterceiro}
-                           onChange={(e) => setagenciaterceiro(e.target.value)}
-                        />
-                     </div>
-                     <div className="col-md-2 mb-3">
-                        <label htmlFor="dataExpiracaoCNH" className="mb-2">Conta Terceiro</label>
-                        <input
-                           type="text"
-                           className="form-control"
-                           id="dataExpiracaoCNH"
-                           value={numcontaterceiro}
-                           onChange={(e) => setnumcontaterceiro(e.target.value)}
-                        />
-                     </div>
-
-                     <div className="col-md-1 mb-3">
-                        <label htmlFor="operacao" className="mb-2">Operação Terceiro</label>
-                        <input
-                           type="text"
-                           className="form-control"
-                           id="operacao"
-                           value={operacaoterceiro}
-                           onChange={(e) => setoperacaoterceiro(e.target.value)}
-                        />
-                     </div>   
-
-                     <div className="col-md-2 mb-3">
-                        <label htmlFor="operacao" className="mb-2">Chave Pix</label>
-                        <input
-                           type="text"
-                           className="form-control"
-                           id="operacao"
-                           value={chavepixterceiro}
-                           onChange={(e) => setchavepixterceiro(e.target.value)}
-                        />
-                     </div> 
-
-                     <div className="col-md-3 mb-3">
-                        <label htmlFor="operacao" className="mb-2">Beneficiado Terceiro:</label>
-                        <input
-                           
-                           type="text"
-                           className="form-control"
-                           id="operacao"
-                           value={beneficiadoterceiro}
-                           onChange={(e) => setbeneficiadoterceiro(e.target.value.toUpperCase())}
-                        />
-                     </div>                                     
-
-
                   </div>
 
                   {/* Informações Profissionais */}
-                  <h4 className="section-title">Informações Profissionais</h4>
-                  <div className="row">
-                     <div className="col-md-6 mb-3">                                                                                                    
-                        
-                     <label htmlFor="fl-1" className="mb-2">Filial<span className="text-danger">*</span></label>                   
-                     <EditComplete placeholder={"Filial"} id={"fl-1"}  
-                                 tipoConsulta={"filial1"} 
-                                 onClickCodigo={Set_Id_EmpresaFunc} 
-                                 onClickDescricao={SetFilialFunc}
-                                 value={filialFunc} 
-                                 disabled={false}/>
-                        
-                        
+                  <p className="cad-section-title">Informações Profissionais</p>
+                  <div className="cad-section">
+                     <div className="row g-3 align-items-end">
+                        <div className="col-md-6">
+                           <label htmlFor="fl-1" className="form-label">Filial<span className="text-danger">*</span></label>
+                           <EditComplete placeholder={"Filial"} id={"fl-1"} tipoConsulta={"filial1"}
+                                    onClickCodigo={Set_Id_EmpresaFunc} onClickDescricao={SetFilialFunc}
+                                    value={filialFunc} disabled={false}/>
+                        </div>
+                        <div className="col-md-6">
+                           <label htmlFor="setor" className="form-label">Setor<span className="text-danger">*</span></label>
+                           <EditComplete placeholder={"Setor"} id={"setor"} tipoConsulta={"se"}
+                                    onClickCodigo={Set_Id_setor} onClickDescricao={setSetor}
+                                    value={setor} disabled={false}/>
+                        </div>
                      </div>
-                     <div className="col-md-6 mb-3">
-                        <label htmlFor="setor" className="mb-2">Setor<span className="text-danger">*</span></label>
-                        <EditComplete placeholder={"Setor"} id={"setor"}  
-                                 tipoConsulta={"se"} 
-                                 onClickCodigo={Set_Id_setor} 
-                                 onClickDescricao={setSetor}
-                                 value={setor} 
-                                 disabled={false}/>
-            
+                     <div className="row g-3 align-items-end mt-1">
+                        <div className="col-md-4">
+                           <label htmlFor="cargo" className="form-label">Cargo</label>
+                           <input type="text" className="form-control" id="cargo"
+                              placeholder="Cargo" value={cargo}
+                              onChange={(e) => setCargo(e.target.value.toUpperCase())}
+                           />
+                        </div>
+                        <div className="col-md-4">
+                           <label htmlFor="admissao" className="form-label">Data de Admissão<span className="text-danger">*</span></label>
+                           <input type="date" className="form-control" id="admissao"
+                              value={admissao} onChange={(e) => setAdmissao(e.target.value)}
+                           />
+                        </div>
+                        <div className="col-md-4">
+                           <label htmlFor="tipoContrato" className="form-label">Tipo de Contrato</label>
+                           <select className="form-control" id="tipoContrato" value={tipoContrato}
+                              onChange={(e) => setTipoContrato(e.target.value)}>
+                              <option value="">Selecione</option>
+                              <option value="CLT">CLT</option>
+                              <option value="PJ">PJ</option>
+                           </select>
+                        </div>
                      </div>
-                  </div>
-
-                  <div className="row">
-                     <div className="col-md-6 mb-3">
-                        <label htmlFor="dataNascimento" className="mb-2">Data de Nascimento<span className="text-danger">*</span></label>
-                        <input
-                           type="date"
-                           className="form-control"
-                           id="dataNascimento"
-                           value={dataNascimento}
-                           onChange={(e) => setDataNascimento(e.target.value)}
-                        />
-                     </div>
-                     <div className="col-md-6 mb-3">
-                        <label htmlFor="sexo" className="mb-2">Sexo<span className="text-danger">*</span></label>
-                        <select
-                           className="form-control"
-                           id="sexo"
-                           value={sexo}
-                           onChange={(e) => setSexo(e.target.value)}
-                        >
-                           <option value="">Selecione</option>
-                           <option value="M">MASCULINO</option>
-                           <option value="F">FEMININO</option>
-                           <option value="O">OUTRO</option>
-                        </select>
-                     </div>
-                  </div>
-
-                  <div className="row">
-                     <div className="col-md-6 mb-3">
-                        <label htmlFor="nacionalidade" className="mb-2">Nacionalidade</label>
-                        <input
-                           type="text"
-                           className="form-control"
-                           id="nacionalidade"
-                           placeholder="Nacionalidade"
-                           value={nacionalidade}
-                           onChange={(e) => setNacionalidade(e.target.value.toUpperCase())}
-                        />
-                     </div>
-                     <div className="col-md-6 mb-3">
-                        <label htmlFor="naturalidade" className="mb-2">Naturalidade</label>
-                        <input
-                           type="text"
-                           className="form-control"
-                           id="naturalidade"
-                           placeholder="Naturalidade"
-                           value={naturalidade}
-                           onChange={(e) => setNaturalidade(e.target.value.toUpperCase())}
-                        />
-                     </div>
-                  </div>
-
-                  <div className="row">
-                     <div className="col-md-6 mb-3">
-                        <label htmlFor="cargo" className="mb-2">Cargo<span className="text-danger">*</span></label>
-                        <input
-                           type="text"
-                           className="form-control"
-                           id="cargo"
-                           placeholder="Cargo"
-                           value={cargo}
-                           onChange={(e) => setCargo(e.target.value.toUpperCase())}
-                        />
-                     </div>
-                     <div className="col-md-6 mb-3">
-                        <label htmlFor="admissao" className="mb-2">Data de Admissão<span className="text-danger">*</span></label>
-                        <input
-                           type="date"
-                           className="form-control"
-                           id="admissao"
-                           value={admissao}
-                           onChange={(e) => setAdmissao(e.target.value)}
-                        />
-                     </div>
-                  </div>
-
-                  <div className="row">
-                     <div className="col-md-6 mb-3">
-                        <label htmlFor="tipoContrato" className="mb-2">Tipo de Contrato<span className="text-danger">*</span></label>
-                        <select
-                           className="form-control"
-                           id="tipoContrato"
-                           value={tipoContrato}
-                           onChange={(e) => setTipoContrato(e.target.value)}
-                        >
-                           <option value="">Selecione</option>
-                           <option value="CLT">CLT</option>
-                           <option value="PJ">PJ</option>
-                        </select>
-                     </div>
-                     <div className='col-md-2 margem-botao mb-3'>
-                     <button
-                        type="button"
-                        className="btn btn-secondary px-4 w-100"
-                        onClick={() => UsarCredenciaisERP(codigo)}
-                     >
-                        Usar Credenciais do ERP
-                     </button>
+                     <div className="row g-3 align-items-end mt-1">
+                        <div className="col-md-8">
+                           <small className="text-muted d-block">Use esta ação para sincronizar as credenciais já cadastradas no ERP.</small>
+                        </div>
+                        <div className="col-md-4">
+                           <button
+                              type="button"
+                              className="btn btn-outline-primary cad-erp-btn w-100"
+                              onClick={() => UsarCredenciaisERP(codigo)}
+                              disabled={!codigo || Number(codigo) === 0}
+                              title={!codigo || Number(codigo) === 0 ? 'Carregue ou salve o funcionário para habilitar' : 'Importar credenciais do ERP'}
+                           >
+                              <i className="bi bi-person-badge me-2"></i>
+                              Importar Credenciais ERP
+                           </button>
+                        </div>
                      </div>
                   </div>
 
                   {/* Rateio */}
-                  <h4 className="section-title">Rateio Centro de Custo</h4>
-                  <div className='row'>
-                  <div className="col-lg-9 mb-2">   
-                        <label htmlFor="cc" className="mb-2">Centro de Custo</label>                   
-                        <EditComplete placeholder={"Informe o Centro de Custo"} id={"cc"}  
-                                    tipoConsulta={"cc"} 
-                                    onClickCodigo={setid_centroDeCusto} 
-                                    onClickDescricao={setDescricaoCentroDeCusto}
-                                    value={descricaoCentroDeCusto} 
-                                    disabled={false}
-                        />
-                  </div>
+                  <p className="cad-section-title">Rateio Centro de Custo</p>
+                  <div className="cad-section">
+                     <div className="row g-3 align-items-end">
+                        <div className="col-lg-9">
+                           <label htmlFor="cc" className="form-label">Centro de Custo<span className="text-danger">*</span></label>
+                           <EditComplete placeholder={"Informe o Centro de Custo"} id={"cc"}
+                                       tipoConsulta={"cc"}
+                                       onClickCodigo={setid_centroDeCusto}
+                                       onClickDescricao={setDescricaoCentroDeCusto}
+                                       value={descricaoCentroDeCusto}
+                                       disabled={false}
+                           />
+                        </div>
+                        <div className="col-lg-2">
+                           <label htmlFor="rescontro" className="form-label">% Rateio</label>
+                           <input type="number" step={"0.01"} className="form-control"
+                              placeholder={"% Rateio ..."} id={"rescontro"}
+                              value={percentualRateio}
+                              onChange={(e) => setPercentualRateio(e.target.value)}
+                           />
+                        </div>
+                        <div className="col-lg-1">
+                           <button type="button" className="btn btn-primary w-100"
+                              onClick={onClickIncluirRateio}>
+                              <i className="bi bi-plus-lg"></i>
+                           </button>
+                        </div>
+                     </div>
 
-                  <div className="col-lg-2 mb-3">   
-                     <label htmlFor="rescontro" className="mb-2">% Rateio</label>                   
-                     <input type="number" step={"0.01"}  className="form-control" placeholder={"% Rateio ..."} id={"rescontro"} 
-                        value={percentualRateio} 
-                        onChange={(e) => setPercentualRateio(e.target.value)}
-                        disabled={false}
-                     /> 
-                  </div>
-
-
-                  <div className="col-lg-1 mb-3">
-                     <button
-                     type="button"
-                     className="btn btn-secondary marg-botao-incluir-rateio w-100"
-                     onClick={onClickIncluirRateio}
-                     disabled={false}
-                     >
-                     Incluir
-                     
-                     </button>                                                                                                                                                                                                                                                     
-                  </div>
-                  </div>
-
-
-                  <div className="grid-desktop-rateio">
-                  <div className="bg-grid">
-
-                     {/* GRID */}
-                     <div className="row tableFixHead">
-                     <table className="table table-hover">
-                        <thead className="Titulos-Table">
-                        <tr>
+                     <table className="cad-rateio-table">
+                        <thead>
+                           <tr>
                               <th>Centro de Custo</th>
-                              <th className="text-center" style={{ width: "90px" }}>%</th>
-
-                              <th className="text-end" style={{ width: "60px" }}></th>
-                        </tr>
+                              <th style={{ width: '90px', textAlign: 'center' }}>%</th>
+                              <th style={{ width: '50px' }}></th>
+                           </tr>
                         </thead>
-
                         <tbody>
-                        {rateio.length > 0 ? (
+                           {rateio.length > 0 ? (
                               rateio.map((item, index) => (
-                              <tr key={index} className="item-Table">
-                                 <td>
-                                 <strong>{item.id_centrodecusto}</strong> - {item.descricao}
-                                 </td>
-
-                                 <td className="text-center">
-                                  {item.percentual}%
-                                 </td>
-
-                                 <td className="text-end">
-                                    {!disableCentroDecusto ? <>
-                                          <button
-                                             className="btn-remove"
-                                             title="Remover rateio"
-                                             onClick={() => onClickExcluirRateio(item.id_rateio)}                                                                    
-                                          >
+                                 <tr key={index}>
+                                    <td><strong>{item.id_centrodecusto}</strong> — {item.descricao}</td>
+                                    <td style={{ textAlign: 'center' }}>{item.percentual}%</td>
+                                    <td style={{ textAlign: 'right' }}>
+                                       {!disableCentroDecusto && (
+                                          <button className="btn-remove" title="Remover rateio"
+                                             onClick={() => onClickExcluirRateio(item.id_rateio)}>
                                              <i className="bi bi-trash"></i>
                                           </button>
-                                          </>: null
-                                    }                                                        
-                                 </td>
-                              </tr>
+                                       )}
+                                    </td>
+                                 </tr>
                               ))
-                        ) : (
-                              <tr>
-                              <td colSpan="4" className="text-center text-muted py-3">
-                                 Nenhum rateio informado
-                              </td>
-                              </tr>
-                        )}
+                           ) : (
+                              <tr><td colSpan="3" className="cad-rateio-empty">Nenhum rateio informado</td></tr>
+                           )}
                         </tbody>
                      </table>
+                     <div className="cad-rateio-totais">
+                        <div>Registros: <span>{qtRegistro}</span></div>
+                        <div>% Total: <span>{totalPercentual.toFixed(2)}%</span></div>
                      </div>
-
-                     {/* TOTALIZADOR */}
-                     <div className="row">
-                     <div className="Total d-flex w-100 justify-content-between">
-                        <div>
-                        <label>Registros:</label>
-                        <span>{qtRegistro}</span>
-                        </div>
-
-                        <div>
-                        <label>% Total:</label>
-                        <span>{totalPercentual.toFixed(2)}%</span>
-                        </div>
-                     </div>
-                     </div>
-
                   </div>
-                  </div> 
 
-
-                  {/* Adicionando os campos de Carteira de Motorista */}
-                  <h4 className="section-title">Carteira de Motorista</h4>
-                  <div className="row">
-                     <div className="col-md-6 mb-3">
-                        <label htmlFor="numeroCNH" className="mb-2">Número da CNH</label>
-                        <input
-                           type="text"
-                           className="form-control"
-                           id="numeroCNH"
-                           placeholder="Número da CNH"
-                           value={numeroCNH}
-                           onChange={(e) => setNumeroCNH(e.target.value)}
-                        />
-                     </div>
-                     <div className="col-md-6 mb-3">
-                        <label htmlFor="dataExpiracaoCNH" className="mb-2">Data de Expiração</label>
-                        <input
-                           type="date"
-                           className="form-control"
-                           id="dataExpiracaoCNH"
-                           value={dataExpiracaoCNH}
-                           onChange={(e) => setDataExpiracaoCNH(e.target.value)}
-                        />
+                  {/* Carteira de Motorista */}
+                  <p className="cad-section-title">Carteira de Motorista</p>
+                  <div className="cad-section">
+                     <div className="row g-3 align-items-end">
+                        <div className="col-md-6">
+                           <label htmlFor="numeroCNH" className="form-label">Número da CNH</label>
+                           <input type="text" className="form-control" id="numeroCNH"
+                              placeholder="Número da CNH" value={numeroCNH}
+                              onChange={(e) => setNumeroCNH(e.target.value)}
+                           />
+                        </div>
+                        <div className="col-md-6">
+                           <label htmlFor="dataExpiracaoCNH" className="form-label">Data de Expiração</label>
+                           <input type="date" className="form-control" id="dataExpiracaoCNH"
+                              value={dataExpiracaoCNH} onChange={(e) => setDataExpiracaoCNH(e.target.value)}
+                           />
+                        </div>
                      </div>
                   </div>
                                     
                </div>
-               <div className="bsmodal-footer">
-                  <div className="d-flex justify-content-between w-100">
-                     <button
-                        type="button"
-                        className="btn btn-secondary px-4"
-                        onClick={props.onRequestClose}
-                     >
-                        Voltar
-                     </button>
-                     <button
-                        type="button"
-                        className="btn btn-primary px-4"
-                        onClick={salvarDados}
-                     >
-                        Salvar
-                     </button>
-                  </div>
+            <div className="cad-modal-footer">
+               <div className="cad-modal-footer-actions">
+                  <button type="button" className="btn btn-primary cad-footer-btn" onClick={salvarDados}>Salvar dados do Funcionario</button>
                </div>
             </div>
          </Modal>
