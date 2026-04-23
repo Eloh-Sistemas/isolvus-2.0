@@ -1,4 +1,9 @@
-import { GetPermissoesDoUsuario, SetAlterarPermissoesDoUsuario, GetPermissoes } from "../models/permissoesModel.js";
+import {
+    GetPermissoesDoUsuario,
+    SetAlterarPermissoesDoUsuario,
+    GetPermissoes,
+    SetAlterarSubPermissoesDoUsuario
+} from "../models/permissoesModel.js";
 
 export async function ConsultarPermissoesDoUsuario(req , res) {
 
@@ -35,6 +40,26 @@ export async function AlterarPermissoesDoUsuario(req , res) {
         res.status(500).json({error: 'Erro ao alterar permissões do usuario', message: error.message});
     }
     
+}
+
+export async function AlterarSubPermissoesDoUsuario(req , res) {
+
+    try {
+        const subPermissoes = req.body;
+
+        if (!Array.isArray(subPermissoes) || subPermissoes.length === 0) {
+            res.status(400).json({ error: 'Nenhuma subpermissão informada' });
+            return;
+        }
+
+        await SetAlterarSubPermissoesDoUsuario(subPermissoes);
+        res.status(200).json(await GetPermissoesDoUsuario(subPermissoes[0].id_usuario));
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({error: 'Erro ao alterar subpermissões do usuario', message: error.message});
+    }
+
 }
 
 export async function ConsultarPermissoes(req , res) {

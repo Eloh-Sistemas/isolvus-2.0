@@ -1285,7 +1285,7 @@ function ImportacaoDespesa(){
         {isModalOpen && (
             <div className="modal-overlay-importacao">
                 <div className="modal-content-importacao" ref={modalContentRef}>
-                    <div className="d-flex justify-content-between align-items-center mb-4">
+                    <div className="importacao-modal-header d-flex justify-content-between align-items-center">
                         <div>
                             <h4 className="mb-1">
                                 {modalTipo === 'detalhe'
@@ -1300,6 +1300,8 @@ function ImportacaoDespesa(){
                         </div>
                         <button className="btn btn-outline-secondary" onClick={closeModal}>Fechar</button>
                     </div>
+
+                    <div className="importacao-modal-body">
 
                     {modalTipo === 'detalhe' ? (
                         <>
@@ -1427,34 +1429,6 @@ function ImportacaoDespesa(){
                                         ) : (
                                             <strong>Nenhum arquivo de remessa salvo para esta importação.</strong>
                                         )}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="row mb-3">
-                                <div className="col-12">
-                                    <div className="acoes-importacao-modal">
-                                        <small className={mensagemBloqueioDetalheAtual ? 'text-warning' : 'text-muted'}>
-                                            {mensagemBloqueioDetalheAtual || `Status atual: ${String(registroSelecionado?.STATUS_PROCESSAMENTO || 'PENDENTE').toUpperCase()}. O processamento final desta leitura será liberado somente quando não houver erros.`}
-                                        </small>
-                                        <div className="d-flex gap-2 flex-wrap">
-                                            <button
-                                                type="button"
-                                                className="btn btn-outline-danger"
-                                                onClick={() => handleExcluirLeitura(registroSelecionado?.IDLEITURA)}
-                                                disabled={!podeExcluirImportacaoDetalhe || loading || excluindo || refreshingDetalhes}
-                                            >
-                                                {excluindo ? 'Excluindo...' : 'Excluir Importação'}
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="btn btn-success"
-                                                onClick={() => processarDespesas(registroSelecionado?.IDLEITURA)}
-                                                disabled={!podeProcessarDetalhamento || loading || refreshingDetalhes}
-                                            >
-                                                {loading ? 'Processando...' : statusProcessamentoSelecionado === 'PROCESSADO' ? 'Já Processado' : 'Processar Despesas'}
-                                            </button>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1749,34 +1723,6 @@ function ImportacaoDespesa(){
                         </div>
                     </div>
 
-                    <div className="row mb-3">
-                        <div className="col-12">
-                            <div className="acoes-importacao-modal">
-                                <small className={mensagemBloqueioPreAnaliseAtual ? 'text-warning' : 'text-muted'}>
-                                    {mensagemBloqueioPreAnaliseAtual || 'O processamento final será liberado somente quando a pré-análise estiver concluída sem erros.'}
-                                </small>
-                                <div className="d-flex gap-2 flex-wrap">
-                                    <button
-                                        type="button"
-                                        className="btn btn-outline-danger"
-                                        onClick={() => handleExcluirLeitura(idImportacaoPreAnalise)}
-                                        disabled={!podeExcluirImportacaoPreAnalise || excluindo || loading}
-                                    >
-                                        {excluindo ? 'Excluindo...' : 'Excluir Importação'}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="btn btn-success"
-                                        onClick={() => processarDespesas(idImportacaoPreAnalise)}
-                                        disabled={!podeProcessarImportacao || loading}
-                                    >
-                                        {uploadRemessaLoading ? 'Salvando Remessa...' : loading ? 'Processando...' : 'Processar Despesas'}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                     {preAnaliseLoading && (
                         <div className="row mb-3">
                             <div className="col-12">
@@ -1949,6 +1895,38 @@ function ImportacaoDespesa(){
                     )}
                         </>
                     )}
+
+                    </div>
+
+                    <div className="importacao-modal-footer">
+                        <div className="importacao-modal-footer-start">
+                            <small className={modalTipo === 'detalhe' && mensagemBloqueioDetalheAtual ? 'text-warning' : modalTipo !== 'detalhe' && mensagemBloqueioPreAnaliseAtual ? 'text-warning' : 'text-muted'}>
+                                {modalTipo === 'detalhe'
+                                    ? (mensagemBloqueioDetalheAtual || `Status atual: ${String(registroSelecionado?.STATUS_PROCESSAMENTO || 'PENDENTE').toUpperCase()}. O processamento final desta leitura será liberado somente quando não houver erros.`)
+                                    : (mensagemBloqueioPreAnaliseAtual || 'O processamento final será liberado somente quando a pré-análise estiver concluída sem erros.')}
+                            </small>
+                        </div>
+                        <div className="importacao-modal-footer-actions">
+                            <button
+                                type="button"
+                                className="btn btn-outline-danger"
+                                onClick={() => handleExcluirLeitura(modalTipo === 'detalhe' ? registroSelecionado?.IDLEITURA : idImportacaoPreAnalise)}
+                                disabled={modalTipo === 'detalhe' ? (!podeExcluirImportacaoDetalhe || loading || excluindo || refreshingDetalhes) : (!podeExcluirImportacaoPreAnalise || excluindo || loading)}
+                            >
+                                {excluindo ? 'Excluindo...' : 'Excluir Importação'}
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-success"
+                                onClick={() => processarDespesas(modalTipo === 'detalhe' ? registroSelecionado?.IDLEITURA : idImportacaoPreAnalise)}
+                                disabled={modalTipo === 'detalhe' ? (!podeProcessarDetalhamento || loading || refreshingDetalhes) : (!podeProcessarImportacao || loading)}
+                            >
+                                {modalTipo === 'detalhe'
+                                    ? (loading ? 'Processando...' : statusProcessamentoSelecionado === 'PROCESSADO' ? 'Já Processado' : 'Processar Despesas')
+                                    : (uploadRemessaLoading ? 'Salvando Remessa...' : loading ? 'Processando...' : 'Processar Despesas')}
+                            </button>
+                        </div>
+                    </div>
 
                 </div>
             </div>

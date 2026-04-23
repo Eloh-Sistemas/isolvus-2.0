@@ -22,6 +22,7 @@
    flex-direction: column;
    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
    overflow: hidden;
+   position: relative;
 }
 
 /* ── Header ──────────────────────────────────────────── */
@@ -195,6 +196,96 @@
 .cad-hr {
    border-color: #e9ecef;
    margin: 1rem 0 0.85rem;
+}
+
+.cad-foto-identificacao {
+   display: flex;
+   align-items: center;
+   gap: 0.9rem;
+   padding-top: 0.85rem;
+   padding-bottom: 0.85rem;
+}
+
+.cad-foto-identificacao-avatar {
+   flex-shrink: 0;
+   position: relative;
+}
+
+.cad-foto-zoom-btn {
+   border: none;
+   padding: 0;
+   margin: 0;
+   background: transparent;
+   border-radius: 50%;
+   cursor: pointer;
+   transition: opacity 0.2s ease;
+}
+
+.cad-foto-zoom-btn:hover {
+   opacity: 0.9;
+}
+
+.cad-foto-identificacao-img,
+.cad-foto-identificacao-placeholder {
+   width: 72px;
+   height: 72px;
+   border-radius: 50%;
+   border: 2px solid #dbe7ff;
+   object-fit: cover;
+}
+
+.cad-foto-identificacao-placeholder {
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   color: #6b7280;
+   font-size: 1.45rem;
+   background: linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
+}
+
+.cad-foto-zoom-btn .cad-foto-identificacao-img {
+   display: block;
+}
+
+.cad-foto-identificacao-info {
+   min-width: 0;
+}
+
+.cad-foto-zoom-overlay {
+   position: absolute;
+   inset: 0;
+   background: rgba(15, 23, 42, 0.62);
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   z-index: 1200;
+   cursor: pointer;
+}
+
+.cad-foto-zoom-centro {
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   cursor: default;
+}
+
+.cad-foto-zoom-img {
+   width: min(300px, 62vw);
+   aspect-ratio: 1 / 1;
+   border-radius: 50%;
+   object-fit: cover;
+   border: 3px solid #dbe7ff;
+   box-shadow: 0 16px 34px rgba(2, 6, 23, 0.35);
+}
+
+@media (max-width: 768px) {
+   .cad-foto-identificacao {
+      align-items: flex-start;
+   }
+
+   .cad-foto-zoom-img {
+      width: min(260px, 76vw);
+   }
 }
 
 /* ── Tabela de Rateio ────────────────────────────────── */

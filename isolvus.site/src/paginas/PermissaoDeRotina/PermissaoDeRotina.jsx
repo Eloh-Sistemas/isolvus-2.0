@@ -100,21 +100,21 @@ function PermissaoDeRotina() {
             <div className="row text-body-secondary mb-3">
                <div className="col-12 d-flex flex-column flex-sm-row align-items-start align-items-sm-center gap-3">
                   <div>
-                     <h1 className="mb-1 titulo-da-pagina">Permissão de Rotina</h1>
-                     <p className="text-muted mb-0">Consulte usuários e configure permissões de rotina.</p>
+                     <h1 className="mb-1 titulo-da-pagina">Permissões</h1>
+                     <p className="text-muted mb-0">Consulte o funcionário e configure suas permissões.</p>
                   </div>
                </div>
             </div>
 
             <div className="row mb-4 align-items-end g-3 permissao-filtros">
                <div className="col-md-12 permissao-filtro-col">
-                  <label htmlFor="usuario-filtro" className="form-label">Usuário</label>
+                  <label htmlFor="usuario-filtro" className="form-label">Funcionário</label>
                   <input
                      autoFocus
                      type="text"
                      className="form-control"
                      id="usuario-filtro"
-                     placeholder="Informe a matrícula ou usuário"
+                     placeholder="Informe a matrícula ou funcionário"
                      value={filtroUsuario}
                      onChange={handleFiltroChange}
                   />

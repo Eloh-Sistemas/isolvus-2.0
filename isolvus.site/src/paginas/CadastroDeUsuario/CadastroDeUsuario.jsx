@@ -103,12 +103,12 @@ function CadastroDeUsuario() {
                      <h1 className="mb-1 titulo-da-pagina">Cadastro de Funcionário</h1>
                      <p className="text-muted mb-0">Consulte usuários existentes ou abra um novo cadastro.</p>
                   </div>
-                  <button className="btn btn-primary" onClick={() => openModalItem(null)}>Cadastrar Funcionário</button>
+                  <button className="btn btn-primary" onClick={() => openModalItem(null)}>Cadastrar</button>
                </div>
             </div>
 
             <div className="row mb-4 align-items-end g-3 cadastro-filtros">
-               <div className="col-md-12 cadastro-filtro-col">
+               <div className="col-md-10 cadastro-filtro-col">
                   <label htmlFor="usuario-filtro" className="form-label">Usuário</label>
                   <input
                      autoFocus
@@ -120,6 +120,18 @@ function CadastroDeUsuario() {
                      onChange={handleFiltroChange}
                   />
                   <small className="text-muted">Digite matrícula ou nome. A pesquisa inicia com 3 caracteres.</small>
+               </div>
+
+               <div className="col-md-2 cadastro-filtro-col">
+                  <label className="form-label">Registros</label>
+                  <input
+                     type="text"
+                     className="form-control"
+                     value={loadingUsuarios ? 'Carregando...' : usuarios.length}
+                     readOnly
+                     disabled
+                  />
+                  <small className="text-muted">Quantidade retornada na consulta.</small>
                </div>
             </div>
 

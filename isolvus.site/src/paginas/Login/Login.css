@@ -224,21 +224,69 @@ body, html, #root { height: 100%; margin: 0; }
     flex-direction: column;
     background: #f0f4fb;
     min-height: 100dvh;
-    height: 100dvh;
+    height: auto;
   }
   .login-panel-right {
     flex: 1 1 auto;
     max-width: 100%;
     width: 100%;
     background: #f0f4fb;
-    align-items: stretch;
-    justify-content: flex-start;
-    padding: 2rem 1.25rem;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem 1rem;
     overflow-y: auto;
     min-height: 0;
   }
   .login-card {
     max-width: 100%;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .login-panel-right {
+    padding: 1rem .85rem;
+  }
+
+  .login-card {
+    border-radius: 12px;
+    padding: 1.35rem 1rem;
+  }
+
+  .login-card__brand {
+    gap: .75rem;
+    padding-bottom: 1rem;
+  }
+
+  .login-card__brand-logo {
+    width: 56px;
+    height: 56px;
+  }
+
+  .login-card__brand-divider {
+    height: 32px;
+  }
+
+  .login-card__brand-group {
+    font-size: .98rem;
+  }
+
+  .login-card__brand-system {
+    font-size: .72rem;
+  }
+
+  .login-card__brand-sub {
+    font-size: .58rem;
+    margin-top: .22rem;
+  }
+
+  .login-card__title {
+    font-size: 1.35rem;
+  }
+
+  .login-card__btn.btn {
+    padding-left: .75rem;
+    padding-right: .75rem;
   }
 }
 
@@ -506,6 +554,17 @@ body, html, #root { height: 100%; margin: 0; }
 .login-card__btn.btn:disabled {
   opacity: .75;
   cursor: not-allowed;
+}
+
+.login-card__btn.btn.login-card__btn--error {
+  background: linear-gradient(90deg, #c0392b 0%, #e74c3c 100%);
+  box-shadow: 0 4px 18px rgba(192,57,43,.35);
+  min-height: 52px;
+  height: auto;
+  padding: .55rem .9rem;
+  white-space: normal;
+  line-height: 1.2;
+  font-size: .92rem;
 }
 
 .login-card__version {

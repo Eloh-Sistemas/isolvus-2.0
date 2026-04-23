@@ -2,6 +2,7 @@ import React, { useEffect, useState  } from 'react';
 import Modal from "react-modal/lib/components/Modal";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import Swal from 'sweetalert2';
 import { cpf } from 'cpf-cnpj-validator'; // Corrigindo a importação para 'cpf'
 //import InputMask from 'react-input-mask'; // Importando o InputMask
 import './ModalCadastroDeUsuario.css';
@@ -61,6 +62,9 @@ function ModalCadastroDeUsuario(props) {
    const disableCentroDecusto = false;
    const [qtRegistro, setQtRegistro] = useState(0);
    const [totalPercentual, setTotalPercentual] = useState(0);
+   const [salvandoCadastro, setSalvandoCadastro] = useState(false);
+   const [fotoPerfil, setFotoPerfil] = useState('');
+   const [fotoZoomAtivo, setFotoZoomAtivo] = useState(false);
 
    function onClickExcluirRateio(id_rateio) {
 
@@ -170,6 +174,8 @@ function consultarDadosFuncionario() {
    setoperacaoterceiro("");  
    setchavepixterceiro("");
    setbeneficiadoterceiro("");
+   setFotoPerfil('');
+   setFotoZoomAtivo(false);
 
    if (props.idUsuario != null && props.idUsuario !== 0) {
 
@@ -224,6 +230,27 @@ function consultarDadosFuncionario() {
       setoperacaoterceiro(retorno.data[0].operacaoterceiro); 
       setchavepixterceiro(retorno.data[0].chavepixterceiro); 
       setbeneficiadoterceiro(retorno.data[0].beneficiadoterceiro);   
+
+      const idUsuarioAtual = Number(retorno.data[0].id_usuario || 0);
+      if (idUsuarioAtual > 0) {
+         api.post('/v1/usuario/consultarFoto', { id_usuario: idUsuarioAtual })
+         .then((res) => {
+            const foto = res?.data?.foto;
+            if (!foto) {
+               setFotoPerfil('');
+               return;
+            }
+
+            const urlFoto = foto.startsWith('/midias/')
+               ? `${api.defaults.baseURL}${foto}`
+               : foto;
+
+            setFotoPerfil(urlFoto);
+         })
+         .catch(() => {
+            setFotoPerfil('');
+         });
+      }
       
       consultarRateio();
 
@@ -324,7 +351,7 @@ const buscarEndereco = async () => {
    };
 
    // Função para salvar os dados
-   function salvarDados() {
+   async function salvarDados() {
 
       if (!nome.trim()) {
          toast.warn('Informe o nome do funcionário.', { position: "top-center" });
@@ -442,28 +469,55 @@ const buscarEndereco = async () => {
        };
        
       
-       api.post("/v1/cadastrarFuncionario", json, {
-         headers: {
-            "Content-Type": "application/json"
+      setSalvandoCadastro(true);
+      Swal.fire({
+         title: 'Salvando cadastro',
+         text: 'Aguarde a finalizacao do processamento.',
+         allowEscapeKey: false,
+         allowOutsideClick: false,
+         showConfirmButton: false,
+         didOpen: () => {
+            Swal.showLoading();
          }
-      })
-      .then((retorno) => {
+      });
+
+      try {
+         const retorno = await api.post("/v1/cadastrarFuncionario", json, {
+            headers: {
+               "Content-Type": "application/json"
+            }
+         });
+
          if (retorno?.data?.sucesso === false) {
-            toast.error(retorno?.data?.mensagem || 'Erro ao salvar cadastro.', { position: "top-center" });
+            Swal.close();
+            await Swal.fire({
+               icon: 'error',
+               title: 'Erro ao salvar',
+               text: retorno?.data?.mensagem || 'Erro ao salvar cadastro.'
+            });
+            setSalvandoCadastro(false);
             return;
          }
 
-         toast.success(retorno.data.mensagem ,
-            { position: "top-center" , 
-               autoClose: 2000, 
-              onClose: () => {props.onRequestClose()}}
-         );         
-         
-      })
-      .catch((err) => {
+         Swal.close();
+         await Swal.fire({
+            icon: 'success',
+            title: 'Sucesso',
+            text: retorno?.data?.mensagem || 'Cadastro salvo com sucesso!'
+         });
+
+         setSalvandoCadastro(false);
+         props.onRequestClose();
+      } catch (err) {
          console.log(err?.response?.data?.error);
-         toast.error(err?.response?.data?.error || 'Erro ao salvar cadastro.', { position: "top-center" });
-      });
+         Swal.close();
+         await Swal.fire({
+            icon: 'error',
+            title: 'Erro ao salvar',
+            text: err?.response?.data?.error || 'Erro ao salvar cadastro.'
+         });
+         setSalvandoCadastro(false);
+      }
       
       
    };
@@ -507,15 +561,47 @@ const buscarEndereco = async () => {
             ariaHideApp={false}
             className="cad-modal-content"
          >
+            {fotoZoomAtivo && fotoPerfil && (
+               <div className="cad-foto-zoom-overlay" onClick={() => setFotoZoomAtivo(false)}>
+                  <div className="cad-foto-zoom-centro" onClick={(event) => event.stopPropagation()}>
+                     <img src={fotoPerfil} alt="Foto ampliada do funcionário" className="cad-foto-zoom-img" />
+                  </div>
+               </div>
+            )}
+
             <div className="cad-modal-header">
                <div>
                   <h4 className="cad-modal-title">Cadastro de Funcionário</h4>
                   <p className="text-muted mb-0" style={{ fontSize: '0.85rem' }}>Preencha os dados do funcionário e clique em Salvar.</p>
                </div>
-               <button className="btn btn-outline-secondary" onClick={props.onRequestClose}>Fechar</button>
+               <button className="btn btn-outline-secondary" onClick={props.onRequestClose} disabled={salvandoCadastro}>Fechar</button>
             </div>
 
                <div className="bsmodal-body">
+                  <p className="cad-section-title">Foto do Perfil</p>
+                  <div className="cad-section cad-foto-identificacao">
+                     <div className="cad-foto-identificacao-avatar">
+                        {fotoPerfil ? (
+                           <button
+                              type="button"
+                              className="cad-foto-zoom-btn"
+                              onClick={() => setFotoZoomAtivo(true)}
+                              title="Ampliar foto"
+                           >
+                              <img src={fotoPerfil} alt="Foto do funcionário" className="cad-foto-identificacao-img" />
+                           </button>
+                        ) : (
+                           <div className="cad-foto-identificacao-placeholder">
+                              <i className="bi bi-person-fill"></i>
+                           </div>
+                        )}
+                     </div>
+                     <div className="cad-foto-identificacao-info">
+                        <strong>{nome || 'Funcionário'}</strong>
+                        <small className="text-muted d-block">{codusuarioErp ? `Matrícula ${codusuarioErp}` : (codigo ? `Código ${codigo}` : 'Salve o cadastro para vincular foto')}</small>
+                     </div>
+                  </div>
+
                   {/* Dados Básicos */}
                   <p className="cad-section-title">Dados Básicos</p>
                   <div className="cad-section">
@@ -901,7 +987,7 @@ const buscarEndereco = async () => {
                </div>
             <div className="cad-modal-footer">
                <div className="cad-modal-footer-actions">
-                  <button type="button" className="btn btn-primary cad-footer-btn" onClick={salvarDados}>Salvar dados do Funcionario</button>
+                  <button type="button" className="btn btn-primary cad-footer-btn" onClick={salvarDados} disabled={salvandoCadastro}>Salvar dados do Funcionario</button>
                </div>
             </div>
          </Modal>

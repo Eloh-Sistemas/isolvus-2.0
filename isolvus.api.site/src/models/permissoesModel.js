@@ -1,5 +1,24 @@
 import { executeQuery, getConnection } from "../config/database.js";
 
+async function GetSubPermissoesDaRotinaDoUsuario(idRotina, matricula) {
+
+    const ssqlSubPermissoes = `
+        SELECT
+            SR.ID_SUBPERMISSAO as "id_subpermissao",
+            SR.ID_ROTINA as "id_rotina",
+            SR.DESCRICAO as "descricao",
+            NVL(SU.PERMITIR, 'N') as "permitir"
+        FROM BSTAB_ROTINA_SUBPERMISSOES SR
+        LEFT JOIN BSTAB_USUARIO_SUBPERMISSOES SU
+            ON SU.ID_SUBPERMISSAO = SR.ID_SUBPERMISSAO
+           AND SU.ID_USUARIO = :matricula
+        WHERE SR.ID_ROTINA = :idrotina
+          AND NVL(SR.ATIVO, 'S') = 'S'
+        ORDER BY SR.ORDEM, SR.DESCRICAO`;
+
+    return await executeQuery(ssqlSubPermissoes, { matricula, idrotina: idRotina });
+}
+
 export async function GetPermissoesDoUsuario(matricula) {
 
     const ssqlModulos = `
@@ -28,6 +47,10 @@ export async function GetPermissoesDoUsuario(matricula) {
                     
                 // cosultar rotina de cada modulo
                 const rotinas = await executeQuery(ssqlRotinas, {matricula, modulo: modulo.id_modulo} );          
+
+                for (const rotina of rotinas) {
+                    rotina.subpermissoes = await GetSubPermissoesDaRotinaDoUsuario(rotina.id_rotina, matricula);
+                }
                 
                 // criar json modulos com rotina
                 const jsonModulo = {
@@ -178,6 +201,73 @@ export async function SetAlterarPermissoesDoUsuario(permissoes) {
             } finally{
                 await connection.close();
             }                                                        
+    }
+
+}
+
+export async function SetAlterarSubPermissoesDoUsuario(subPermissoes) {
+
+    if (subPermissoes.length > 0) {
+
+        const connection = await getConnection();
+
+        try {
+
+            for (const subPermissao of subPermissoes) {
+                let ssql = `
+                    SELECT COUNT(*) AS qt_subpermissao
+                    FROM BSTAB_USUARIO_SUBPERMISSOES
+                    WHERE ID_USUARIO = :idusuario
+                      AND ID_SUBPERMISSAO = :idsubpermissao`;
+
+                const idusuario = subPermissao.id_usuario;
+                const idsubpermissao = subPermissao.id_subpermissao;
+                const permitir = subPermissao.permitir;
+
+                if (!idsubpermissao) {
+                    continue;
+                }
+
+                const result = await executeQuery(ssql, { idusuario, idsubpermissao });
+
+                if (result[0].qt_subpermissao > 0) {
+                    ssql = `
+                        UPDATE BSTAB_USUARIO_SUBPERMISSOES
+                           SET PERMITIR = :permitir,
+                               DT_ALTERACAO = SYSDATE
+                         WHERE ID_USUARIO = :idusuario
+                           AND ID_SUBPERMISSAO = :idsubpermissao`;
+
+                    await connection.execute(ssql, { permitir, idusuario, idsubpermissao });
+                } else {
+                    ssql = `
+                        INSERT INTO BSTAB_USUARIO_SUBPERMISSOES (
+                            ID_USUARIO,
+                            ID_SUBPERMISSAO,
+                            PERMITIR,
+                            DT_CADASTRO,
+                            DT_ALTERACAO
+                        ) VALUES (
+                            :idusuario,
+                            :idsubpermissao,
+                            :permitir,
+                            SYSDATE,
+                            SYSDATE
+                        )`;
+
+                    await connection.execute(ssql, { permitir, idusuario, idsubpermissao });
+                }
+            }
+
+            await connection.commit();
+
+        } catch (error) {
+            await connection.rollback();
+            console.log(error);
+            throw error;
+        } finally {
+            await connection.close();
+        }
     }
 
 }

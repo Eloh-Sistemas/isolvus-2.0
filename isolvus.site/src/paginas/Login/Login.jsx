@@ -16,6 +16,7 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [shake, setShake] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
+  const [erroCredencial, setErroCredencial] = useState(false);
   const navigate = useNavigate();
 
   // --- Palavra rotativa no título ---
@@ -41,6 +42,7 @@ function Login() {
 
   function Acessar() {
     const Credenciais = { user, password };
+    setErroCredencial(false);
     setLoading(true);
 
     api.post("/v1/logar", Credenciais)
@@ -58,12 +60,14 @@ function Login() {
           localStorage.setItem('razaosocial', retorno.data[0].razaosocial);
           navigate("/Home");
         } else {
+          setErroCredencial(true);
           setShake(true);
           setTimeout(() => setShake(false), 600);
         }
       })
       .catch(() => {
         setLoading(false);
+        setErroCredencial(true);
         setShake(true);
         setTimeout(() => setShake(false), 600);
       });
@@ -147,7 +151,10 @@ function Login() {
                 type="text"
                 placeholder="Informe seu usuário"
                 autoComplete="username"
-                onChange={(e) => SetUser(e.target.value)}
+                onChange={(e) => {
+                  SetUser(e.target.value);
+                  if (erroCredencial) setErroCredencial(false);
+                }}
                 onKeyDown={handleKeyDown}
               />
             </div>
@@ -163,7 +170,10 @@ function Login() {
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Informe sua senha"
                   autoComplete="current-password"
-                  onChange={(e) => SetPassword(e.target.value)}
+                  onChange={(e) => {
+                    SetPassword(e.target.value);
+                    if (erroCredencial) setErroCredencial(false);
+                  }}
                   onKeyDown={handleKeyDown}
                   onKeyUp={handleCapsLock}
                 />
@@ -185,14 +195,16 @@ function Login() {
             </div>
 
             <button
-              className={`login-card__btn btn w-100 mt-4${shake ? ' login-card__btn--shake' : ''}`}
+              className={`login-card__btn btn w-100 mt-4${shake ? ' login-card__btn--shake' : ''}${erroCredencial ? ' login-card__btn--error' : ''}`}
               type="button"
               onClick={Acessar}
               disabled={loading}
             >
               {loading
                 ? <><span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Autenticando...</>
-                : <><i className="bi bi-box-arrow-in-right me-2"></i>Entrar</>
+                : erroCredencial
+                  ? <><i className="bi bi-exclamation-triangle-fill me-2"></i>Credenciais incorretas. Tentar novamente</>
+                  : <><i className="bi bi-box-arrow-in-right me-2"></i>Entrar</>
               }
             </button>
 
