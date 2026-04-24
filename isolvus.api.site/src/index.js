@@ -111,8 +111,18 @@ rotas.forEach(route => app.use(apiVersion, route));
 app.use(errorHandler);
 
 // Iniciar o servidor
-app.listen(portahttp, () => {
+const server = app.listen(portahttp, () => {
   console.log(`Api Rodando em http na porta: ${portahttp}`);
+});
+
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`Porta ${portahttp} ja esta em uso. Finalize o processo que ocupa a porta e tente novamente.`);
+    process.exit(1);
+  }
+
+  console.error('Erro ao iniciar servidor HTTP:', error);
+  process.exit(1);
 });
 
 

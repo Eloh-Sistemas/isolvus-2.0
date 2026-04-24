@@ -1,7 +1,13 @@
 // src/config/database.js
 
 import oracledb from 'oracledb';
+import util from 'node:util';
 import { dbConfig } from './dbConfig.js'; // Configurações do banco de dados
+
+// Compatibilidade com Node 24 para dependencias antigas que ainda usam util.isDate.
+if (typeof util.isDate !== 'function') {
+  util.isDate = (valor) => valor instanceof Date;
+}
 
 if (process.env.ORACLE_CLIENT_DIR) {
   oracledb.initOracleClient({ libDir: process.env.ORACLE_CLIENT_DIR });

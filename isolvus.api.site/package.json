@@ -5,7 +5,9 @@
     "main": "index.js",
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
-        "start": "node --max-old-space-size=12288 node_modules/.bin/nodemon index.js"
+        "start": "npm run dev",
+        "dev": "fuser -k 3011/tcp 2>/dev/null || true && nodemon ./src/index.js",
+        "dev:clean": "fuser -k 3011/tcp 2>/dev/null || true && nodemon ./src/index.js"
     },
     "keywords": [],
     "author": "",

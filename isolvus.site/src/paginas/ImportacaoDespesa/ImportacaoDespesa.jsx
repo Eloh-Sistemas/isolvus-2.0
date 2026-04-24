@@ -1446,7 +1446,7 @@ function ImportacaoDespesa(){
                                                     <th>Conta</th>
                                                     <th>Item</th>
                                                     <th>Histórico</th>
-                                                    <th className="text-center">% Rateio</th>
+                                                    <th>Centros de Custo</th>
                                                     <th className="text-center">Remessa</th>
                                                     <th className="text-end">Valor</th>
                                                 </tr>
@@ -1536,8 +1536,12 @@ function ImportacaoDespesa(){
                                                             <td className={detalhe.HISTORICO ? '' : 'table-danger'}>
                                                                 {detalhe.HISTORICO || 'Dados não encontrado no SGS'}
                                                             </td>
-                                                            <td className={Number(detalhe.PERRATEIO || 0) === 100 ? 'text-center fw-semibold' : 'table-danger text-center fw-semibold'}>
-                                                                {formatPercent(detalhe.PERRATEIO)}
+                                                            <td className={!detalhe.CENTRODECUSTO ? 'table-danger' : ''}>
+                                                                {detalhe.CENTRODECUSTO
+                                                                    ? detalhe.CENTRODECUSTO.split(' / ').map((cc, i) => (
+                                                                        <div key={i} className="item-dado-secundario">{cc}</div>
+                                                                    ))
+                                                                    : <span className="text-muted">Não configurado</span>}
                                                             </td>
                                                             <td className={String(detalhe.REMESSA_OK || '') === 'N' ? 'table-danger text-center' : 'text-center'} title={detalhe.REMESSA_ERRO || ''}>
                                                                 <span className={`badge rounded-pill ${getRemessaBadgeClass(detalhe.REMESSA_STATUS)}`}>
@@ -1763,7 +1767,7 @@ function ImportacaoDespesa(){
                                                 <th>Conta</th>
                                                 <th>Item</th>
                                                 <th>Histórico</th>
-                                                <th className="text-center">% Rateio</th>
+                                                <th>Centros de Custo</th>
                                                 <th className="text-center">Remessa</th>
                                                 <th className="text-end">Valor</th>
                                             </tr>
@@ -1852,8 +1856,12 @@ function ImportacaoDespesa(){
                                                         </div>
                                                     </td>
                                                     <td className={item.HISTORICO ? '' : 'table-danger'}>{item.HISTORICO || 'Dados não encontrado no SGS'}</td>
-                                                    <td className={Number(item.PERRATEIO || 0) === 100 ? 'text-center fw-semibold' : 'table-danger text-center fw-semibold'}>
-                                                        {formatPercent(item.PERRATEIO)}
+                                                    <td className={!item.CENTRODECUSTO ? 'table-danger' : ''}>
+                                                        {item.CENTRODECUSTO
+                                                            ? item.CENTRODECUSTO.split(' / ').map((cc, i) => (
+                                                                <div key={i} className="item-dado-secundario">{cc}</div>
+                                                            ))
+                                                            : <span className="text-muted">Não configurado</span>}
                                                     </td>
                                                     <td className={String(item.REMESSA_OK || '') === 'N' ? 'table-danger text-center' : 'text-center'} title={item.REMESSA_ERRO || ''}>
                                                         <span className={`badge rounded-pill ${getRemessaBadgeClass(item.REMESSA_STATUS)}`}>

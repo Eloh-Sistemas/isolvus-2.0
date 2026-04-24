@@ -1341,7 +1341,8 @@ export async function preAnaliseModel(jsonReq) {
                 A.VALOR,
                 A.HISTORICO,
                 A.DATAENV,
-                NVL(UR.PERRATEIO, 0) AS PERRATEIO
+                NVL(UR.PERRATEIO, 0) AS PERRATEIO,
+                NVL(UR.CENTRODECUSTO, '') AS CENTRODECUSTO
           FROM BSTAB_ANALISE_IMPORT_DESPESA A
           LEFT JOIN BSTAB_USUSARIOS U ON A.CPF_FUNCIONARIO = U.CPF
           LEFT JOIN BSTAB_INSTITUICAOBANCARIA IB ON U.ID_BANCO = IB.ID_BANCO
@@ -1350,9 +1351,13 @@ export async function preAnaliseModel(jsonReq) {
           LEFT JOIN BSTAB_ITEM BI ON A.ID_ITEM = BI.ID_ITEM
           LEFT JOIN BSTAB_USUSARIOS U2 ON A.ID_USUARIOENV = U2.ID_USUARIO
           LEFT JOIN (
-            SELECT ID_USUARIO, SUM(PERRATEIO) AS PERRATEIO
-              FROM BSTAB_USUARIO_RATEIO
-             GROUP BY ID_USUARIO
+            SELECT UR2.ID_USUARIO,
+                   SUM(UR2.PERRATEIO) AS PERRATEIO,
+                   LISTAGG(NVL(CC.DESCRICAO, TO_CHAR(UR2.ID_CENTRODECUSTO)) || ' (' || TO_CHAR(UR2.PERRATEIO) || '%)', ' / ')
+                     WITHIN GROUP (ORDER BY UR2.ID_CENTRODECUSTO) AS CENTRODECUSTO
+              FROM BSTAB_USUARIO_RATEIO UR2
+              LEFT JOIN BSTAB_CENTRODECUSTO CC ON CC.ID_CENTRODECUSTO_ERP = UR2.ID_CENTRODECUSTO
+             GROUP BY UR2.ID_USUARIO
           ) UR ON U.ID_USUARIO = UR.ID_USUARIO
          WHERE A.IDLEITURA = :idleitura
       `;
@@ -1754,9 +1759,13 @@ ORDER BY A.DATAENV DESC, A.DESCRICAOENV
       LEFT JOIN BSTAB_ITEM BI ON A.ID_ITEM = BI.ID_ITEM
       LEFT JOIN BSTAB_USUSARIOS U2 ON A.ID_USUARIOENV = U2.ID_USUARIO
       LEFT JOIN (
-        SELECT ID_USUARIO, SUM(PERRATEIO) AS PERRATEIO
-          FROM BSTAB_USUARIO_RATEIO
-         GROUP BY ID_USUARIO
+        SELECT UR2.ID_USUARIO,
+               SUM(UR2.PERRATEIO) AS PERRATEIO,
+               LISTAGG(NVL(CC.DESCRICAO, TO_CHAR(UR2.ID_CENTRODECUSTO)) || ' (' || TO_CHAR(UR2.PERRATEIO) || '%)', ' / ')
+                 WITHIN GROUP (ORDER BY UR2.ID_CENTRODECUSTO) AS CENTRODECUSTO
+          FROM BSTAB_USUARIO_RATEIO UR2
+          LEFT JOIN BSTAB_CENTRODECUSTO CC ON CC.ID_CENTRODECUSTO_ERP = UR2.ID_CENTRODECUSTO
+         GROUP BY UR2.ID_USUARIO
       ) UR ON U.ID_USUARIO = UR.ID_USUARIO
       WHERE A.IDLEITURA = :idleitura
     `;
@@ -1889,7 +1898,8 @@ export async function consultarDespesasVinculadasLeituraModel(jsonReq) {
         NVL(SI.VLUNIT, A.VALOR) AS VALOR,
         A.HISTORICO,
         A.DATAENV,
-        NVL(UR.PERRATEIO, 0) AS PERRATEIO
+        NVL(UR.PERRATEIO, 0) AS PERRATEIO,
+        '' AS CENTRODECUSTO
       FROM BSTAB_ANALISE_IMPORT_DESPESA A
       LEFT JOIN BSTAB_SOLICITADESPESAC C ON C.NUMSOLICITACAO = A.NUMSOLICITACAO
       LEFT JOIN BSTAB_SOLICITADESPESAI SI ON SI.NUMSOLICITACAO = A.NUMSOLICITACAO AND SI.ID_ITEM = A.ID_ITEM
@@ -1901,9 +1911,10 @@ export async function consultarDespesasVinculadasLeituraModel(jsonReq) {
       LEFT JOIN BSTAB_CONTAGERENCIAL CG ON A.CONTA = CG.ID_CONTAERP
       LEFT JOIN BSTAB_USUSARIOS UENV ON A.ID_USUARIOENV = UENV.ID_USUARIO
       LEFT JOIN (
-        SELECT ID_USUARIO, SUM(PERRATEIO) AS PERRATEIO
-          FROM BSTAB_USUARIO_RATEIO
-         GROUP BY ID_USUARIO
+        SELECT UR2.ID_USUARIO,
+               SUM(UR2.PERRATEIO) AS PERRATEIO
+          FROM BSTAB_USUARIO_RATEIO UR2
+         GROUP BY UR2.ID_USUARIO
       ) UR ON U.ID_USUARIO = UR.ID_USUARIO
       WHERE A.IDLEITURA = :idleitura
       ORDER BY
@@ -1919,8 +1930,66 @@ export async function consultarDespesasVinculadasLeituraModel(jsonReq) {
       { outFormat: OracleDB.OUT_FORMAT_OBJECT }
     );
 
+    const ssqlCentrosCustoUsuario = `
+      SELECT
+        UR.ID_USUARIO,
+        UR.ID_CENTRODECUSTO,
+        UR.PERRATEIO,
+        NVL(CC.DESCRICAO, TO_CHAR(UR.ID_CENTRODECUSTO)) AS CENTRODECUSTO
+      FROM BSTAB_USUARIO_RATEIO UR
+      JOIN (
+        SELECT DISTINCT U.ID_USUARIO, U.ID_GRUPO_EMPRESA
+        FROM BSTAB_ANALISE_IMPORT_DESPESA A
+        LEFT JOIN BSTAB_USUSARIOS U ON U.CPF = A.CPF_FUNCIONARIO
+        WHERE A.IDLEITURA = :idleitura
+          AND U.ID_USUARIO IS NOT NULL
+      ) US ON US.ID_USUARIO = UR.ID_USUARIO
+      LEFT JOIN BSTAB_CENTRODECUSTO CC
+        ON CC.ID_CENTRODECUSTO_ERP = UR.ID_CENTRODECUSTO
+       AND CC.ID_GRUPO_EMPRESA = US.ID_GRUPO_EMPRESA
+      ORDER BY UR.ID_USUARIO, UR.ID_CENTRODECUSTO
+    `;
+
+    const centrosCustoResult = await connection.execute(
+      ssqlCentrosCustoUsuario,
+      { idleitura },
+      { outFormat: OracleDB.OUT_FORMAT_OBJECT }
+    );
+
+    const centrosPorUsuario = new Map();
+    for (const row of centrosCustoResult.rows || []) {
+      const idUsuario = Number(row.ID_USUARIO || 0);
+      if (!idUsuario) {
+        continue;
+      }
+
+      if (!centrosPorUsuario.has(idUsuario)) {
+        centrosPorUsuario.set(idUsuario, []);
+      }
+
+      centrosPorUsuario.get(idUsuario).push({
+        idCentroCusto: row.ID_CENTRODECUSTO,
+        descricao: row.CENTRODECUSTO,
+        percentual: Number(row.PERRATEIO || 0)
+      });
+    }
+
+    const despesasComCentrosCusto = (despesasResult.rows || []).map((item) => {
+      const idUsuario = Number(item?.ID_FORNECEDOR || 0);
+      const centrosCusto = idUsuario ? (centrosPorUsuario.get(idUsuario) || []) : [];
+      const centrosCustoTexto = centrosCusto
+        .map((centro) => `${centro.descricao} (${centro.percentual}%)`)
+        .join(' / ');
+
+      return {
+        ...item,
+        CENTROSDECUSTO: centrosCusto,
+        CENTRODECUSTO: item?.CENTRODECUSTO || centrosCustoTexto
+      };
+    });
+
     const remessa = await obterDadosRemessaPorLeitura(connection, idleitura);
-    const { registros: despesasValidadas, alertas: alertasRemessa } = aplicarValidacaoRemessa(despesasResult.rows || [], remessa);
+    const { registros: despesasValidadas, alertas: alertasRemessa } = aplicarValidacaoRemessa(despesasComCentrosCusto, remessa);
     const { totalErros, percentualErro } = resumirValidacaoPreAnalise(despesasValidadas, alertasRemessa);
     const despesasGeradas = despesasValidadas.filter((item) => Number(item?.NUMSOLICITACAO || 0) > 0);
     const registrosPendentes = despesasValidadas.filter((item) => Number(item?.NUMSOLICITACAO || 0) <= 0);
@@ -2022,7 +2091,8 @@ export async function processarDespesasImportacaoModel(jsonReq) {
         UFORN.AGENCIA AS AGENCIA,
         UFORN.CONTA AS CONTABANCARIA,
         UFORN.OPERACAO AS OPERACAO,
-        NVL(UR.PERRATEIO, 0) AS PERRATEIO
+        NVL(UR.PERRATEIO, 0) AS PERRATEIO,
+        NVL(UR.CENTRODECUSTO, '') AS CENTRODECUSTO
       FROM BSTAB_ANALISE_IMPORT_DESPESA A
       LEFT JOIN BSTAB_USUSARIOS UFORN ON UFORN.CPF = A.CPF_FUNCIONARIO
       LEFT JOIN BSTAB_INSTITUICAOBANCARIA IB ON IB.ID_BANCO = UFORN.ID_BANCO
@@ -2031,9 +2101,13 @@ export async function processarDespesasImportacaoModel(jsonReq) {
       LEFT JOIN BSTAB_ITEM BI ON BI.ID_ITEM = A.ID_ITEM
       LEFT JOIN BSTAB_USUSARIOS UENV ON UENV.ID_USUARIO = A.ID_USUARIOENV
       LEFT JOIN (
-        SELECT ID_USUARIO, SUM(PERRATEIO) AS PERRATEIO
-          FROM BSTAB_USUARIO_RATEIO
-         GROUP BY ID_USUARIO
+        SELECT UR2.ID_USUARIO,
+               SUM(UR2.PERRATEIO) AS PERRATEIO,
+               LISTAGG(NVL(CC.DESCRICAO, TO_CHAR(UR2.ID_CENTRODECUSTO)) || ' (' || TO_CHAR(UR2.PERRATEIO) || '%)', ' / ')
+                 WITHIN GROUP (ORDER BY UR2.ID_CENTRODECUSTO) AS CENTRODECUSTO
+          FROM BSTAB_USUARIO_RATEIO UR2
+          LEFT JOIN BSTAB_CENTRODECUSTO CC ON CC.ID_CENTRODECUSTO_ERP = UR2.ID_CENTRODECUSTO
+         GROUP BY UR2.ID_USUARIO
       ) UR ON UFORN.ID_USUARIO = UR.ID_USUARIO
       WHERE A.IDLEITURA = :idleitura
         AND A.NUMSOLICITACAO IS NULL
