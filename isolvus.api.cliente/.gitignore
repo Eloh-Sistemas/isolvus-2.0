@@ -6,7 +6,6 @@
 .env.production
 
 # Configuração sensível do banco
-src/config/dbConfig.js
 
 # Logs
 *.log
