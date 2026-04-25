@@ -1,96 +1,72 @@
 .grid-desktop-itemdespesa .bg-grid {
-    margin-top: 15px;
     padding: 13px;
-    height: 630px;
 }
 
-.grid-desktop-itemdespesa .table {    
-    border-style: solid;
-    border-width: 1px;
-    height: 20px;
+.grid-desktop-itemdespesa .table {
     border-collapse: collapse;
     border-style: dashed;
-}
-
-.grid-desktop-itemdespesa .Titulo h1 {
-    font-size: 25px;
-    font-weight: 400;
+    border-width: 1px;
+    min-width: 760px;
 }
 
 .grid-desktop-itemdespesa .Titulos-Table th {
     background-color: #f3f7f8;
     border: none;
     font-weight: 600;
-    height: 38px;
+    height: 45px;
     vertical-align: middle;
 }
 
-/* 🆕 Estilo para a célula do botão no cabeçalho */
-.grid-desktop-itemdespesa .Titulos-Table th:last-child {
-    width: 60px;
-    text-align: right;
-    padding-right: 10px;
-}
-
-/* 🆕 Ajuste do botão dentro do cabeçalho */
-.grid-desktop-itemdespesa .Titulos-Table button {
-    padding: 5px 15px;
-    font-size: 15px;
-    line-height: 1;
-    background-color: #dbdbdb;
-    color: #000000;
-    border: none;
-    transition: 0.2s;
-}
-
-.grid-desktop-itemdespesa .Titulos-Table button:hover:not(:disabled) {
-    background-color: #c7c7c7;
-}
-
-.grid-desktop-itemdespesa .Titulos-Table button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-.grid-desktop-itemdespesa .Totais td {
-    background-color: #f3f7f8;
-    border: none;
-    font-weight: 400;     
-}
-
 .grid-desktop-itemdespesa .tableFixHead {
-    overflow: auto;
-    height: 590px;   
     border-width: 1px;
-    border-style: dashed; 
+    border-style: dashed;
     border-color: #cfcfcf;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    max-height: 420px;
 }
 
 .grid-desktop-itemdespesa .tableFixHead thead th {
     position: sticky;
     top: 0;
-    z-index: 2; /* leve aumento para ficar sobre a borda */
+    z-index: 2;
 }
 
-/* 🆕 Destaque visual ao passar o mouse nas linhas */
 .grid-desktop-itemdespesa .item-Table:hover {
     background-color: #f8f9fa;
     cursor: pointer;
 }
 
-.grid-desktop-itemdespesa .Total {
-   position: relative;
-   bottom: 21px;
-   text-align: center;
-   padding-top: 5px;
-   border-width: 1px;
-   border-color: #cfcfcf;
-   height: 45px;    
-   background-color: #f3f7f8;   
-   border-style: dashed;
+.grid-desktop-itemdespesa .btn-add-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background-color: #dbdbdb;
+    color: #000;
+    border: none;
+    font-size: 15px;
+    margin-left: auto;
+    transition: background-color 0.2s;
 }
 
-.grid-desktop-itemdespesa .Total label {    
+.grid-desktop-itemdespesa .btn-add-item:hover {
+    background-color: #c7c7c7;
+}
+
+.grid-desktop-itemdespesa .Total {
+    border-width: 1px;
+    border-color: #cfcfcf;
+    height: 45px;
+    background-color: #f3f7f8;
+    border-style: dashed;
+    border-top: none;
+    align-items: center;
+    padding: 0 13px;
+}
+
+.grid-desktop-itemdespesa .Total label {
     font-weight: 600;
     margin-right: 5px;
 }

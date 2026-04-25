@@ -1,115 +1,95 @@
 import "./GridMobile.css";
-import { NumericFormat } from 'react-number-format';
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
 
-function GridMobile(props){
+function GridMobile(props) {
 
-   const [proximoIndexItem, setProximoIndexItem] = useState(0);
-   const [qtRegistro, SetQtRegistro] = useState(0);
+   const [qtRegistro, setQtRegistro] = useState(0);
    const [total, setTotal] = useState(0);
-   const {tipoTela} = useParams();
 
-
-
-   function recalcularTotais(){
-
-      var calculoTotal = 0;
-
-      props.dados.map((i) => {
-         SetQtRegistro(props.dados.length);  
-         console.log(i.quantidade * i.vlunit); 
-         calculoTotal = calculoTotal + i.quantidade * i.vlunit;         
+   function recalcularTotais() {
+      let calculoTotal = 0;
+      props.dados.forEach((i) => {
+         calculoTotal += i.quantidade * i.vlunit;
       });
-
+      setQtRegistro(props.dados.length);
       setTotal(calculoTotal);
    }
-   
-   function NovoItem(){
-      
-      props.SeItemSelecionado({coditem: 0, descricao: "", quantidade: 0, vlunit:0});
-      props.openModalItem(); 
-      props.tipoModal("Adicionar");      
 
+   function NovoItem() {
+      props.SeItemSelecionado({ coditem: 0, descricao: "", quantidade: 0, vlunit: 0 });
+      props.openModalItem();
+      props.tipoModal("Adicionar");
    }
- 
 
-   function SelecinarItem(ItemSelecionado, index){
-
+   function SelecinarItem(ItemSelecionado, index) {
       props.setIndex(index);
       props.SeItemSelecionado(ItemSelecionado);
-      props.openModalItem(); 
+      props.openModalItem();
       props.tipoModal("Editar");
-      
    }
 
-   useEffect(()=>{
+   useEffect(() => {
       recalcularTotais();
-      setProximoIndexItem(props.dados.length+1);
-   },[props.dados])
+   }, [props.dados]);
 
+   return (
+      <div className="grid-mobile-itemdespesa">
+         <div className="grid-mobile-header">
+            <div className="grid-mobile-totais">
+               <span><strong>Itens:</strong> {qtRegistro}</span>
+               <span>
+                  <strong>Total: </strong>
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total - props.totalvale)}
+               </span>
+            </div>
+            {props.tabhabilitada && (
+               <button onClick={() => NovoItem()} className="grid-mobile-btn-add">
+                  <i className="bi-plus-lg me-1"></i> Adicionar
+               </button>
+            )}
+         </div>
 
-    return <div>
+         {props.dados.length === 0 ? (
+            <div className="grid-mobile-empty">Nenhum item adicionado</div>
+         ) : (
+            <div className="grid-mobile-card-list">
+               {props.dados.map((i, index) => (
+                  <article key={index} className="grid-mobile-card-item">
+                     <div className="grid-mobile-card-top">
+                        <span className="grid-mobile-badge">Cod. {i.coditem}</span>
+                        {props.tabhabilitada ? (
+                           <button
+                              className="grid-mobile-btn-edit"
+                              onClick={() => SelecinarItem(i, index)}
+                           >
+                              <i className="bi bi-pencil-square me-1"></i>Editar
+                           </button>
+                        ) : null}
+                     </div>
 
-             <div className="row">
-                
-                        <div className="col-12 mt-4 d-flex w-100 justify-content-between top-dados-grid">
-                                <h1 className="mt-2 text-secondary">Gastos</h1>
-                                <h4 className="mt-2 ">Itens: {qtRegistro}</h4>
-                                <h4 className="mt-2 ">Total: {new Intl.NumberFormat('pt-BR', {style: 'currency', currency: 'BRL'}).format(total)}</h4>
-                        </div>    
+                     <h6 className="grid-mobile-desc">{i.descricao}</h6>
 
-             </div>
+                     <div className="grid-mobile-metrics">
+                        <div>
+                           <small>Qtd</small>
+                           <strong>{i.quantidade}</strong>
+                        </div>
+                        <div>
+                           <small>Valor Unit.</small>
+                           <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(i.vlunit)}</strong>
+                        </div>
+                        <div>
+                           <small>Total</small>
+                           <strong className="grid-mobile-total">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(i.quantidade * i.vlunit)}</strong>
+                        </div>
+                     </div>
+                  </article>
+               ))}
+            </div>
+         )}
 
-             {/*Tabela*/}
-
-
-            {   props.dados.map((i, index) => {
-                    return <div key={i.index} className="item-consulta-solicitacao mt-3"> 
-
-                    <div className="col-12 d-flex w-100 justify-content-between" onClick={props.openModalItem}>   
-                        <p className="mt-2"><label className="descricao-item">{i.descricao}</label></p>                                                                     
-                    </div> 
-
-                    <hr/>
-
-                    <div>                            
-                          <p><label>Quantidade:</label> {i.quantidade}</p>
-                    </div>
-
-                    <div>                            
-                          <p><label>Valor Unitário:</label> {new Intl.NumberFormat('pt-BR', {style: 'currency', currency: 'BRL'}).format(i.vlunit)}</p>
-                    </div>
-
-                    <div>                            
-                          <p><label>Valor Total:</label> {new Intl.NumberFormat('pt-BR', {style: 'currency', currency: 'BRL'}).format(i.quantidade * i.vlunit) }</p>
-                    </div>
-
-                    <hr/> 
-
-                    {
-                      props.tabhabilitada ? <button  className="btn btn-secondary me-2" id="button-grid-desktop-despesas" onClick={()=>SelecinarItem(i, index)}><i className="bi bi-pencil-square"></i></button> : null
-                    }
-                    
-
-                 </div>   
-                })
-            }
-
-            { props.tabhabilitada ?<div className="row mt-4">              
-                                          <div className="col-12">
-                                             <button onClick={() =>NovoItem()} className="btn btn-secondary w-100" ><i className="bi-plus-lg m-2"></i>Adcionar</button>                                                                                                      
-                                          </div>                                          
-                                       </div> :null
-            }
-            
-
-            <hr className="mt-4"/>
-             
-
-            
-
-    </div>
+      </div>
+   );
 }
 
 export default GridMobile;

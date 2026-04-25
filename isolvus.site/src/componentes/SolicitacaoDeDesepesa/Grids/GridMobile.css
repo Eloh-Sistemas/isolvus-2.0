@@ -1,30 +1,135 @@
-.item-consulta-solicitacao{
-    background-color: #ffffff;
-    box-shadow: 0px 0px 3px #b3b3b3;
-    padding: 15px;
+.grid-mobile-itemdespesa {
+    padding: 4px 0;
+}
+
+.grid-mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: #f3f7f8;
+    border: 1px dashed #cfcfcf;
+    padding: 10px 13px;
+    margin-bottom: 10px;
+    gap: 8px;
+}
+
+.grid-mobile-totais {
+    display: flex;
+    gap: 16px;
+    font-size: 0.85rem;
+    flex-wrap: wrap;
+}
+
+.grid-mobile-totais strong {
+    font-weight: 600;
+}
+
+.grid-mobile-btn-add {
+    background-color: #dbdbdb;
+    color: #000;
+    border: none;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 7px 14px;
+    white-space: nowrap;
+    transition: background-color 0.2s;
+}
+
+.grid-mobile-btn-add:hover {
+    background-color: #c7c7c7;
+}
+
+.grid-mobile-card-list {
+    display: grid;
+    gap: 8px;
+}
+
+.grid-mobile-card-item {
+    border: 1px dashed #cfcfcf;
+    background: #fff;
+    padding: 10px;
+}
+
+.grid-mobile-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
     margin-bottom: 8px;
 }
 
-.item-consulta-solicitacao p{
-    font-weight: 400;
+.grid-mobile-badge {
+    display: inline-block;
+    background: #edf3fb;
+    color: #1f2937;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 8px;
 }
 
-.item-consulta-solicitacao label{
-    font-size: 14px;
+.grid-mobile-desc {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 8px;
+    word-break: break-word;
+}
+
+.grid-mobile-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    border-top: 1px solid #e9ecef;
+    padding-top: 8px;
+}
+
+.grid-mobile-metrics small {
+    display: block;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    color: #64748b;
     margin-bottom: 2px;
-    color: rgb(71, 71, 71);
-    text-decoration: none;
-    font-weight: 600;
 }
 
-.top-dados-grid h4{
-    position: relative;
-    top: 9px;
-    font-size: 15px;
-    font-weight: 400;
+.grid-mobile-metrics strong {
+    font-size: 0.84rem;
+    color: #1f2937;
 }
 
-.descricao-item{
-    font-size: 18px;
+.grid-mobile-btn-edit {
+    background-color: #e9ecef;
+    color: #374151;
+    border: none;
+    font-size: 0.78rem;
     font-weight: 600;
+    padding: 5px 9px;
+    white-space: nowrap;
+    transition: background-color 0.2s;
+}
+
+.grid-mobile-btn-edit:hover {
+    background-color: #dee2e6;
+}
+
+.grid-mobile-empty {
+    text-align: center;
+    color: #9ca3af;
+    font-size: 0.85rem;
+    padding: 20px 0;
+    border: 1px dashed #cfcfcf;
+}
+
+@media (max-width: 575px) {
+    .grid-mobile-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .grid-mobile-btn-add {
+        width: 100%;
+    }
+
+    .grid-mobile-metrics {
+        grid-template-columns: 1fr;
+    }
 }

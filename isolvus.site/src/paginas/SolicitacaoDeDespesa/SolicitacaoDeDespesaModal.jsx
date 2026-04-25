@@ -12,6 +12,7 @@ import { toast } from "react-toastify";
 import Swal from 'sweetalert2';
 import UploadArquivos from "../../componentes/UploadArquivos/UploadArquivos";
 import "./GridDesktopRateio.css";
+import "../../componentes/SolicitacaoDeDesepesa/Modal/ModalCadastroDeUsuario.css";
 
 function SolicitacaoDeDespesaModal(props){
     // STATES
@@ -75,6 +76,7 @@ function SolicitacaoDeDespesaModal(props){
     const [valesSelecionados, setValesSelecionados] = useState([]);
     const [historico1, sethistorico1] = useState("");
     const [historico2, sethistorico2] = useState("");
+    const [abaAtiva, setAbaAtiva] = useState("solicitacao");
 
     const [percentualRateio, setpercentualRateio] = useState(0);
     const [valorRateio, setvalorRateio] = useState(0);
@@ -392,6 +394,7 @@ function SolicitacaoDeDespesaModal(props){
         setAgencia("");
         setcontaBancaria("");
         setOperacao("");
+        setAbaAtiva("solicitacao");
         SetObjetivo("");
         SetObs_ordenador("");
         SetObs_financeiro("");
@@ -1356,19 +1359,21 @@ function SolicitacaoDeDespesaModal(props){
         <Modal
                     isOpen={props.isOpen}
                     onRequestClose={props.onRequestClose}
-                    overlayClassName="react-modal-overlay"
+                    overlayClassName="cad-modal-overlay solicitacao-modal-overlay"
                     ariaHideApp={false}
-                    className="react-modal-content"
+                    className="cad-modal-content solicitacao-modal-content"
         >
 
-        <div className="bsmodal-content">
-
-            <div className="bsmodal-header mb-4">
-                <h3 className="modal-title">
-                    {
-                        props.id_solicitacao > 0 ? "Solicitação: "+ props.id_solicitacao : "Nova Solicitação"
-                    }
-                </h3>
+            <div className="cad-modal-header">
+                <div>
+                    <h4 className="cad-modal-title">
+                        {props.id_solicitacao > 0 ? "Solicitação: " + props.id_solicitacao : "Nova Solicitação"}
+                    </h4>
+                    <p className="text-muted mb-0" style={{ fontSize: "0.85rem" }}>
+                        Preencha os dados da solicitação e clique em Salvar.
+                    </p>
+                </div>
+                <button className="btn btn-outline-secondary" onClick={props.onRequestClose}>Fechar</button>
             </div>
 
 
@@ -1388,23 +1393,79 @@ function SolicitacaoDeDespesaModal(props){
                         
                         
                 
-                        <div >
+                        <div>
                 
                         { (ValorGastoMaioQueValorDisponivel == true && props.tipoTela == "Ordenar") ?
                         <div className="alert alert-danger" role="alert">
                           {"Atenção: O valor desta despesa de "+new Intl.NumberFormat('pt-BR', {style: 'currency', currency: 'BRL'}).format((vlGastoTotal))+" ultrapassa o valor orçado desta filial para o mês corrente, saldo disponivel de "+new Intl.NumberFormat('pt-BR', {style: 'currency', currency: 'BRL'}).format((vlSaldoDisponivel))}
                         </div> : null
                         }
-                        
-                                         
-                            <div className="row conteiner-campos">
 
-                                        <div className="col-lg-12 mb-2">
-                                            <h4 className="section-title">1.0 - DADOS GERAL</h4>
-                                        </div>
-                                
+                        <div className="solicitacao-tabs" role="tablist" aria-label="Abas da solicitação de despesa">
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={abaAtiva === "solicitacao"}
+                                className={`solicitacao-tab-btn ${abaAtiva === "solicitacao" ? "active" : ""}`}
+                                onClick={() => setAbaAtiva("solicitacao")}
+                            >
+                                DADOS GERAIS
+                            </button>
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={abaAtiva === "anexo"}
+                                className={`solicitacao-tab-btn ${abaAtiva === "anexo" ? "active" : ""}`}
+                                onClick={() => setAbaAtiva("anexo")}
+                            >
+                                ANEXO
+                            </button>
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={abaAtiva === "itens"}
+                                className={`solicitacao-tab-btn ${abaAtiva === "itens" ? "active" : ""}`}
+                                onClick={() => setAbaAtiva("itens")}
+                            >
+                                ITENS
+                            </button>
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={abaAtiva === "controladoria"}
+                                className={`solicitacao-tab-btn ${abaAtiva === "controladoria" ? "active" : ""}`}
+                                onClick={() => setAbaAtiva("controladoria")}
+                            >
+                                CONTROLADORIA
+                            </button>
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={abaAtiva === "ordenador"}
+                                className={`solicitacao-tab-btn ${abaAtiva === "ordenador" ? "active" : ""}`}
+                                onClick={() => setAbaAtiva("ordenador")}
+                            >
+                                ORDENADOR
+                            </button>
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={abaAtiva === "financeiro"}
+                                className={`solicitacao-tab-btn ${abaAtiva === "financeiro" ? "active" : ""}`}
+                                onClick={() => setAbaAtiva("financeiro")}
+                            >
+                                FINANCEIRO
+                            </button>
+                        </div>
+                        
+                        {abaAtiva === "solicitacao" ? <>
+                            <div className="solicitacao-tab-panel">
+                            <div className="row conteiner-campos g-3">
+                <div className="col-12">
+                    <div className="solicitacao-subsection-block">
+                        <div className="row g-3">
+
                                         <div className="col-lg-2 mb-3">
-                                    
                                             <label htmlFor="tipodespesa" className="mb-2">Tipo de Despesa</label>                                    
                                                 <select autoFocus className="form-control" id="tipodespesa" 
                                                     onChange={(e) => settipodespesa(e.target.value)} 
@@ -1415,7 +1476,6 @@ function SolicitacaoDeDespesaModal(props){
                                                 <option key={2} value={"L"}>Viagem</option> 
                                                 <option key={3} value={"EB"}>Encargos e Beneficios</option> 
                                                 </select>
-                
                                         </div>
                 
                                         <div className="col-lg-4 mb-3">   
@@ -1654,26 +1714,45 @@ function SolicitacaoDeDespesaModal(props){
                                             </div> : null
                                         }
 
-                                        <div className="col-lg-12 mb-3 mt-3"> 
-                                            <h4 className="section-title mb-4">1.1 - ANEXO</h4>
-                                            <div className="col-md-12 mb-3">
-                                            <UploadArquivos 
-                                                ref={uploadRef} 
-                                                idRotina={"1030.1"}
-                                                idRelacional={proximoid}
-                                                disabled={disableAnexo}  
-                                                //acceptTypes="image/*,application/pdf"
-                                                capture={true}                           
-                                            />    
-                                            </div>   
-                                        </div>                                        
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            </div>
+                        </> : null}
 
-                                        <div className="col-12"> 
+                        {abaAtiva === "anexo" ? <>
+                            <div className="solicitacao-tab-panel">
+                            <div className="row conteiner-campos g-3">
+                                <div className="col-12">
+                                    <div className="solicitacao-subsection-block">
+                                        <div className="row g-3">
+                                            <div className="col-12 mb-1">
+                                                <UploadArquivos
+                                                    ref={uploadRef}
+                                                    idRotina={"1030.1"}
+                                                    idRelacional={proximoid}
+                                                    disabled={disableAnexo}
+                                                    //acceptTypes="image/*,application/pdf"
+                                                    capture={true}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            </div>
+                        </> : null}
 
-                                            <h4 className="section-title">1.2 - ITENS</h4>                                           
-                                                        
-                                            { tipoGrid == "M" ? <GridMobile openModalItem={openModalItem} 
-                                                                        dados={listaDeGasto} 
+                        {abaAtiva === "itens" ? <>
+                            <div className="solicitacao-tab-panel">
+                            <div className="row conteiner-campos g-3">
+                                <div className="col-12">
+                                    <div className="solicitacao-subsection-block">
+                                        <div className="row g-3">
+                                            <div className="col-12">
+                                            { tipoGrid == "M" ? <GridMobile openModalItem={openModalItem}
+                                                                        dados={listaDeGasto}
                                                                         tipoModal={setTipoModal}
                                                                         SeItemSelecionado={SeItemSelecionado}
                                                                         onClikSalvar={onClikSalvar}
@@ -1681,9 +1760,9 @@ function SolicitacaoDeDespesaModal(props){
                                                                         tabhabilitada={tabhabilitada}
                                                                         totalvale={totalSelecionado}
                                                                         habilitarbtnSalvar={habilitarbtnSalvar}/>
-                            
-                                                            : <GridDesktop openModalItem={openModalItem} 
-                                                                        dados={listaDeGasto} 
+
+                                                            : <GridDesktop openModalItem={openModalItem}
+                                                                        dados={listaDeGasto}
                                                                         tipoModal={setTipoModal}
                                                                         SeItemSelecionado={SeItemSelecionado}
                                                                         onClikSalvar={onClikSalvar}
@@ -1692,16 +1771,22 @@ function SolicitacaoDeDespesaModal(props){
                                                                         totalvale={totalSelecionado}
                                                                         habilitarbtnSalvar={habilitarbtnSalvar}
                                                                         />
-                                            }                                                
-                                                                                                
-                                        </div>  
+                                                                                        }
+                                                                                        </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            </div>
+                        </> : null}
 
-                                        { (visibleRespControladoria || visibleDataControladoria || visibleContaGerencial || visibleCentroDeCusto) == true ?
-                                            <div className="col-lg-12 mb-3 mt-lg-4">
-                                             <h4 className="section-title mt-lg-3">2.0 - CONTROLADORIA</h4>
-                                            </div> : null
-                                        }
-                                                                                                                                                                                                                  
+                        {abaAtiva === "controladoria" ? <>
+                            <div className="solicitacao-tab-panel">
+                            <div className="row conteiner-campos g-3">
+                <div className="col-12">
+                    <div className="solicitacao-subsection-block">
+                        <div className="row g-3">
+
                                         {
                                             visibleContaGerencial == true ? 
                                             
@@ -1770,7 +1855,13 @@ function SolicitacaoDeDespesaModal(props){
                                         </div></>: null
                                         }
                                         
-                                        {/*Tabela de rateio */}    
+                                        {/*Tabela de rateio */}
+
+                                        { visibleCentroDeCusto == true ?
+                                        <div className="col-12">
+                                            <p className="cad-section-title">2.1 - RATEIO</p>
+                                        </div> : null
+                                        }
 
                                         { visibleCentroDeCusto == true ? <>
 
@@ -1880,13 +1971,20 @@ function SolicitacaoDeDespesaModal(props){
                                                         <input type="text" className="form-control" placeholder={"Buscando ..."} id={"datadire"} value={dataControladoria} disabled /> 
                                         </div> : null
                                         }
-                                                                                            
-                                        { (visibleParecerOrdenador || visibleRespOrdenador || visibleDataOrdenador || visibleStatus) == true ?
-                                        <div className="col-12 mt-3">
-                                        <h4 className="section-title mb-4">3.0 - ORDENADOR</h4>
-                                        </div> : null
-                                        }
-                                        
+
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            </div>
+                        </> : null}
+
+                        {abaAtiva === "ordenador" ? <>
+                            <div className="solicitacao-tab-panel">
+                            <div className="row conteiner-campos g-3">
+                <div className="col-12">
+                    <div className="solicitacao-subsection-block">
+                        <div className="row g-3">
 
                                         {visibleStatus == true ?
                                             <div className="col-lg-12 mb-3">
@@ -1924,122 +2022,120 @@ function SolicitacaoDeDespesaModal(props){
                                                         <input type="text" className="form-control" placeholder={"Buscando ..."} id={"dataordenador"} value={dataOrdenacao} disabled /> 
                                         </div> : null
                                         }
-                                                                            
-                                                                                        
-                                </div>                                             
+
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            </div>
+                        </> : null}
                                 
                         </div>
 
 
                         
-
-                        <div className="row">
-                            
-                            { (visibleIntegrarCom || visibleCaixaBanco || visibleParecerFinanceiro || visibleRespFinanceiro || visibleDataFinanceiro) == true ?
+                        {abaAtiva === "financeiro" ? <>
+                        <div className="solicitacao-tab-panel">
+                        <div className="row conteiner-campos g-3">
                             <div className="col-12">
-                            <h4 className="section-title mt-lg-3">4.0 - FINANCEIRO</h4>
-                            </div> : null
-                            }
-                            
-                        
-                            {visibleIntegrarCom == true ?
+                                <div className="solicitacao-subsection-block">
+                                    <div className="row g-3">
 
-                                <div className="col-lg-12 mb-2">
-                                
-                                    <label htmlFor="integrar" className="mb-2">Integrar com</label>                                    
-                                    <select className="form-control" id="integrar" onChange={(e) => setIntegracao(e.target.value)} value={integracao} disabled={disabledIntegrarCom}>
-                                    <option value={0}>{"Selecione a integração"}</option>
-                                    { listaDeRotinaIntegracao.map((i) => {
-                                            return  <option key={i.id} value={i.rotina}>{i.descricao}</option>
-                                        })
-                                    }                                    
-                                    </select>
-        
-                                </div> : null                
-                            }                            
-                            
+                                        {visibleIntegrarCom == true ?
 
-                            {
-                                visibleCaixaBanco == true ? 
-                                    <div className="col-lg-12 mb-3">   
-                                        <label htmlFor="cb" className="mb-2">Caixa/Banco</label>                   
-                                        <EditComplete placeholder={"Caixa/Banco"} id={"cb"}  
-                                                    tipoConsulta={"cb"} 
-                                                    onClickCodigo={setcodCaixaBanco} 
-                                                    onClickDescricao={SetdescricaoCaixaBanco}
-                                                    value={descricaoCaixaBanco} 
-                                                    disabled={disableCaixaBanco}
-                                                    />
-                                    </div> : null
-                            } 
+                                            <div className="col-lg-12 mb-2">
 
-                            { visibleParecerFinanceiro == true ?
-                                            <div className="col-12 mb-3">   
-                                            <label htmlFor="parefin" className="mb-2">Parecer Financeiro</label>                   
-                                            <textarea className="form-control" 
-                                                      id="parefin" rows="5"                                                                             
-                                                      placeholder="Observação do Financeiro" onChange={(e) => SetObs_financeiro(e.target.value)} value={obs_financeiro} disabled={disableParecerFinanceiro}></textarea>
-                                            </div>  : null 
-                            }  
+                                                <label htmlFor="integrar" className="mb-2">Integrar com</label>
+                                                <select className="form-control" id="integrar" onChange={(e) => setIntegracao(e.target.value)} value={integracao} disabled={disabledIntegrarCom}>
+                                                <option value={0}>{"Selecione a integração"}</option>
+                                                { listaDeRotinaIntegracao.map((i) => {
+                                                        return  <option key={i.id} value={i.rotina}>{i.descricao}</option>
+                                                    })
+                                                }
+                                                </select>
 
-                            { visibleParecerFinanceiro == true ?
-                                            <div className="col-12 mb-3">   
-                                            <label htmlFor="parefin" className="mb-2">Historico 1</label>                   
-                                            <input type="text" className="form-control" id="datafin" placeholder={"Historico 1"}
-                                                                        maxLength={200}
-                                                                        value={historico1} 
-                                                                        onChange={(e) => sethistorico1(e.target.value.toUpperCase())}
-                                                                        disabled={disabledIntegrarCom}/> 
-                                            </div>  : null 
-                            } 
+                                            </div> : null
+                                        }
 
-                            { visibleParecerFinanceiro == true ?
-                                            <div className="col-12 mb-3">   
-                                            <label htmlFor="parefin" className="mb-2">Historico 2</label>                   
-                                            <input type="text" className="form-control" id="datafin" placeholder={"Historico 2"}
-                                                                        maxLength={200}
-                                                                        value={historico2} 
-                                                                        onChange={(e) => sethistorico2(e.target.value.toUpperCase())}
-                                                                        disabled={disabledIntegrarCom}/> 
-                                            </div>  : null 
-                            } 
 
-                            { visibleRespFinanceiro == true ?
-                                <div className="col-lg-9 mb-3">   
-                                            <label htmlFor="resfina" className="mb-2">Res. Lanc. Finaiceiro</label>                   
-                                            <input className="form-control" placeholder={"Buscando ..."} id={"resfina"} value={id_financeiro ? `${id_financeiro} - ${nomefinanceiro}` : ""} disabled /> 
-                                </div> : null                            
-                            }
+                                        {
+                                            visibleCaixaBanco == true ?
+                                                <div className="col-lg-12 mb-3">
+                                                    <label htmlFor="cb" className="mb-2">Caixa/Banco</label>
+                                                    <EditComplete placeholder={"Caixa/Banco"} id={"cb"}
+                                                                tipoConsulta={"cb"}
+                                                                onClickCodigo={setcodCaixaBanco}
+                                                                onClickDescricao={SetdescricaoCaixaBanco}
+                                                                value={descricaoCaixaBanco}
+                                                                disabled={disableCaixaBanco}
+                                                                />
+                                                </div> : null
+                                        }
 
-                            
-                            { visibleDataFinanceiro == true ?
-                                <div className="col-lg-3 mb-3">   
-                                            <label htmlFor="datafin" className="mb-2">Data Financeiro</label>                   
-                                            <input type="text" className="form-control" id="datafin" placeholder={"Buscando ..."}
-                                                                        value={datalancfinaceiro} 
-                                                                        disabled/> 
-                                </div> : null
-                            }
-                            
+                                        { visibleParecerFinanceiro == true ?
+                                                        <div className="col-12 mb-3">
+                                                        <label htmlFor="parefin" className="mb-2">Parecer Financeiro</label>
+                                                        <textarea className="form-control"
+                                                                  id="parefin" rows="5"
+                                                                  placeholder="Observação do Financeiro" onChange={(e) => SetObs_financeiro(e.target.value)} value={obs_financeiro} disabled={disableParecerFinanceiro}></textarea>
+                                                        </div>  : null
+                                        }
+
+                                        { visibleParecerFinanceiro == true ?
+                                                        <div className="col-12 mb-3">
+                                                        <label htmlFor="parefin" className="mb-2">Historico 1</label>
+                                                        <input type="text" className="form-control" id="datafin" placeholder={"Historico 1"}
+                                                                            maxLength={200}
+                                                                            value={historico1}
+                                                                            onChange={(e) => sethistorico1(e.target.value.toUpperCase())}
+                                                                            disabled={disabledIntegrarCom}/>
+                                                        </div>  : null
+                                        }
+
+                                        { visibleParecerFinanceiro == true ?
+                                                        <div className="col-12 mb-3">
+                                                        <label htmlFor="parefin" className="mb-2">Historico 2</label>
+                                                        <input type="text" className="form-control" id="datafin" placeholder={"Historico 2"}
+                                                                            maxLength={200}
+                                                                            value={historico2}
+                                                                            onChange={(e) => sethistorico2(e.target.value.toUpperCase())}
+                                                                            disabled={disabledIntegrarCom}/>
+                                                        </div>  : null
+                                        }
+
+                                        { visibleRespFinanceiro == true ?
+                                            <div className="col-lg-9 mb-3">
+                                                        <label htmlFor="resfina" className="mb-2">Res. Lanc. Finaiceiro</label>
+                                                        <input className="form-control" placeholder={"Buscando ..."} id={"resfina"} value={id_financeiro ? `${id_financeiro} - ${nomefinanceiro}` : ""} disabled />
+                                            </div> : null
+                                        }
+
+
+                                        { visibleDataFinanceiro == true ?
+                                            <div className="col-lg-3 mb-3">
+                                                        <label htmlFor="datafin" className="mb-2">Data Financeiro</label>
+                                                        <input type="text" className="form-control" id="datafin" placeholder={"Buscando ..."}
+                                                                            value={datalancfinaceiro}
+                                                                            disabled/>
+                                            </div> : null
+                                        }
+
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+                        </div>
+                        </> : null}
             </div>
 
 
 
-            <div className="bsmodal-footer">
-                <div className="d-flex justify-content-between w-100">
-                    <button
-                    type="button"
-                    className="btn btn-secondary px-4"
-                    onClick={props.onRequestClose}
-                    >
-                    Voltar
-                    </button>
-
+            <div className="cad-modal-footer">
+                <div className="cad-modal-footer-actions ms-auto">
                 {  habilitarbtnSalvar ? <div> 
                     <button
                     type="button"
-                    className="btn btn-primary px-4"
+                    className="btn btn-primary cad-footer-btn"
                     onClick={onClikSalvar}
                     >
                     Salvar
@@ -2049,7 +2145,6 @@ function SolicitacaoDeDespesaModal(props){
 
                 </div>
             </div>
-        </div>
 
         </Modal>
     )

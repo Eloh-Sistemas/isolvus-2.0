@@ -5,6 +5,227 @@
     margin-top: 29px;
 }
 
+.cad-modal-overlay.solicitacao-modal-overlay {
+    padding: clamp(0.35rem, 1.2vw, 0.95rem);
+}
+
+.cad-modal-content.solicitacao-modal-content {
+    width: min(1600px, calc(100vw - clamp(0.7rem, 2.4vw, 1.9rem)));
+    height: min(94vh, calc(100dvh - clamp(0.7rem, 2.4vw, 1.9rem)));
+    max-height: calc(100dvh - clamp(0.7rem, 2.4vw, 1.9rem));
+}
+
+.solicitacao-modal-content .cad-modal-header,
+.solicitacao-modal-content .cad-modal-footer,
+.solicitacao-modal-content .bsmodal-body {
+    padding-left: clamp(0.5rem, 1.4vw, 0.85rem);
+    padding-right: clamp(0.5rem, 1.4vw, 0.85rem);
+}
+
+.solicitacao-modal-content .solicitacao-subsection-block,
+.solicitacao-modal-content .solicitacao-section-block {
+    padding-left: clamp(0.4rem, 1.1vw, 0.7rem);
+    padding-right: clamp(0.4rem, 1.1vw, 0.7rem);
+}
+
+.solicitacao-modal-content .solicitacao-subsection-block .row,
+.solicitacao-modal-content .solicitacao-section-block .row {
+    --bs-gutter-x: clamp(0.45rem, 1.2vw, 0.7rem);
+}
+
+.solicitacao-modal-content .section-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #64748b;
+    margin: 1.1rem 0 0.45rem;
+}
+
+.solicitacao-modal-content .solicitacao-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    border-bottom: 1px solid #e9ecef;
+    padding: 0.25rem 0 0.55rem;
+    margin-top: 0.6rem;
+    margin-bottom: 0.75rem;
+}
+
+.solicitacao-modal-content .solicitacao-tab-btn {
+    border: 1px solid #dbe4ef;
+    background: #ffffff;
+    color: #64748b;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 0.48rem 0.75rem;
+    flex: 1 1 220px;
+    text-align: center;
+    transition: all 0.15s ease;
+}
+
+.solicitacao-modal-content .solicitacao-tab-btn:hover {
+    background: #f8fafd;
+    border-color: #bfd0e2;
+}
+
+.solicitacao-modal-content .solicitacao-tab-btn.active {
+    background: #edf3fb;
+    border-color: #9eb7d1;
+    color: #1f2937;
+}
+
+.solicitacao-modal-content .solicitacao-tab-panel {
+    margin-top: 0.15rem;
+}
+
+.solicitacao-modal-content .solicitacao-tab-panel .solicitacao-subsection-block:last-child,
+.solicitacao-modal-content .solicitacao-tab-panel .solicitacao-section-block:last-child {
+    margin-bottom: 0;
+}
+
+.solicitacao-modal-content .solicitacao-section-block {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 0;
+    padding: 0.9rem;
+    margin-bottom: 0.75rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.solicitacao-modal-content .solicitacao-section-block .cad-section-title {
+    margin-top: 0.15rem;
+}
+
+.solicitacao-modal-content .solicitacao-subsection-block {
+    border: 1px solid #e9ecef;
+    background: #fff;
+    padding: 0.85rem;
+    margin-bottom: 0.75rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.solicitacao-modal-content .solicitacao-subsection-block .row,
+.solicitacao-modal-content .solicitacao-section-block .row {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.solicitacao-modal-content .solicitacao-subsection-block > [class*="col-"],
+.solicitacao-modal-content .solicitacao-section-block > [class*="col-"],
+.solicitacao-modal-content .solicitacao-subsection-block .row > [class*="col-"],
+.solicitacao-modal-content .solicitacao-section-block .row > [class*="col-"] {
+    padding-left: calc(var(--bs-gutter-x) * 0.35);
+    padding-right: calc(var(--bs-gutter-x) * 0.35);
+}
+
+.solicitacao-modal-content .conteiner-campos {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.solicitacao-modal-content .conteiner-campos > [class*="col-"] {
+    padding-left: calc(var(--bs-gutter-x) * 0.35);
+    padding-right: calc(var(--bs-gutter-x) * 0.35);
+}
+
+@media (max-width: 1200px) {
+    .cad-modal-content.solicitacao-modal-content {
+        width: calc(100vw - 1.2rem);
+        height: calc(100dvh - 1rem);
+    }
+}
+
+@media (max-width: 768px) {
+    .cad-modal-overlay.solicitacao-modal-overlay {
+        padding: 0.45rem;
+    }
+
+    .solicitacao-modal-content .solicitacao-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+        padding-bottom: 0.35rem;
+    }
+
+    .solicitacao-modal-content .solicitacao-tab-btn {
+        flex: 0 0 auto;
+        min-width: 165px;
+        white-space: nowrap;
+    }
+
+    .cad-modal-content.solicitacao-modal-content {
+        width: calc(100vw - 0.9rem);
+        height: calc(100dvh - 0.9rem);
+        max-height: calc(100dvh - 0.9rem);
+    }
+
+    .solicitacao-modal-content .cad-modal-header,
+    .solicitacao-modal-content .cad-modal-footer,
+    .solicitacao-modal-content .bsmodal-body {
+        padding-left: 0.45rem;
+        padding-right: 0.45rem;
+    }
+
+    .solicitacao-modal-content .solicitacao-subsection-block,
+    .solicitacao-modal-content .solicitacao-section-block {
+        padding-left: 0.35rem;
+        padding-right: 0.35rem;
+    }
+
+    .solicitacao-modal-content .solicitacao-subsection-block .row,
+    .solicitacao-modal-content .solicitacao-section-block .row {
+        --bs-gutter-x: 0.5rem;
+    }
+
+    .cad-modal-content.solicitacao-modal-content .cad-modal-footer {
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: stretch;
+    }
+
+    .cad-modal-content.solicitacao-modal-content .cad-modal-footer-actions {
+        width: 100%;
+        justify-content: stretch;
+    }
+
+    .cad-modal-content.solicitacao-modal-content .cad-footer-btn {
+        flex: 1;
+        min-width: 0;
+        width: 100%;
+        height: 40px;
+    }
+}
+
+@media (max-width: 480px) {
+    .cad-modal-overlay.solicitacao-modal-overlay {
+        padding: 0.3rem;
+    }
+
+    .cad-modal-content.solicitacao-modal-content {
+        width: calc(100vw - 0.6rem);
+        height: calc(100dvh - 0.6rem);
+        max-height: calc(100dvh - 0.6rem);
+    }
+
+    .solicitacao-modal-content .cad-modal-header,
+    .solicitacao-modal-content .cad-modal-footer,
+    .solicitacao-modal-content .bsmodal-body {
+        padding-left: 0.35rem;
+        padding-right: 0.35rem;
+    }
+
+    .solicitacao-modal-content .solicitacao-subsection-block,
+    .solicitacao-modal-content .solicitacao-section-block {
+        padding-left: 0.3rem;
+        padding-right: 0.3rem;
+    }
+}
+
 @media  (min-width: 769px) {
     .list-group{
         overflow-y: scroll;
