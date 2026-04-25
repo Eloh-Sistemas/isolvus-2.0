@@ -196,7 +196,20 @@ export async function listaDetalhe(jsonReq) {
                 A.ID_COMBUSTIVEL, 
                 C.COMBUSTIVEL, 
                 A.KMATUAL, 
-                A.SITUACAO 
+                A.SITUACAO,
+                NVL(A.TIPO_VEICULO, '') TIPO_VEICULO,
+                NVL(A.CATEGORIA_CNH, '') CATEGORIA_CNH,
+                A.ID_FILIAL,
+                F.RAZAOSOCIAL FILIAL,
+                A.ID_MOTORISTA,
+                U.NOME MOTORISTA,
+                A.VENC_IPVA,
+                A.VENC_LICENCIAMENTO,
+                A.VENC_SEGURO,
+                NVL(A.KM_PROXIMA_REVISAO, 0) KM_PROXIMA_REVISAO,
+                NVL(A.NUM_MOTOR, '') NUM_MOTOR,
+                NVL(A.CAPACIDADE, 0) CAPACIDADE,
+                NVL(A.OBSERVACOES, '') OBSERVACOES
             FROM BSTAB_VEICULO A
             LEFT JOIN BSTAB_MARCAVEICULO M ON A.ID_MARCA = M.ID_MARCA 
                 AND A.ID_GRUPO_EMPRESA = M.ID_GRUPO_EMPRESA
@@ -204,6 +217,10 @@ export async function listaDetalhe(jsonReq) {
                 AND A.ID_GRUPO_EMPRESA = MD.ID_GRUPO_EMPRESA
             LEFT JOIN BSTAB_COMBUSTIVELVEICULO C ON A.ID_COMBUSTIVEL = C.ID_COMBUSTIVEL 
                 AND A.ID_GRUPO_EMPRESA = C.ID_GRUPO_EMPRESA
+            LEFT JOIN BSTAB_EMPRESAS F ON F.ID_ERP = A.ID_FILIAL
+                AND F.ID_GRUPO_EMPRESA = A.ID_GRUPO_EMPRESA
+            LEFT JOIN BSTAB_USUSARIOS U ON U.ID_USUARIO = A.ID_MOTORISTA
+                AND U.ID_GRUPO_EMPRESA = A.ID_GRUPO_EMPRESA
             WHERE A.ID_VEICULO = :idVeiculo
             AND A.ID_GRUPO_EMPRESA = :idGrupoEmpresa
             `;
@@ -342,7 +359,18 @@ export async function SetCadastrarVeiculo(jsonReq) {
                 dtatualizado,
                 id_grupo_empresa,
                 id_veiculo_erp,
-                descricao
+                descricao,
+                tipo_veiculo,
+                categoria_cnh,
+                id_filial,
+                id_motorista,
+                venc_ipva,
+                venc_licenciamento,
+                venc_seguro,
+                km_proxima_revisao,
+                num_motor,
+                capacidade,
+                observacoes
             ) VALUES (
                 (SELECT NVL(MAX(id_veiculo) + 1, 1) FROM BSTAB_VEICULO),
                 :placa,
@@ -358,7 +386,18 @@ export async function SetCadastrarVeiculo(jsonReq) {
                 SYSDATE,
                 :id_grupo_empresa,
                 :id_veiculo_erp,
-                :descricao
+                :descricao,
+                :tipo_veiculo,
+                :categoria_cnh,
+                :id_filial,
+                :id_motorista,
+                :venc_ipva,
+                :venc_licenciamento,
+                :venc_seguro,
+                :km_proxima_revisao,
+                :num_motor,
+                :capacidade,
+                :observacoes
             )
             `;
 
@@ -375,12 +414,34 @@ export async function SetCadastrarVeiculo(jsonReq) {
             kmatual: jsonReq.kmatual,
             id_grupo_empresa: jsonReq.id_grupo_empresa,
             id_veiculo_erp: jsonReq.idveiculoerp,
-            descricao: jsonReq.descricao
+            descricao: jsonReq.descricao,
+            tipo_veiculo: jsonReq.tipoveiculo || null,
+            categoria_cnh: jsonReq.categoriacnh || null,
+            id_filial: jsonReq.idfilial || null,
+            id_motorista: jsonReq.idmotorista || null,
+            venc_ipva: jsonReq.vencipva || null,
+            venc_licenciamento: jsonReq.venclicenciamento || null,
+            venc_seguro: jsonReq.vencseguro || null,
+            km_proxima_revisao: jsonReq.kmproximarevisao || null,
+            num_motor: jsonReq.nummotor || null,
+            capacidade: jsonReq.capacidade || null,
+            observacoes: jsonReq.observacoes || null
             };
 
            
-        const result = await executeQuery(sql, params, true);
-        return {Mensagem: 'Veículo Cadastrado com Sucesso !'};
+        const connection = await getConnection();
+        try {
+            const sqlWithReturn = sql + ` RETURNING id_veiculo INTO :novo_id`;
+            const paramsWithReturn = { ...params, novo_id: { dir: OracleDB.BIND_OUT, type: OracleDB.NUMBER } };
+            const result = await connection.execute(sqlWithReturn, paramsWithReturn, { autoCommit: true });
+            const novoId = result.outBinds.novo_id[0];
+            return { Mensagem: 'Veículo Cadastrado com Sucesso !', id_veiculo: novoId };
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            await connection.close();
+        }
 
     } catch (error) {
         console.log(error);
@@ -408,7 +469,18 @@ export async function SetAtualizarVeiculo(jsonReq) {
                 id_grupo_empresa = :id_grupo_empresa,
                 id_veiculo_erp = :id_veiculo_erp,
                 dtatualizado = SYSDATE,
-                descricao = :descricao
+                descricao = :descricao,
+                tipo_veiculo = :tipo_veiculo,
+                categoria_cnh = :categoria_cnh,
+                id_filial = :id_filial,
+                id_motorista = :id_motorista,
+                venc_ipva = :venc_ipva,
+                venc_licenciamento = :venc_licenciamento,
+                venc_seguro = :venc_seguro,
+                km_proxima_revisao = :km_proxima_revisao,
+                num_motor = :num_motor,
+                capacidade = :capacidade,
+                observacoes = :observacoes
             WHERE id_veiculo = :id_veiculo
             `;
 
@@ -426,6 +498,17 @@ export async function SetAtualizarVeiculo(jsonReq) {
             id_grupo_empresa: jsonReq.id_grupo_empresa,
             id_veiculo_erp: jsonReq.idveiculoerp,
             descricao: jsonReq.descricao,
+            tipo_veiculo: jsonReq.tipoveiculo || null,
+            categoria_cnh: jsonReq.categoriacnh || null,
+            id_filial: jsonReq.idfilial || null,
+            id_motorista: jsonReq.idmotorista || null,
+            venc_ipva: jsonReq.vencipva || null,
+            venc_licenciamento: jsonReq.venclicenciamento || null,
+            venc_seguro: jsonReq.vencseguro || null,
+            km_proxima_revisao: jsonReq.kmproximarevisao || null,
+            num_motor: jsonReq.nummotor || null,
+            capacidade: jsonReq.capacidade || null,
+            observacoes: jsonReq.observacoes || null,
             id_veiculo: jsonReq.idveiculo
             };
 

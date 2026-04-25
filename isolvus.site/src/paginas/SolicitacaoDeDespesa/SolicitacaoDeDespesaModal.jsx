@@ -58,6 +58,7 @@ function SolicitacaoDeDespesaModal(props){
     const [obs_ordenador, SetObs_ordenador] = useState(" ");
     const [obs_financeiro, SetObs_financeiro] = useState(" ");
     const [status, Setstatus] = useState("");
+    const [statusCarregadoBanco, setStatusCarregadoBanco] = useState("");
     const [integracao, setIntegracao] = useState(0);
     const [codconta, setCondConta] = useState(0);
     const [descricaoConta, SetDescricaoConta] = useState("");
@@ -379,6 +380,7 @@ function SolicitacaoDeDespesaModal(props){
         Set_Id_Filialdespesa(0);
         settipodespesa("F");
         Setstatus("A");
+        setStatusCarregadoBanco("");
         settipofornecedor("fo");
         Set_id_Fornecedor(0);       
         SetFornecedor("");
@@ -406,27 +408,23 @@ function SolicitacaoDeDespesaModal(props){
     };
 
     // FUNÇÃO PARA CONSULTAR DADOS DA SOLICITAÇÃO
-    function CarregarDadosSolicitacao(id_solic){                
+    function CarregarDadosSolicitacao(id_solic){
 
-                                      
         if (id_solic > 0 ){
-                        
-            api.post('/v1/solicitacaoDespesa/consultarSolicitacaoCab', {pnumsolicitacao: props.id_solicitacao})
-            .then((retorno) => {    
 
-                //console.log(retorno.data[0]);
-            
+            api.post('/v1/solicitacaoDespesa/consultarSolicitacaoCab', {pnumsolicitacao: props.id_solicitacao})
+            .then((retorno) => {
 
                 Set_Id_EmpresaFunc(retorno.data[0].id_empresasolicitante);
                 SetFilialFunc(retorno.data[0].empresasolicitante);
                 SetNomeFunc(retorno.data[0].nome);
                 Set_Id_Filialdespesa(retorno.data[0].id_filialdespesa);
-                SetFilialDespesa(retorno.data[0].empresadespesa);                  
-                settipofornecedor(retorno.data[0].tipofornecedor);   
-                
+                SetFilialDespesa(retorno.data[0].empresadespesa);
+                settipofornecedor(retorno.data[0].tipofornecedor);
+
                 sethistorico1(retorno.data[0].historico1|| "");
                 sethistorico2(retorno.data[0].historico2|| "");
-                
+
                 SetDataSolicitacao(moment(retorno.data[0].datasolicitacao).format('DD/MM/YYYY HH:mm:ss'));
 
                 if (retorno.data[0].datahoracontroladoria){
@@ -434,7 +432,6 @@ function SolicitacaoDeDespesaModal(props){
                 }else{
                     SetdataControladoria("");
                 }
-                
 
                 if (retorno.data[0].datahorafinanceiro) {
                     setdatalancfinaceiro(moment(retorno.data[0].datahorafinanceiro).format('DD/MM/YYYY HH:mm:ss'));
@@ -450,10 +447,10 @@ function SolicitacaoDeDespesaModal(props){
 
                 setid_ordenador(retorno.data[0].id_ordenador);
                 setnomeordenador(retorno.data[0].ordenador);
-                                                
+
                 SetDatastimada(moment( retorno.data[0].dataestimada).format('YYYY-MM-DD'));
                 setCondConta(retorno.data[0].codcontagerencial);
-                SetDescricaoConta(retorno.data[0].contagerencial);   
+                SetDescricaoConta(retorno.data[0].contagerencial);
                 setid_banco(retorno.data[0].id_banco);
                 setbanco(retorno.data[0].banco);
                 setAgencia(retorno.data[0].agencia);
@@ -465,19 +462,17 @@ function SolicitacaoDeDespesaModal(props){
                 setcodCaixaBanco(retorno.data[0].id_caixabanco);
                 SetdescricaoCaixaBanco(retorno.data[0].caixabanco);
 
-                if  (retorno.data[0].status == "") {
-                    Setstatus("N");
-                }else{
-                    Setstatus(retorno.data[0].status);
-                }
-                
-                SetObs_ordenador(retorno.data[0].obs_ordenador); 
+                const statusInicial = retorno.data[0].status == "" ? "N" : retorno.data[0].status;
+                Setstatus(statusInicial);
+                setStatusCarregadoBanco(String(statusInicial).trim().toUpperCase());
+
+                SetObs_ordenador(retorno.data[0].obs_ordenador);
                 SetObs_financeiro(retorno.data[0].obs_financeiro);
-                setIntegracao(retorno.data[0].id_rotina_integracao || 0);                
-                settipodespesa(retorno.data[0].tipodedespesa);    
+                setIntegracao(retorno.data[0].id_rotina_integracao || 0);
+                settipodespesa(retorno.data[0].tipodedespesa);
                 Set_id_Fornecedor(retorno.data[0].id_fornecedor);
-                SetFornecedor(retorno.data[0].fornecedor);                                                             
-                setproximoid(id_solic);                             
+                SetFornecedor(retorno.data[0].fornecedor);
+                setproximoid(id_solic);
                 setformadePagamento(retorno.data[0].id_formadepagamento);
                 settipotitularidade(retorno.data[0].tipoconta);
 
@@ -487,35 +482,30 @@ function SolicitacaoDeDespesaModal(props){
                 setid_financeiro(retorno.data[0].id_user_financeiro);
                 setnomefinanceiro(retorno.data[0].userfinanceiro);
 
-
-
             }).catch((err) =>{
                 console.log(err)
             });
 
 
             //Consultar Item
-
             api.post('/v1/solicitacaoDespesa/consultarSolicitacaoItem', {pnumsolicitacao: props.id_solicitacao, id_grupo_empresa: localStorage.getItem("id_grupo_empresa"), id_solicitacao: localStorage.getItem("id_usuario_erp")})
-            .then((retorno) => {                     
-                SetListaDeGasto(retorno.data); 
+            .then((retorno) => {
+                SetListaDeGasto(retorno.data);
             }).catch((err) =>{
                 console.log(err)
-            }); 
-            
-            
+            });
+
+
             api.get('/v1/solicitacaoDespesa/ordenarSolicitacao/validarsolicitacaoorcamento/'+props.id_solicitacao)
-            .then( (retorno)=>{                
+            .then((retorno)=>{
                 setvlGastoTotal(retorno.data[0].vlsolicitacao);
-                SetvlSaldoDisponivel(retorno.data[0].saldo);                
-                
+                SetvlSaldoDisponivel(retorno.data[0].saldo);
             })
             .catch((err)=>{
                 console.log(err);
             })
 
             // consulta rateio
-
             api.post('/v1/solicitacaoDespesa/consultarRateio',{pnumsolicitacao: props.id_solicitacao})
             .then((retorno) =>{
                 setRateio(retorno.data);
@@ -524,8 +514,8 @@ function SolicitacaoDeDespesaModal(props){
                 console.log(erro);
             })
 
-        }      
-                
+        }
+
     }
 
 
@@ -1195,8 +1185,11 @@ function SolicitacaoDeDespesaModal(props){
         setvisibleDataControladoria(true);   
 
         const statusAtual = String(status || '').trim().toUpperCase();
+        const statusReferencia = props.tipoTela == 'Nova'
+            ? statusAtual
+            : String(statusCarregadoBanco || statusAtual).trim().toUpperCase();
 
-        if (props.somenteLeitura === true || ["F", "I"].includes(statusAtual)) {
+        if (props.somenteLeitura === true || ["F", "I"].includes(statusReferencia)) {
             return;
         }
                      
@@ -1240,7 +1233,7 @@ function SolicitacaoDeDespesaModal(props){
                         
         }else if (props.tipoTela == 'Editar'){
             
-            if (["P", "A"].includes(statusAtual)){
+            if (["P", "A"].includes(statusReferencia)){
 
             // dados geral
             setdisabledTipoDespesa(false);
@@ -1280,7 +1273,7 @@ function SolicitacaoDeDespesaModal(props){
         }else if (props.tipoTela == 'Direcionar'){
 
                       
-            if (["EA", "A", "AJ"].includes(statusAtual)){
+            if (["EA", "A", "AJ"].includes(statusReferencia)){
                 setdisabledTipoDespesa(true);
                 setDisableContaGerencial(false);
                 setDisableCentroDecusto(false);
@@ -1291,7 +1284,7 @@ function SolicitacaoDeDespesaModal(props){
 
              
             
-            if (["EA", "P" , "N"].includes(statusAtual)){
+            if (["EA", "P" , "N"].includes(statusReferencia)){
 
                 SetListaDeStatus([
                     {status: "", descricao: "Selecione uma opção"},
@@ -1310,7 +1303,7 @@ function SolicitacaoDeDespesaModal(props){
 
              
 
-            if (["L"].includes(statusAtual)) {
+            if (["L"].includes(statusReferencia)) {
 
                 setdisabledIntegrarCom(false);
                 setDisabledParecerFinanceiro(false);        
@@ -1321,14 +1314,17 @@ function SolicitacaoDeDespesaModal(props){
         }
         
                         
-    },[props.tipoTela, status, props.somenteLeitura]);
+    },[props.tipoTela, status, statusCarregadoBanco, props.somenteLeitura]);
 
 
     useEffect(()=>{
 
         const statusAtual = String(status || '').trim().toUpperCase();
+        const statusReferencia = props.tipoTela == 'Nova'
+            ? statusAtual
+            : String(statusCarregadoBanco || statusAtual).trim().toUpperCase();
 
-        if (integracao == 631 && ["L"].includes(statusAtual) && props.tipoTela == "Conformidade"){        
+        if (integracao == 631 && ["L"].includes(statusReferencia) && props.tipoTela == "Conformidade"){        
             setDisableCaixaBanco(false);
         }else{            
             setDisableCaixaBanco(true);            
@@ -1339,7 +1335,7 @@ function SolicitacaoDeDespesaModal(props){
             SetdescricaoCaixaBanco("");
         }
     
-    },[integracao, status, props.tipoTela]);
+    },[integracao, status, statusCarregadoBanco, props.tipoTela]);
 
 
     // Verificar se o valor esta maior que o saldo
