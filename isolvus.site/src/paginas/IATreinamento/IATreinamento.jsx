@@ -3,6 +3,8 @@ import Swal from 'sweetalert2';
 import Menu from '../../componentes/Menu/Menu';
 import api from '../../servidor/api.jsx';
 import './IATreinamento.css';
+import '../ImportacaoDespesa/ImportacaoDespesa.css';
+import '../CadastroDeUsuario/CadastroDeUsuario.css';
 
 const AGENT_TYPES = [
   { value: 'SQL', label: 'Agente SQL' },
@@ -712,10 +714,10 @@ function IATreinamento() {
           </div>
         </div>
 
-        <div className="card shadow-sm ia-training-card">
-          <div className="card-body">
-            <div className="table-responsive">
-              <table className="table table-hover align-middle">
+        <p className="cadastro-section-title">Agentes cadastrados</p>
+        <div className="cadastro-card cadastro-table-card">
+          <div className="table-responsive">
+            <table className="table table-hover mb-0 cadastro-table">
                 <thead>
                   <tr>
                     <th>Tipo</th>
@@ -750,29 +752,25 @@ function IATreinamento() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
-            </div>
+            </table>
           </div>
         </div>
 
         {showModal && (
           <>
-            <div className="modal fade show ia-agent-modal-open" tabIndex="-1" role="dialog" aria-modal="true">
-              <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable ia-agent-modal-dialog" role="document">
-                <div className="modal-content ia-agent-modal-content">
-                  <div className="modal-header ia-agent-modal-header">
-                    <div className="d-flex justify-content-between align-items-center w-100 gap-3 flex-wrap">
-                      <div>
-                        <h4 className="mb-1 ia-agent-modal-title">{agentForm.id ? 'Editar Agente' : 'Adicionar Agente'}</h4>
-                        <p className="mb-0 text-muted ia-agent-modal-subtitle">
+            <div className="modal-overlay-importacao" onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}>
+              <div className="modal-content-importacao">
+                  <div className="importacao-modal-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 className="mb-1">{agentForm.id ? 'Editar Agente' : 'Adicionar Agente'}</h4>
+                        <p className="mb-0 text-muted">
                           Configure as regras, tabelas, colunas e relacionamentos do agente.
                         </p>
-                      </div>
-                      <button type="button" className="btn btn-outline-secondary" onClick={closeModal}>Fechar</button>
                     </div>
+                    <button type="button" className="btn btn-outline-secondary btn-fechar-importacao" onClick={closeModal}>Fechar</button>
                   </div>
 
-                  <div className="modal-body">
+                  <div className="importacao-modal-body">
                     <div className="row g-3 mb-3">
                       <div className="col-md-3">
                         <label className="form-label">Tipo</label>
@@ -1115,13 +1113,17 @@ function IATreinamento() {
                     </div>
                   </div>
 
-                  <div className="modal-footer">
-                    <button type="button" className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
-                    <button type="button" className="btn btn-danger" onClick={saveAgentFromModal} disabled={savingModal}>
-                      {savingModal ? 'Salvando...' : 'Salvar agente'}
-                    </button>
+                  <div className="importacao-modal-footer">
+                    <div className="importacao-modal-footer-start d-none d-md-block">
+                      <small className="text-muted">Preencha os dados do agente e salve para aplicar as configurações.</small>
+                    </div>
+                    <div className="importacao-modal-footer-actions">
+                      <button type="button" className="btn btn-outline-secondary" onClick={closeModal}>Cancelar</button>
+                      <button type="button" className="btn btn-danger" onClick={saveAgentFromModal} disabled={savingModal}>
+                        {savingModal ? 'Salvando...' : 'Salvar agente'}
+                      </button>
+                    </div>
                   </div>
-                </div>
               </div>
             </div>
           </>

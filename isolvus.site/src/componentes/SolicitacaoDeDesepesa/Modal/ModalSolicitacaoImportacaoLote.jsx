@@ -1861,7 +1861,7 @@ function ModalSolicitacaoImportacaoLote({
             </div>
 
             <div className="importacao-modal-footer">
-                <div className="importacao-modal-footer-start">
+                <div className="importacao-modal-footer-start d-none d-md-block">
                     <small className="text-muted">
                         Total de registros exibidos: {detalhesFiltrados.length}. Consulte os blocos acima para validar o lote por etapa.
                     </small>

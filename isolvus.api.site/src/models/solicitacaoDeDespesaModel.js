@@ -631,7 +631,7 @@ export async function listarModel(params) {
           c.datasolicitacao,
           c.id_solicitante,
           u.nome,
-          (SELECT U2.FOTO FROM BSTAB_USUSARIOS U2 WHERE U2.ID_USUARIO = C.ID_SOLICITANTE AND U2.ID_GRUPO_EMPRESA = C.ID_GRUPO_EMPRESA) AS foto,
+          u.foto,
           c.chavepix,
           lpad(C.ID_FILIALDESPESA,2,0) id_filialdespesa,
           es2.razaosocial AS filialdespesa,
@@ -754,7 +754,7 @@ export async function listarModel(params) {
       query += `
         GROUP BY 
           c.numsolicitacao, c.datasolicitacao, c.id_solicitante, c.id_filialdespesa, c.dataestimada, 
-          c.id_empresasolicitante, es.razaosocial, es2.razaosocial, u.nome, c.status, c.codcontagerencial, CC.DESCRICAO,c.agencia,
+          c.id_empresasolicitante, es.razaosocial, es2.razaosocial, u.nome, u.id_usuario, u.foto, c.status, c.codcontagerencial, CC.DESCRICAO,c.agencia,
           c.contabancaria,
           c.operacao,
           C.ID_BANCO,

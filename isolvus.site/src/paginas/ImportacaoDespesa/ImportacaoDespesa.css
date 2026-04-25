@@ -676,3 +676,95 @@
     }
 }
 
+@media (max-width: 576px) {
+    .modal-overlay-importacao {
+        padding: 0;
+        align-items: flex-end;
+    }
+
+    .modal-content-importacao {
+        width: 100vw;
+        max-width: 100vw;
+        height: 100dvh;
+        border-radius: 0;
+    }
+
+    .importacao-modal-header {
+        padding: 0.75rem 0.9rem;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .importacao-modal-header h4 {
+        font-size: 1rem;
+        margin-bottom: 0.15rem;
+    }
+
+    .importacao-modal-header p {
+        font-size: 0.8rem;
+    }
+
+    .btn-fechar-importacao {
+        padding: 0.3rem 0.8rem;
+        font-size: 0.85rem;
+        align-self: flex-start;
+    }
+
+    .importacao-modal-body {
+        padding: 0.5rem 0.75rem 0;
+    }
+
+    .importacao-modal-footer {
+        padding: 0.75rem 0.9rem;
+    }
+
+    .importacao-modal-footer-start small {
+        font-size: 0.78rem;
+    }
+
+    .detalhe-importacao-card {
+        padding: 0.6rem 0.75rem;
+        min-height: 64px;
+    }
+
+    .detalhe-importacao-card span {
+        font-size: 0.72rem;
+    }
+
+    .detalhe-importacao-card strong {
+        font-size: 0.9rem;
+    }
+
+    .importacao-resumo-lote {
+        --bs-gutter-x: 0.4rem;
+        --bs-gutter-y: 0.4rem;
+    }
+
+    .importacao-card-mobile-duplo {
+        grid-template-columns: 1fr;
+    }
+
+    .importacao-badges-resumo {
+        flex-wrap: wrap;
+        gap: 0.35rem;
+    }
+
+    .importacao-card-direcionamento .card-body,
+    .importacao-card-ordenador .card-body,
+    .importacao-card-financeiro .card-body {
+        padding: 0.85rem 0.75rem;
+    }
+
+    .tabela-importacao-historico thead th,
+    .tabela-importacao-linha-unica thead th {
+        font-size: 0.65rem;
+        padding: 0.4rem 0.5rem;
+    }
+
+    .tabela-importacao-historico tbody td,
+    .tabela-importacao-linha-unica tbody td {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.5rem;
+    }
+}
+

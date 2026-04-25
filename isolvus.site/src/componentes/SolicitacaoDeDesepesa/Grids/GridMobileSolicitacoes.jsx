@@ -3,11 +3,20 @@ import StatusSolicitacaoDespesa from "../Status/StatusSolicitacaoDespesa";
 import "./GridMobileSolicitacoes.css";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import api from "../../../servidor/api";
 
 function GridMobileSolicitacoes(props) {
 
     const [btnTimeLineVisible, SetbtnTimeLineVisible] = useState(true);
     const [btnEditar, SetbtnEditar] = useState(true);
+    
+    const construirUrlFoto = (foto) => {
+        if (!foto) return null;
+        if (foto.startsWith('/midias/')) {
+            return `${api.defaults.baseURL}${foto}`;
+        }
+        return foto;
+    };
     const [btnDirecionar, SetbtnDirecionar] = useState(true);
     const [btnOrdenar, SetbtnOrdenar] = useState(true);
     const [btnlinkar, Setbtnlinkarr] = useState(true);
@@ -94,8 +103,8 @@ function GridMobileSolicitacoes(props) {
 
                         <div className="item-mobile-topo">
                             <div className="grid-solicitante-avatar item-mobile-avatar">
-                                {i.foto
-                                    ? <img src={i.foto} alt={i.nome} className="grid-solicitante-avatar-img" />
+                                {i.foto && construirUrlFoto(i.foto)
+                                    ? <img src={construirUrlFoto(i.foto)} alt={i.nome} className="grid-solicitante-avatar-img" />
                                     : (i.nome || 'U').charAt(0).toUpperCase()
                                 }
                             </div>

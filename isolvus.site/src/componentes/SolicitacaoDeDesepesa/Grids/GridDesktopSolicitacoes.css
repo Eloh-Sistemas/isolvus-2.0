@@ -61,7 +61,6 @@
 .table-desktop-consultasolicitacao .table {
     width: 100%;
     border-collapse: collapse;
-    border:  1px dashed #b9b9b9;
 }
 
 /* Cabeçalho da tabela */
@@ -73,8 +72,8 @@
     line-height: 1.2;
     vertical-align: middle;
     background-color: #f3f7f8;
-    border-top:  1px dashed #b9b9b9;
-    border-bottom: 1px dashed #b9b9b9;
+    background-color: #f8fafd;
+    border-bottom: 2px solid #e9ecef;
 }
 
 /* Células da tabela */
