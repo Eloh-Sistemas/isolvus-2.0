@@ -2,15 +2,21 @@ import { useEffect, useState } from "react";
 import Menu from "../../componentes/Menu/Menu";
 import api from "../../servidor/api";
 import ModalCadastroDeItem from "../../componentes/SolicitacaoDeDesepesa/Modal/ModalCadastroDeItem";
+import "./CadastroDeItem.css";
+import "../CadastroDeUsuario/CadastroDeUsuario.css";
 
 function CadastroDeItem(){
 
+   const ITENS_POR_PAGINA = 10;
 
     const [isItemOpen, setIsItemOpen] = useState(false);
     const [idItemSelecionado, setIdItemSelecionado] = useState(0); 
 
     const [filtroItem, SetFiltroItem] = useState("");
     const [dadosItem, SetDadosItem] = useState([]);
+   const [loadingItens, setLoadingItens] = useState(false);
+   const [erroConsulta, setErroConsulta] = useState("");
+   const [paginaAtual, setPaginaAtual] = useState(1);
 
 
     function closeModalItem() {
@@ -26,13 +32,14 @@ function CadastroDeItem(){
 
     const handleFiltroChange = (e) => {
         const valor = e.target.value.toUpperCase();
-           SetFiltroItem(valor); // Atualiza o filtro conforme o usuário digita
-        if (valor.length < 3) {
-           SetDadosItem([]); // Limpa os resultados se o filtro for menor que 3 caracteres
-        }
-     };
+        SetFiltroItem(valor);
+      setPaginaAtual(1);
+    };
 
     function consultarItem(){
+
+      setLoadingItens(true);
+      setErroConsulta("");
       
         var dadosJson = {
            "id_grupo_empresa": localStorage.getItem("id_grupo_empresa"),
@@ -44,8 +51,12 @@ function CadastroDeItem(){
             SetDadosItem(retorno.data);
         })
         .catch((err) =>{
-            console.log(err.response)
+         SetDadosItem([]);
+         setErroConsulta(err.response?.data?.error || "Erro ao consultar itens.");
         })
+      .finally(() => {
+         setLoadingItens(false);
+      });
 
     }
 
@@ -53,7 +64,18 @@ function CadastroDeItem(){
         consultarItem();
     },[filtroItem])
 
-    return<>
+      useEffect(() => {
+         setPaginaAtual(1);
+      }, [dadosItem.length]);
+
+    const totalPaginas = Math.max(1, Math.ceil(dadosItem.length / ITENS_POR_PAGINA));
+    const paginaSegura = Math.min(paginaAtual, totalPaginas);
+    const dadosPaginados = dadosItem.slice(
+         (paginaSegura - 1) * ITENS_POR_PAGINA,
+         paginaSegura * ITENS_POR_PAGINA
+    );
+
+   return<>
         <Menu />
 
         <ModalCadastroDeItem
@@ -63,65 +85,103 @@ function CadastroDeItem(){
             idItemSelecionado={idItemSelecionado} // Passa o idUsuario selecionado para o Modal            
          />
 
-        <div className="container-fluid Containe-Tela">
-            <div className="row text-body-secondary mb-2">
-               <h1 className="mb-4 titulo-da-pagina">Cadastro de Item para Despesas</h1>
-            </div>
-
-            <div className="row align-items-center mb-4">
-                <div className="col-lg-11 mb-3">
-                <label htmlFor="item" className="mb-2">Item</label>
-                <input
-                        autoFocus
-                        type="text"
-                        className="form-control"
-                        id="item"
-                        placeholder="Informe a descrição do item"
-                        value={filtroItem} // Associa o valor ao estado filtroUsuario
-                        onChange={handleFiltroChange} // Atualiza o filtro conforme digita
-                     />              
-                </div>
-                <div className="col-lg-1 mb-2">
-                <button
-                     className="btn btn-success align-self-end marg-botal-add w-100"
-                     onClick={() => openModalItem(0)} // Chama o modal sem ID para criação
-                  >
-                     <i className="bi bi-plus-circle"></i> Cadastrar
+        <div className="container-fluid Containe-Tela cadastro-usuario-page">
+            <div className="row text-body-secondary mb-3">
+               <div className="col-12 d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3">
+                  <div>
+                     <h1 className="mb-1 titulo-da-pagina">Cadastro de Item para Despesas</h1>
+                     <p className="text-muted mb-0">Consulte itens existentes ou abra um novo cadastro.</p>
+                  </div>
+                  <button className="btn btn-primary" onClick={() => openModalItem(0)}>
+                     Cadastrar
                   </button>
-                </div>
-
+               </div>
             </div>
 
-            {/* Tabela de usuários */}
-            <div className="row">
-               <div className="col-lg-12">
-                  <table className="table tablefont table-hover table-font">
+            <div className="row mb-4 align-items-end g-3 cadastro-filtros">
+               <div className="col-md-12 cadastro-filtro-col">
+                  <label htmlFor="item-filtro" className="form-label">Item</label>
+                  <input
+                     autoFocus
+                     type="text"
+                     className="form-control"
+                     id="item-filtro"
+                     placeholder="Informe a descrição do item"
+                     value={filtroItem}
+                     onChange={handleFiltroChange}
+                  />
+                  <small className="text-muted">Filtre por descrição do item.</small>
+               </div>
+            </div>
+
+            <p className="cadastro-section-title">Resultados</p>
+            <div className="cadastro-card cadastro-table-card">
+               <div className="table-responsive">
+                  <table className="table table-hover mb-0 cadastro-table">
                      <thead>
                         <tr>
-                           <th className="col-1" scope="col">Código</th>
-                           <th className="col" scope="col">Descrição</th>
-                           <th className="col" scope="col">Categoria</th>
+                           <th className="col-2" scope="col">Código</th>
+                           <th className="col-6" scope="col">Descrição</th>
+                           <th className="col-4" scope="col">Categoria</th>
                         </tr>
                      </thead>
                      <tbody>
-                        {dadosItem.length > 0 ? (
-                           dadosItem.map((item) => (
-                              <tr onClick={() => openModalItem(item.codigo) } className="linha-grid-desktop-analisedespesa" key={item.codigo}>
+                        {loadingItens ? (
+                           <tr>
+                              <td colSpan="3" className="text-center">Buscando itens...</td>
+                           </tr>
+                        ) : erroConsulta ? (
+                           <tr>
+                              <td colSpan="3" className="text-center text-danger">{erroConsulta}</td>
+                           </tr>
+                        ) : dadosItem.length > 0 ? (
+                           dadosPaginados.map((item) => (
+                              <tr
+                                 onClick={() => openModalItem(item.codigo)}
+                                 className="linha-grid-desktop-analisedespesa cadastro-row-clickable"
+                                 key={item.codigo}
+                                 role="button"
+                                 tabIndex={0}
+                              >
                                  <td>{item.codigo}</td>
-                                 <td>{item.descricao}</td>                                 
+                                 <td>{item.descricao}</td>
                                  <td>{item.descricao2}</td>
                               </tr>
                            ))
                         ) : (
                            <tr>
-                              <td colSpan="3" className="text-center">
-                                 Nenhum vinculo encontrado.
+                              <td colSpan="3" className="text-center text-muted">
+                                 Nenhum item encontrado.
                               </td>
                            </tr>
                         )}
                      </tbody>
                   </table>
                </div>
+
+               {!loadingItens && !erroConsulta && dadosItem.length > 0 && (
+                  <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 pt-3">
+                     <small className="text-muted">
+                        Exibindo {((paginaSegura - 1) * ITENS_POR_PAGINA) + 1}-{Math.min(paginaSegura * ITENS_POR_PAGINA, dadosItem.length)} de {dadosItem.length} itens
+                     </small>
+                     {totalPaginas > 1 && (
+                        <ul className="pagination pagination-sm mb-0">
+                           <li className={`page-item ${paginaSegura === 1 ? 'disabled' : ''}`}>
+                              <button className="page-link" onClick={() => setPaginaAtual(1)}>«</button>
+                           </li>
+                           <li className={`page-item ${paginaSegura === 1 ? 'disabled' : ''}`}>
+                              <button className="page-link" onClick={() => setPaginaAtual((p) => Math.max(1, p - 1))}>‹</button>
+                           </li>
+                           <li className={`page-item ${paginaSegura === totalPaginas ? 'disabled' : ''}`}>
+                              <button className="page-link" onClick={() => setPaginaAtual((p) => Math.min(totalPaginas, p + 1))}>›</button>
+                           </li>
+                           <li className={`page-item ${paginaSegura === totalPaginas ? 'disabled' : ''}`}>
+                              <button className="page-link" onClick={() => setPaginaAtual(totalPaginas)}>»</button>
+                           </li>
+                        </ul>
+                     )}
+                  </div>
+               )}
             </div>
         </div>
     </>

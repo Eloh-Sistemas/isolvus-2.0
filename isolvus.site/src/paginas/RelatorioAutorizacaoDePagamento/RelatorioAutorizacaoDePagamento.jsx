@@ -5,6 +5,8 @@ import api from "../../servidor/api";
 import { pdf } from "@react-pdf/renderer";
 import AutorizacaoDePagamento from "../../componentes/Reports/AutorizacaoDePagamento/AutorizacaoDePagamento";
 import moment from "moment";
+import "./RelatorioAutorizacaoDePagamento.css";
+import "../CadastroDeUsuario/CadastroDeUsuario.css";
 
 function RelatorioAutorizacaoDePagamento(){
 
@@ -124,93 +126,85 @@ function RelatorioAutorizacaoDePagamento(){
             </div>
         )}
         <Menu />
-        <div className="container-fluid Containe-Tela">
-            <div className="row text-body-secondary mb-2">
-                            <h1 className="mb-4 titulo-da-pagina">{
-                              "Relatório Autorização de Pagamento"  
-                            }</h1>
+        <div className="container-fluid Containe-Tela cadastro-usuario-page relatorio-autorizacao-page">
+            <div className="row text-body-secondary mb-3">
+                <div className="col-12">
+                    <h1 className="mb-1 titulo-da-pagina">Relatório Autorização de Pagamento</h1>
+                    <p className="text-muted mb-0">Defina os filtros para gerar o relatório em PDF.</p>
+                </div>
             </div>
 
-
-                        
-            <div className="row conteiner-campos">
-
-                  <div className="col-lg-8 mb-3">   
-                    <label htmlFor="fl-2" className="mb-2">Filial</label>                   
-                    <EditComplete autoFocus={true} placeholder={"Filial"} id={"fl-2"}  
-                                tipoConsulta={"filial2"} 
-                                onClickCodigo={Set_Id_Filialdespesa}  
-                                onClickDescricao={SetFilialDespesa}
-                                value={filialDespesa} />
-                  </div>
-
-                  <div className="col-lg-2 mb-3">
-                    <label htmlFor="DataDaSolicitação" className="mb-2">Data Inicial</label>                   
-                    <input type="date" className="form-control" id="DataDaSolicitação" 
-                                                        placeholder={dataInicial}
-                                                        onChange={(e) => {SetdataInicial(e.target.value)}}
-                                                        value={dataInicial}
-                                                        /> 
+            <div className="row mb-4 align-items-end g-3 cadastro-filtros relatorio-autorizacao-filtros-row">
+                <div className="col-lg-4 cadastro-filtro-col">
+                    <label htmlFor="fl-2" className="form-label">Filial</label>
+                    <EditComplete autoFocus={true} placeholder={"Filial"} id={"fl-2"}
+                        tipoConsulta={"filial2"}
+                        onClickCodigo={Set_Id_Filialdespesa}
+                        onClickDescricao={SetFilialDespesa}
+                        value={filialDespesa} />
                 </div>
 
-                <div className="col-lg-2 mb-3">
-                    <label htmlFor="DataDaSolicitação" className="mb-2">Data Final</label>                   
-                    <input type="date" className="form-control" id="DataDaSolicitação" 
-                                                        placeholder={dataFinal}
-                                                        onChange={(e) => {SetdataFinal(e.target.value)}}
-                                                        value={dataFinal}
-                                                        />
+                <div className="col-lg-2 cadastro-filtro-col">
+                    <label htmlFor="data-inicial-autorizacao" className="form-label">Data Inicial</label>
+                    <input type="date" className="form-control" id="data-inicial-autorizacao"
+                        placeholder={dataInicial}
+                        onChange={(e) => { SetdataInicial(e.target.value); }}
+                        value={dataInicial}
+                    />
                 </div>
 
+                <div className="col-lg-2 cadastro-filtro-col">
+                    <label htmlFor="data-final-autorizacao" className="form-label">Data Final</label>
+                    <input type="date" className="form-control" id="data-final-autorizacao"
+                        placeholder={dataFinal}
+                        onChange={(e) => { SetdataFinal(e.target.value); }}
+                        value={dataFinal}
+                    />
+                </div>
 
-                <div className="col-lg-1 mb-3">
-                                    
-                    <label htmlFor="tipoparceiro" className="mb-2">Tipo de Parceiro</label>                                    
-                        <select className="form-control" id="tipoparceiro" 
-                            onChange={(e) => settipofornecedor(e.target.value)} 
-                            value={tipofornecedor}
-               
-                            >                                
-                        <option key={1} value={"fo"}>Fornecedor</option> 
+                <div className="col-lg-2 cadastro-filtro-col">
+                    <label htmlFor="tipoparceiro" className="form-label">Tipo Parceiro</label>
+                    <select className="form-control" id="tipoparceiro"
+                        onChange={(e) => settipofornecedor(e.target.value)}
+                        value={tipofornecedor}
+                    >
+                        <option key={1} value={"fo"}>Fornecedor</option>
                         <option key={2} value={"us"}>Funcionario</option>
-                        </select>
-
-                </div>  
-
-                <div className="col-lg-3 mb-3">   
-                    {/*parceiro*/}
-                    <label htmlFor="fo-1" className="mb-2">{labeltipoParceiro}</label>                   
-                    <EditComplete placeholder={labeltipoParceiro} id={tipofornecedor}  
-                                    tipoConsulta={tipofornecedor} 
-                                    onClickCodigo={Set_id_Fornecedor} 
-                                    onClickDescricao={SetFornecedor}
-                                    value={Fornecedor} />
+                    </select>
                 </div>
 
-                <div className="col-lg-2 mb-3">   
-                    <label htmlFor="cg" className="mb-2">Conta Gerencial</label>                   
-                    <EditComplete  placeholder={"Conta Gerencial"} id={"cg"}  
-                                tipoConsulta={"cg"} 
-                                onClickCodigo={setCondConta} 
-                                onClickDescricao={SetDescricaoConta}
-                                value={descricaoConta} />
+                <div className="col-lg-2 cadastro-filtro-col">
+                    <label htmlFor="fo-1" className="form-label">{labeltipoParceiro || "Parceiro"}</label>
+                    <EditComplete placeholder={labeltipoParceiro || "Parceiro"} id={tipofornecedor}
+                        tipoConsulta={tipofornecedor}
+                        onClickCodigo={Set_id_Fornecedor}
+                        onClickDescricao={SetFornecedor}
+                        value={Fornecedor} />
                 </div>
 
-                <div className="col-lg-2 mb-3">   
-                    <label htmlFor="cc" className="mb-2">Centro de Custo</label>                   
-                    <EditComplete placeholder={"Centro de Custo"} id={"cc"}  
-                                tipoConsulta={"cc"} 
-                                onClickCodigo={setCentroDeCusto} 
-                                onClickDescricao={SetDescricaoCentroDeCusto}
-                                value={descricaoCentroDeCusto} />
+                <div className="col-lg-2 cadastro-filtro-col">
+                    <label htmlFor="cg" className="form-label">Conta Gerencial</label>
+                    <EditComplete placeholder={"Conta Gerencial"} id={"cg"}
+                        tipoConsulta={"cg"}
+                        onClickCodigo={setCondConta}
+                        onClickDescricao={SetDescricaoConta}
+                        value={descricaoConta} />
                 </div>
 
-                <div className="col-lg-2 mb-3">
-                    
-                    <label htmlFor="SelecaoStatus" className="mb-2">Status</label>                                    
-                        <select className="form-control" id="SelecaoStatus" onChange={(e) => setpstatus(e.target.value)} value={pstatus}>
+                <div className="col-lg-2 cadastro-filtro-col">
+                    <label htmlFor="cc" className="form-label">Centro de Custo</label>
+                    <EditComplete placeholder={"Centro de Custo"} id={"cc"}
+                        tipoConsulta={"cc"}
+                        onClickCodigo={setCentroDeCusto}
+                        onClickDescricao={SetDescricaoCentroDeCusto}
+                        value={descricaoCentroDeCusto} />
+                </div>
+
+                <div className="col-lg-2 cadastro-filtro-col">
+                    <label htmlFor="selecao-status-autorizacao" className="form-label">Status</label>
+                    <select className="form-control" id="selecao-status-autorizacao" onChange={(e) => setpstatus(e.target.value)} value={pstatus}>
                         <option value={"T"}>TODOS</option>
-                        <option value={"A"}>PEND. CONTROLADORIA</option>                        
+                        <option value={"A"}>PEND. CONTROLADORIA</option>
                         <option value={"EA"}>PEND. ORDENADOR</option>
                         <option value={"AJ"}>AJUSTAR ORÇAMENTO</option>
                         <option value={"L"}>PEND. FINANCEIRO</option>
@@ -218,18 +212,15 @@ function RelatorioAutorizacaoDePagamento(){
                         <option value={"N"}>NEGADO. ORDENADOR</option>
                         <option value={"F"}>PEND. INTEGRAÇÃO</option>
                         <option value={"I"}>LANÇADO WINTHOR</option>
-                        </select>
-
+                    </select>
                 </div>
 
-                <div className="col-lg-2 mb-3">
-                    <button className="btn btn-danger btn-analisedespesa w-100" 
-                    onClick={gerarPDF}
-                    ><i className="bi bi-file-earmark-pdf"></i> Gerar Relatório</button>
+                <div className="col-lg-2 cadastro-filtro-col d-grid">
+                    <button className="btn btn-danger w-100" onClick={gerarPDF}>
+                        <i className="bi bi-file-earmark-pdf"></i> Gerar Relatório
+                    </button>
                 </div>
-            
             </div>
-
         </div>
     </>
     );

@@ -1,9 +1,11 @@
 import React, { useEffect, useState  } from 'react';
 import Modal from "react-modal/lib/components/Modal";
 import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import api from '../../../servidor/api';
 import moment from 'moment';
-import EditComplete from '../../EditComplete/EditComplete';
+import './ModalCadastroDeUsuario.css';
+import './ModalCadastroDeItem.css';
 
 
 function ModalCadastroDeItem(props){
@@ -137,89 +139,93 @@ function ModalCadastroDeItem(props){
     return<>
 
         <Modal
-                    isOpen={props.isOpen}
-                    onRequestClose={props.onRequestClose}
-                    overlayClassName="react-modal-overlay"
-                    ariaHideApp={false}
-                    className="react-modal-content"
-                 >
-                
-            <div className="bsmodal-content">
-                <div className="bsmodal-header">
-                    <h3 className="modal-title">Editar Item</h3>
+            isOpen={props.isOpen}
+            onRequestClose={props.onRequestClose}
+            overlayClassName="cad-modal-overlay item-modal-overlay-compact"
+            ariaHideApp={false}
+            className="cad-modal-content item-modal-content-compact"
+        >
+            <div className="cad-modal-header">
+                <div>
+                    <h4 className="cad-modal-title">Cadastro de Item</h4>
+                    <p className="text-muted mb-0" style={{ fontSize: '0.85rem' }}>
+                        Preencha os dados do item e clique em Salvar.
+                    </p>
                 </div>
-              
+                <button className="btn btn-outline-secondary" onClick={props.onRequestClose}>Fechar</button>
+            </div>
 
-               <div className="bsmodal-body">
-                    <h4 className="section-title">Dados da Basico</h4>
-                    <div className='row'>
-                        <div className="col-md-2 mb-3">
-                            <label htmlFor="codigo" className="mb-2">Código<span className="text-danger">*</span></label>
+            <div className="bsmodal-body">
+                <p className="cad-section-title">Dados Básicos</p>
+                <div className="cad-section">
+                    <div className="row g-3 align-items-end">
+                        <div className="col-md-2">
+                            <label htmlFor="item-codigo" className="form-label">Código</label>
                             <input
-                            type="text"                            
-                            className="form-control"
-                            id="codigo"
-                            placeholder="Código"
-                            value={codigo}
-                            disabled                           
-                            onChange={(e) => SetCodigo(e.target.value.toUpperCase())}
+                                type="text"
+                                className="form-control"
+                                id="item-codigo"
+                                placeholder="Código"
+                                value={codigo}
+                                disabled
+                                onChange={(e) => SetCodigo(e.target.value.toUpperCase())}
                             />
                         </div>
 
-                        <div className="col-md-5 mb-3">
-                            <label htmlFor="Descrição" className="mb-2">Descrição<span className="text-danger">*</span></label>
+                        <div className="col-md-5">
+                            <label htmlFor="item-descricao" className="form-label">Descrição<span className="text-danger">*</span></label>
                             <input
-                            autoFocus
-                            type="text"
-                            className="form-control"
-                            id="Descrição"
-                            placeholder="Descrição"
-                            value={descricao}
-                            //disabled                           
-                            onChange={(e) => SetDescricao(e.target.value.toUpperCase())}
+                                autoFocus
+                                type="text"
+                                className="form-control"
+                                id="item-descricao"
+                                placeholder="Descrição"
+                                value={descricao}
+                                onChange={(e) => SetDescricao(e.target.value.toUpperCase())}
                             />
                         </div>
 
-                        <div className="col-md-5 mb-3">
-                            <label htmlFor="Descrição2" className="mb-2">Categoria<span className="text-danger">*</span></label>
+                        <div className="col-md-5">
+                            <label htmlFor="item-categoria" className="form-label">Categoria<span className="text-danger">*</span></label>
                             <input
-                            type="text"
-                            className="form-control"
-                            id="Categoria"
-                            placeholder="Categoria"
-                            value={descricao2}
-                            //disabled                           
-                            onChange={(e) => SetDescricao2(e.target.value.toUpperCase())}
+                                type="text"
+                                className="form-control"
+                                id="item-categoria"
+                                placeholder="Categoria"
+                                value={descricao2}
+                                onChange={(e) => SetDescricao2(e.target.value.toUpperCase())}
                             />
                         </div>
+                    </div>
 
-                        <div className="col-md-2 mb-3">
-                            <label htmlFor="Descrição2" className="mb-2">Data Ultima Alteração</label>
+                    <div className="row g-3 align-items-end mt-1">
+                        <div className="col-md-2">
+                            <label htmlFor="item-data-alteracao" className="form-label">Data Última Alteração</label>
                             <input
-                            type="text"
-                            className="form-control"
-                            id="Descrição2"
-                            placeholder="Descrição 2"
-                            value={dataUltimaAlteradcao}
-                            disabled                           
-                            onChange={(e) => SetDataUltimaAlteradcao(e.target.value.toUpperCase())}
+                                type="text"
+                                className="form-control"
+                                id="item-data-alteracao"
+                                placeholder="Data"
+                                value={dataUltimaAlteradcao}
+                                disabled
+                                onChange={(e) => SetDataUltimaAlteradcao(e.target.value.toUpperCase())}
                             />
                         </div>
-                        <div className="col-md-5 mb-3">
-                            <label htmlFor="Descrição2" className="mb-2">Usuario Ultima Alteração</label>
+                        <div className="col-md-5">
+                            <label htmlFor="item-usuario-alteracao" className="form-label">Usuário Última Alteração</label>
                             <input
-                            type="text"
-                            className="form-control"
-                            id="Descrição2"
-                            placeholder="Descrição 2"
-                            value={usuarioUltimaAlteracao}
-                            disabled                           
-                            onChange={(e) => SetUsuarioUltimaAlteracao(e.target.value.toUpperCase())}
+                                type="text"
+                                className="form-control"
+                                id="item-usuario-alteracao"
+                                placeholder="Usuário"
+                                value={usuarioUltimaAlteracao}
+                                disabled
+                                onChange={(e) => SetUsuarioUltimaAlteracao(e.target.value.toUpperCase())}
                             />
                         </div>
                         <div className='col-md-5'>
-                            <label htmlFor="Tipo" className="mb-2">Tipo</label> 
-                            <select id="Tipo" className="form-control" value={tipoitem} onChange={(e) => SetTipoItem(e.target.value)}>                                
+                            <label htmlFor="item-tipo" className="form-label">Tipo</label>
+                            <select id="item-tipo" className="form-control" value={tipoitem} onChange={(e) => SetTipoItem(e.target.value)}>
                                 <option value={'DP'}>Despesa</option>
                                 <option value={'AM'}>Amostra</option>
                                 <option value={'MT'}>Material Tecnico</option>
@@ -228,29 +234,29 @@ function ModalCadastroDeItem(props){
                             </select>
                         </div>
                     </div>
-               </div>
-
-               <div className="bsmodal-footer">
-               <div className="d-flex justify-content-between w-100">
-                     <button
-                        type="button"
-                        className="btn btn-secondary px-4"
-                        onClick={props.onRequestClose}
-                     >
-                        Voltar
-                     </button>
-                     <button
-                        type="button"
-                        className="btn btn-primary px-4"
-                        onClick={salvarDados}
-                     >
-                        Salvar
-                     </button>
-                  </div>
-               </div>
-               <ToastContainer position="top-center"/>
+                </div>
             </div>
 
+            <div className="cad-modal-footer">
+                <div className="cad-modal-footer-actions ms-auto">
+                    <button
+                        type="button"
+                        className="btn btn-outline-secondary cad-footer-btn"
+                        onClick={props.onRequestClose}
+                    >
+                        Voltar
+                    </button>
+                    <button
+                        type="button"
+                        className="btn btn-primary cad-footer-btn"
+                        onClick={salvarDados}
+                    >
+                        Salvar
+                    </button>
+                </div>
+            </div>
+
+            <ToastContainer position="top-center"/>
         </Modal>
 
     </>

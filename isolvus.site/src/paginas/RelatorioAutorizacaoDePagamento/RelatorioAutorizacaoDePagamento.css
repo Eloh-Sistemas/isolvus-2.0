@@ -15,8 +15,8 @@
 }
 
 @media (min-width: 992px) {
-    .relatorio-filtros-row {
-        flex-wrap: nowrap;
+    .relatorio-autorizacao-filtros-row {
+        align-items: end;
     }
 }
 

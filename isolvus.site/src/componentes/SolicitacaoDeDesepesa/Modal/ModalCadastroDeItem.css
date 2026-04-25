@@ -1,0 +1,88 @@
+.item-modal-overlay-compact {
+	padding: clamp(0.35rem, 1.2vw, 0.95rem);
+}
+
+.item-modal-content-compact {
+	width: min(1600px, calc(100vw - clamp(0.7rem, 2.4vw, 1.9rem)));
+	height: min(94vh, calc(100dvh - clamp(0.7rem, 2.4vw, 1.9rem)));
+	max-height: calc(100dvh - clamp(0.7rem, 2.4vw, 1.9rem));
+}
+
+.item-modal-content-compact .cad-modal-header,
+.item-modal-content-compact .cad-modal-footer {
+	padding-left: clamp(0.5rem, 1.4vw, 0.85rem);
+	padding-right: clamp(0.5rem, 1.4vw, 0.85rem);
+}
+
+.item-modal-content-compact .bsmodal-body {
+	padding-left: clamp(0.5rem, 1.4vw, 0.85rem);
+	padding-right: clamp(0.5rem, 1.4vw, 0.85rem);
+}
+
+.item-modal-content-compact .cad-section {
+	padding-left: clamp(0.4rem, 1.1vw, 0.7rem);
+	padding-right: clamp(0.4rem, 1.1vw, 0.7rem);
+}
+
+.item-modal-content-compact .cad-section .row {
+	--bs-gutter-x: clamp(0.45rem, 1.2vw, 0.7rem);
+}
+
+@media (max-width: 1200px) {
+	.item-modal-content-compact {
+		width: calc(100vw - 1.2rem);
+		height: calc(100dvh - 1rem);
+	}
+}
+
+@media (max-width: 768px) {
+	.item-modal-overlay-compact {
+		padding: 0.45rem;
+	}
+
+	.item-modal-content-compact {
+		width: calc(100vw - 0.9rem);
+		height: calc(100dvh - 0.9rem);
+		max-height: calc(100dvh - 0.9rem);
+	}
+
+	.item-modal-content-compact .cad-modal-header,
+	.item-modal-content-compact .cad-modal-footer,
+	.item-modal-content-compact .bsmodal-body {
+		padding-left: 0.45rem;
+		padding-right: 0.45rem;
+	}
+
+	.item-modal-content-compact .cad-section {
+		padding-left: 0.35rem;
+		padding-right: 0.35rem;
+	}
+
+	.item-modal-content-compact .cad-section .row {
+		--bs-gutter-x: 0.5rem;
+	}
+}
+
+@media (max-width: 480px) {
+	.item-modal-overlay-compact {
+		padding: 0.3rem;
+	}
+
+	.item-modal-content-compact {
+		width: calc(100vw - 0.6rem);
+		height: calc(100dvh - 0.6rem);
+		max-height: calc(100dvh - 0.6rem);
+	}
+
+	.item-modal-content-compact .cad-modal-header,
+	.item-modal-content-compact .cad-modal-footer,
+	.item-modal-content-compact .bsmodal-body {
+		padding-left: 0.35rem;
+		padding-right: 0.35rem;
+	}
+
+	.item-modal-content-compact .cad-section {
+		padding-left: 0.3rem;
+		padding-right: 0.3rem;
+	}
+}
