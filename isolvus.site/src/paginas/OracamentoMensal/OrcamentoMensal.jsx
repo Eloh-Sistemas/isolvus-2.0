@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import Menu from "../../componentes/Menu/Menu";
 import EditComplete from "../../componentes/EditComplete/EditComplete";
 import "./OrcamentoMensal.css";
@@ -35,6 +36,7 @@ function OrcamentoMensal() {
   const [filtroConta, setFiltroConta] = useState("");
   const [filtroFilialDescricao, setFiltroFilialDescricao] = useState("");
   const [filtroContaDescricao, setFiltroContaDescricao] = useState("");
+  const [filtroMesDashboard, setFiltroMesDashboard] = useState("");
 
   // Modal de edição / novo registro
   const [showModal, setShowModal] = useState(false);
@@ -161,28 +163,45 @@ function OrcamentoMensal() {
     if (filtroAno && String(row.Ano) !== filtroAno) return false;
     if (filtroCodConta && !String(row.CodConta || "").toLowerCase().includes(filtroCodConta.toLowerCase())) return false;
     if (filtroConta && !String(row.Conta || "").toLowerCase().includes(filtroConta.toLowerCase())) return false;
+    if (filtroMesDashboard && (Number(row[filtroMesDashboard]) || 0) <= 0) return false;
     return true;
-  }), [data, filtroFilial, filtroAno, filtroCodConta, filtroConta]);
+  }), [data, filtroFilial, filtroAno, filtroCodConta, filtroConta, filtroMesDashboard]);
+
+  const getValorDashboardRow = useCallback((row) => {
+    if (filtroMesDashboard) return Number(row?.[filtroMesDashboard]) || 0;
+    return Number(row?.Total) || 0;
+  }, [filtroMesDashboard]);
 
   // Métricas do dashboard
   const totalPorMes = useMemo(() =>
     MESES.map(m => dadosFiltrados.reduce((sum, r) => sum + (Number(r[m]) || 0), 0)),
     [dadosFiltrados]);
-  const totalGeral = useMemo(() => totalPorMes.reduce((a, b) => a + b, 0), [totalPorMes]);
-  const mesesComValor = totalPorMes.filter(v => v > 0);
-  const mediaMensal = mesesComValor.length > 0 ? mesesComValor.reduce((a, b) => a + b, 0) / mesesComValor.length : 0;
-  const idxMaiorMes = totalPorMes.indexOf(Math.max(...totalPorMes));
-  const maiorMesNome = MESES[idxMaiorMes] || "-";
-  const maiorMesValor = totalPorMes[idxMaiorMes] || 0;
+  const totalGeral = useMemo(() => {
+    if (filtroMesDashboard) {
+      return dadosFiltrados.reduce((sum, row) => sum + getValorDashboardRow(row), 0);
+    }
+
+    return totalPorMes.reduce((a, b) => a + b, 0);
+  }, [dadosFiltrados, filtroMesDashboard, getValorDashboardRow, totalPorMes]);
+  const mesesComValor = useMemo(() => totalPorMes.filter(v => v > 0), [totalPorMes]);
+  const mediaMensal = useMemo(() => {
+    if (filtroMesDashboard) return totalGeral;
+    return mesesComValor.length > 0 ? mesesComValor.reduce((a, b) => a + b, 0) / mesesComValor.length : 0;
+  }, [filtroMesDashboard, mesesComValor, totalGeral]);
+  const idxMaiorMes = useMemo(() => totalPorMes.indexOf(Math.max(...totalPorMes)), [totalPorMes]);
+  const maiorMesNome = filtroMesDashboard || MESES[idxMaiorMes] || "-";
+  const maiorMesValor = filtroMesDashboard
+    ? dadosFiltrados.reduce((sum, row) => sum + getValorDashboardRow(row), 0)
+    : totalPorMes[idxMaiorMes] || 0;
 
   const topContas = useMemo(() =>
-    [...dadosFiltrados].sort((a, b) => (Number(b.Total) || 0) - (Number(a.Total) || 0)).slice(0, 5),
-    [dadosFiltrados]);
+    [...dadosFiltrados].sort((a, b) => getValorDashboardRow(b) - getValorDashboardRow(a)).slice(0, 5),
+    [dadosFiltrados, getValorDashboardRow]);
 
   const porFilial = useMemo(() =>
     filiaisUnicas.map(f => ({
       filial: f,
-      total: dadosFiltrados.filter(r => String(r.Filial) === f).reduce((sum, r) => sum + (Number(r.Total) || 0), 0),
+      total: dadosFiltrados.filter(r => String(r.Filial) === f).reduce((sum, r) => sum + getValorDashboardRow(r), 0),
       meses: MESES.map(m => dadosFiltrados.filter(r => String(r.Filial) === f).reduce((sum, r) => sum + (Number(r[m]) || 0), 0))
     })).sort((a, b) => {
       const totalCmp = (Number(b.total) || 0) - (Number(a.total) || 0);
@@ -191,7 +210,7 @@ function OrcamentoMensal() {
       if (!isNaN(na) && !isNaN(nb)) return na - nb;
       return a.filial.localeCompare(b.filial);
     }),
-    [dadosFiltrados, filiaisUnicas]);
+    [dadosFiltrados, filiaisUnicas, getValorDashboardRow]);
 
   const totalFiliais = porFilial.reduce((sum, f) => sum + f.total, 0);
 
@@ -280,6 +299,51 @@ function OrcamentoMensal() {
       ...Object.fromEntries(MESES.map((mes) => [mes, ""]))
     });
   };
+
+  const limparFiltrosDashboard = useCallback(() => {
+    setFiltroMesDashboard("");
+  }, []);
+
+  const handleDashboardMesClick = useCallback((mes) => {
+    setFiltroMesDashboard((prev) => prev === mes ? "" : mes);
+    setPaginaDetalhe(1);
+    setFiliaisExpandidas([]);
+    resetFiltrosDetalhe();
+  }, []);
+
+  const handleDashboardFilialClick = useCallback((filial) => {
+    const filialValor = String(filial || "");
+    const proximaFilial = filtroFilial === filialValor ? "" : filialValor;
+
+    setFiltroFilial(proximaFilial);
+    setFiltroFilialDescricao(proximaFilial);
+    setPaginaDetalhe(1);
+    setFiliaisExpandidas(proximaFilial ? [proximaFilial] : []);
+    resetFiltrosDetalhe();
+  }, [filtroFilial]);
+
+  const handleDashboardContaClick = useCallback((row) => {
+    const codigo = String(row?.CodConta || "");
+    const conta = String(row?.Conta || "");
+    const mesmoFiltro = filtroCodConta === codigo && filtroConta === conta;
+
+    setFiltroCodConta(mesmoFiltro ? "" : codigo);
+    setFiltroConta(mesmoFiltro ? "" : conta);
+    setFiltroContaDescricao(mesmoFiltro ? "" : conta);
+    setPaginaDetalhe(1);
+    setFiliaisExpandidas([]);
+    resetFiltrosDetalhe();
+  }, [filtroCodConta, filtroConta]);
+
+  const resumoFiltrosDashboard = useMemo(() => {
+    const filtrosAtivos = [];
+
+    if (filtroMesDashboard) filtrosAtivos.push(`Mês: ${filtroMesDashboard}`);
+    if (filtroFilial) filtrosAtivos.push(`Filial: ${filtroFilial}`);
+    if (filtroConta) filtrosAtivos.push(`Conta: ${filtroConta}`);
+
+    return filtrosAtivos;
+  }, [filtroMesDashboard, filtroFilial, filtroConta]);
 
   const toggleFilial = (filial) => {
     setFiliaisExpandidas((prev) => prev.includes(filial)
@@ -421,6 +485,7 @@ function OrcamentoMensal() {
     setFiltroConta("");
     setFiltroFilialDescricao("");
     setFiltroContaDescricao("");
+    limparFiltrosDashboard();
     if (!modoImportacao) carregarDoBanco(id_grupo_empresa, {});
   };
 
@@ -507,7 +572,8 @@ function OrcamentoMensal() {
   return (
     <>
       <Menu />
-      <div className="container-fluid Containe-Tela cadastro-usuario-page">
+      <div className="container-fluid Containe-Tela cadastro-usuario-page orcamento-page">
+        <div className="orcamento-page-inner">
 
         {/* Header */}
         <div className="row mb-4">
@@ -529,7 +595,7 @@ function OrcamentoMensal() {
               />
               <label
                 htmlFor="fileInputOrcamento"
-                className={`btn btn-outline-secondary mb-0 ${!permissoesAcoes.buscarArquivo ? 'disabled' : ''}`}
+                className={`btn btn-outline-secondary mb-0 d-flex align-items-center ${!permissoesAcoes.buscarArquivo ? 'disabled' : ''}`}
                 title={!permissoesAcoes.buscarArquivo ? "Sem permissão para buscar arquivo" : "Buscar arquivo"}
                 aria-disabled={!permissoesAcoes.buscarArquivo}
               >
@@ -619,6 +685,17 @@ function OrcamentoMensal() {
           <>
             <p className="cadastro-section-title">Análise</p>
 
+            {resumoFiltrosDashboard.length > 0 && (
+              <div className="alert alert-info d-flex align-items-center justify-content-between gap-3 flex-wrap mb-4 py-2">
+                <span>
+                  Filtro rápido ativo: <strong>{resumoFiltrosDashboard.join(" | ")}</strong>
+                </span>
+                <button type="button" className="btn btn-sm btn-outline-primary" onClick={handleLimparFiltros}>
+                  Limpar filtros
+                </button>
+              </div>
+            )}
+
             {/* KPI Cards */}
             <div className="row g-3 mb-4">
               <div className="col-6 col-md-3">
@@ -634,11 +711,16 @@ function OrcamentoMensal() {
                 </div>
               </div>
               <div className="col-6 col-md-3">
-                <div className="orcamento-kpi-card orcamento-kpi-card--destaque">
+                <button
+                  type="button"
+                  className={`orcamento-kpi-card orcamento-kpi-card--destaque orcamento-card-button ${filtroMesDashboard === maiorMesNome ? 'orcamento-card-button--active' : ''}`}
+                  onClick={() => handleDashboardMesClick(maiorMesNome)}
+                  title={`Filtrar registros com valor em ${maiorMesNome}`}
+                >
                   <span className="orcamento-kpi-label">Mês de Pico</span>
                   <span className="orcamento-kpi-value">{maiorMesNome}</span>
                   <span className="orcamento-kpi-sub">{fmt(maiorMesValor)}</span>
-                </div>
+                </button>
               </div>
               <div className="col-6 col-md-3">
                 <div className="orcamento-kpi-card">
@@ -656,6 +738,14 @@ function OrcamentoMensal() {
                   type="bar"
                   series={[{ name: "Total Orçado", data: totalPorMes }]}
                   options={{
+                    chart: {
+                      events: {
+                        dataPointSelection: (_event, chartContext, config) => {
+                          const mesSelecionado = chartContext?.w?.globals?.labels?.[config.dataPointIndex] || MESES[config.dataPointIndex];
+                          if (mesSelecionado) handleDashboardMesClick(mesSelecionado);
+                        }
+                      }
+                    },
                     labels: MESES,
                     legend: { show: true, showForSingleSeries: true },
                     colors: ["#0d6efd"],
@@ -674,6 +764,14 @@ function OrcamentoMensal() {
                     type="donut"
                     series={porFilial.map(f => f.total)}
                     options={{
+                      chart: {
+                        events: {
+                          dataPointSelection: (_event, chartContext, config) => {
+                            const filialSelecionada = chartContext?.w?.globals?.labels?.[config.dataPointIndex] || porFilial[config.dataPointIndex]?.filial;
+                            if (filialSelecionada) handleDashboardFilialClick(filialSelecionada);
+                          }
+                        }
+                      },
                       labels: porFilial.map(f => f.filial),
                       legend: { position: "bottom" },
                       tooltip: { y: { formatter: (val) => fmt(val) } }
@@ -695,8 +793,15 @@ function OrcamentoMensal() {
                   <div className="orcamento-topcontas-body">
                     {topContas.map((row, i) => {
                       const pct = totalGeral > 0 ? Math.min(100, (Number(row.Total) / totalGeral) * 100) : 0;
+                      const contaAtiva = filtroCodConta === String(row.CodConta || "") && filtroConta === String(row.Conta || "");
                       return (
-                        <div key={i} className="orcamento-topcontas-item">
+                        <button
+                          key={i}
+                          type="button"
+                          className={`orcamento-topcontas-item orcamento-topcontas-button ${contaAtiva ? 'orcamento-topcontas-button--active' : ''}`}
+                          onClick={() => handleDashboardContaClick(row)}
+                          title={`Filtrar pela conta ${row.Conta}`}
+                        >
                           <div className="d-flex justify-content-between align-items-center mb-1">
                             <span className="orcamento-topcontas-nome">
                               <span className="orcamento-topcontas-rank">{i + 1}</span>
@@ -711,7 +816,7 @@ function OrcamentoMensal() {
                             <small className="text-muted">{row.CodConta} · {row.Filial} · {row.Ano}</small>
                             <small className="text-muted">{pct.toFixed(1)}% do total</small>
                           </div>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -944,7 +1049,7 @@ function OrcamentoMensal() {
         )}
 
         {/* Modal de Edição / Novo Registro */}
-        {showModal && (
+        {showModal && createPortal((
           <div
             className="modal-overlay-importacao"
             onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}
@@ -1052,9 +1157,10 @@ function OrcamentoMensal() {
               </div>
             </div>
           </div>
-        )}
+        ), document.body)}
 
         <ToastContainer />
+        </div>
       </div>
     </>
   );

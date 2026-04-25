@@ -2,6 +2,26 @@ input[type="file"] {
   display: none;
 }
 
+.orcamento-page {
+  position: fixed;
+  top: 60px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding-top: calc(0.25rem + 43px) !important;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #f1f5f9;
+}
+
+.orcamento-page-inner {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
 /* KPI Cards */
 .orcamento-kpi-card {
   background: #fff;
@@ -13,6 +33,17 @@ input[type="file"] {
   gap: 4px;
   height: 100%;
   transition: all 0.3s ease;
+}
+
+.orcamento-card-button {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.orcamento-card-button--active {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.12);
 }
 
 .orcamento-kpi-card:hover {
@@ -58,6 +89,28 @@ input[type="file"] {
 
 .orcamento-topcontas-item {
   margin-bottom: 20px;
+}
+
+.orcamento-topcontas-button {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.orcamento-topcontas-button:hover {
+  background: #f8fbff;
+  border-color: #d0e3ff;
+}
+
+.orcamento-topcontas-button--active {
+  background: #eef5ff;
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.08);
 }
 
 .orcamento-topcontas-item:last-child {

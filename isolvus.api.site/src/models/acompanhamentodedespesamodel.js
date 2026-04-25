@@ -230,3 +230,134 @@ export async function GetDashOrcamentoPorConta(jsonReq) {
         throw error;
     }
 }
+
+export async function GetDetalheCentroCusto(jsonReq) {
+        try {
+            const parametros = {
+                id_grupo_empresa: jsonReq.id_grupo_empresa,
+                dataInicial: parseDateBR(jsonReq.dataInicial),
+                dataFinal: parseDateBR(jsonReq.dataFinal)
+            };
+
+            let ssql = `
+                SELECT
+                    R.ID_CENTRODECUSTO AS CODCENTRODECUSTO,
+                    NVL(CC.DESCRICAO, 'Sem centro de custo') AS CENTRODECUSTO,
+                    COUNT(DISTINCT S.NUMSOLICITACAO) AS QUANTIDADESOLICITACOES,
+                    NVL(SUM(NVL(R.VALOR, 0)), 0) AS REALIZADO
+                FROM BSTAB_SOLICITADESPESAC S
+                JOIN BSTAB_SOLICITADESPESA_RATEIO R
+                    ON R.ID_SOLICITACAO = S.NUMSOLICITACAO
+                LEFT JOIN BSTAB_CENTRODECUSTO CC
+                    ON CC.ID_CENTRODECUSTO_ERP = R.ID_CENTRODECUSTO
+                WHERE TRUNC(S.DATASOLICITACAO) >= :dataInicial
+                    AND TRUNC(S.DATASOLICITACAO) <= :dataFinal
+                    AND S.ID_GRUPO_EMPRESA = :id_grupo_empresa
+                    AND S.STATUS IN ('F', 'I')
+            `;
+
+            if (jsonReq.id_empresaerp && jsonReq.id_empresaerp > 0) {
+                ssql += ` AND S.ID_FILIALDESPESA = :id_empresa_erp `;
+                parametros.id_empresa_erp = jsonReq.id_empresaerp;
+            }
+
+            if (jsonReq.id_contaerp && jsonReq.id_contaerp > 0) {
+                ssql += ` AND S.CODCONTAGERENCIAL = :codconta `;
+                parametros.codconta = jsonReq.id_contaerp;
+            }
+
+            if (jsonReq.codordenador && jsonReq.codordenador > 0) {
+                ssql += ` AND S.CODCONTAGERENCIAL IN (
+                    SELECT DISTINCT O.ID_CONTA_ERP
+                    FROM BSTAB_ORDENADORES O
+                    WHERE O.ID_USUARIO_ERP = :id_usuario_erp
+                        AND O.ID_GRUPO_EMPRESA = S.ID_GRUPO_EMPRESA
+                ) `;
+                parametros.id_usuario_erp = jsonReq.codordenador;
+            }
+
+            ssql += `
+                GROUP BY R.ID_CENTRODECUSTO, CC.DESCRICAO
+                ORDER BY REALIZADO DESC
+            `;
+
+            return await executeQuery(ssql, parametros);
+        } catch (error) {
+            console.error("Erro ao consultar detalhe por centro de custo:", error);
+            throw error;
+        }
+}
+
+export async function GetLancamentosCentroCusto(jsonReq) {
+        try {
+            const parametros = {
+                id_grupo_empresa: jsonReq.id_grupo_empresa,
+                dataInicial: parseDateBR(jsonReq.dataInicial),
+                dataFinal: parseDateBR(jsonReq.dataFinal),
+                id_centrodecusto: jsonReq.id_centrodecusto
+            };
+
+            let ssql = `
+                WITH RATEIO_FILTRADO AS (
+                    SELECT
+                        R.ID_SOLICITACAO,
+                        R.ID_CENTRODECUSTO,
+                        SUM(NVL(R.PERCENTUAL, 0)) AS PERCENTUALRATEIO,
+                        SUM(NVL(R.VALOR, 0)) AS VALORRATEIO
+                    FROM BSTAB_SOLICITADESPESA_RATEIO R
+                    WHERE R.ID_CENTRODECUSTO = :id_centrodecusto
+                    GROUP BY R.ID_SOLICITACAO, R.ID_CENTRODECUSTO
+                )
+                SELECT
+                    S.NUMSOLICITACAO,
+                    TO_CHAR(S.DATASOLICITACAO, 'DD/MM/YYYY') AS DATASOLICITACAO,
+                    NVL(BI.DESCRICAO, 'Sem descricao do item') AS HISTORICO,
+                    NVL(I.QUANTIDADE, 0) AS QUANTIDADE,
+                    NVL(I.VLUNIT, 0) AS VLUNIT,
+                    NVL(I.QUANTIDADE, 0) * NVL(I.VLUNIT, 0) AS VALORITEM,
+                    NVL(R.PERCENTUALRATEIO, 0) AS PERCENTUALRATEIO,
+                    NVL(R.VALORRATEIO, 0) AS VALORRATEIO,
+                    R.ID_CENTRODECUSTO AS CODCENTRODECUSTO
+                FROM BSTAB_SOLICITADESPESAC S
+                JOIN RATEIO_FILTRADO R
+                    ON R.ID_SOLICITACAO = S.NUMSOLICITACAO
+                LEFT JOIN BSTAB_SOLICITADESPESAI I
+                    ON I.NUMSOLICITACAO = S.NUMSOLICITACAO
+                LEFT JOIN BSTAB_ITEM BI
+                    ON BI.ID_ITEM = I.ID_ITEM
+                WHERE TRUNC(S.DATASOLICITACAO) >= :dataInicial
+                    AND TRUNC(S.DATASOLICITACAO) <= :dataFinal
+                    AND S.ID_GRUPO_EMPRESA = :id_grupo_empresa
+                    AND S.STATUS IN ('F', 'I')
+            `;
+
+            if (jsonReq.id_empresaerp && jsonReq.id_empresaerp > 0) {
+                ssql += ` AND S.ID_FILIALDESPESA = :id_empresa_erp `;
+                parametros.id_empresa_erp = jsonReq.id_empresaerp;
+            }
+
+            if (jsonReq.id_contaerp && jsonReq.id_contaerp > 0) {
+                ssql += ` AND S.CODCONTAGERENCIAL = :codconta `;
+                parametros.codconta = jsonReq.id_contaerp;
+            }
+
+            if (jsonReq.codordenador && jsonReq.codordenador > 0) {
+                ssql += ` AND S.CODCONTAGERENCIAL IN (
+                    SELECT DISTINCT O.ID_CONTA_ERP
+                    FROM BSTAB_ORDENADORES O
+                    WHERE O.ID_USUARIO_ERP = :id_usuario_erp
+                        AND O.ID_GRUPO_EMPRESA = S.ID_GRUPO_EMPRESA
+                ) `;
+                parametros.id_usuario_erp = jsonReq.codordenador;
+            }
+
+            ssql += `
+                ORDER BY S.DATASOLICITACAO DESC, S.NUMSOLICITACAO DESC
+            `;
+
+            return await executeQuery(ssql, parametros);
+        } catch (error) {
+            console.error("Erro ao consultar lancamentos por centro de custo:", error);
+            throw error;
+        }
+}

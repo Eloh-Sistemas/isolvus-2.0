@@ -1,527 +1,736 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import moment from "moment";
+import { ToastContainer, toast } from "react-toastify";
 import Menu from "../../componentes/Menu/Menu";
 import ChartView from "../../componentes/Charts/ChartView";
 import EditComplete from "../../componentes/EditComplete/EditComplete";
-import { useEffect, useState } from "react";
-import moment from "moment";
 import api from "../../servidor/api";
+import "./AcompanhamentoDespesa1.css";
+import "../CadastroDeUsuario/CadastroDeUsuario.css";
+import "../ImportacaoDespesa/ImportacaoDespesa.css";
+import "../OracamentoMensal/OrcamentoMensal.css";
 
+const SUBPERMISSOES_ACOMPANHAMENTO = {
+  VISUALIZAR_TODAS_CONTAS_GERENCIAIS: 10801
+};
+
+const fmtCurrency = (value) => new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL"
+}).format(Number(value) || 0);
+
+const fmtPercent = (value) => `${Number(value || 0).toFixed(1)}%`;
 
 function AcompanhamentoDespesa1() {
-
   const [loading, setLoading] = useState(false);
-
-
+  const [loadingDetalhe, setLoadingDetalhe] = useState(false);
+  const [loadingLancamentos, setLoadingLancamentos] = useState(false);
   const [dadosTabela, setDadosTabela] = useState([]);
+  const [detalhesCentroCusto, setDetalhesCentroCusto] = useState([]);
+  const [lancamentosCentroCusto, setLancamentosCentroCusto] = useState([]);
+  const [centroCustoSelecionado, setCentroCustoSelecionado] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [contaSelecionada, setContaSelecionada] = useState(null);
 
-  const [categoriaFiltrada, setCategoriaFiltrada] = useState("");
-
-  const [id_Filial, Set_Id_Filial] = useState(0);
-  const [filial, SetFilial] = useState("");
-
-  const [codconta, setCondConta] = useState(0);
-  const [descricaoConta, SetDescricaoConta] = useState("");
-
+  const [idFilial, setIdFilial] = useState(0);
+  const [filial, setFilial] = useState("");
+  const [codConta, setCodConta] = useState(0);
+  const [descricaoConta, setDescricaoConta] = useState("");
   const [codOrdenador, setCodOrdenador] = useState(0);
-  const [descricaoOrdenador, SetDescricaoOrdenador] = useState("");
+  const [descricaoOrdenador, setDescricaoOrdenador] = useState("");
+  const [dataInicial, setDataInicial] = useState(`${moment().format("YYYY-MM")}-01`);
+  const [dataFinal, setDataFinal] = useState(moment().format("YYYY-MM-DD"));
+  const [forcarOrdenadorLogado, setForcarOrdenadorLogado] = useState(false);
+  const [permissoesCarregadas, setPermissoesCarregadas] = useState(false);
 
-  const [dataInicial, SetdataInicial] = useState(moment().format("YYYY-MM")+"-01");
-  const [dataFinal, SetFinal] = useState(moment().format("YYYY-MM-DD"));
+  const codOrdenadorLogado = Number(localStorage.getItem("id_usuario")) || 0;
+  const nomeOrdenadorLogado = localStorage.getItem("nome") || "";
+  const descricaoOrdenadorLogado = codOrdenadorLogado > 0 && nomeOrdenadorLogado
+    ? `${codOrdenadorLogado} - ${nomeOrdenadorLogado}`
+    : nomeOrdenadorLogado;
+  const codOrdenadorEfetivo = forcarOrdenadorLogado ? codOrdenadorLogado : (Number(codOrdenador) || 0);
 
-  // Dados para o primeiro geral
-  const [orcado1, setOrcado1] = useState(0); // Valor do orçado em reais
-  const [realizado1, setRealizado1] = useState(0); // Valor do realizado em reais
-  const [percentual1, setPercentual1] = useState(0); // ((realizado1 / orcado1) * 100).toFixed(1); // Calcula o percentual com 1 casa decimal
-
-  // Dados para o segundo ordenador
-  const [orcado2, setOrcado2] = useState(0); // Valor do orçado em reais
-  const [realizado2, setRealizado2] = useState(0); // Valor do realizado em reais
-  const [percentual2, setPercentual2] = useState(0); // ((realizado2 / orcado2) * 100).toFixed(1); // Calcula o percentual com 1 casa decimal
-  const [nomeContaGerencial, setNomeContaGerencial] = useState("");
-
-  // Dados para o segundo conta
-  const [orcado3, setOrcado3] = useState(0); // Valor do orçado em reais
-  const [realizado3, setRealizado3] = useState(0); // Valor do realizado em reais
-  const [percentual3, setPercentual3] = useState(0); // ((realizado2 / orcado2) * 100).toFixed(1); // Calcula o percentual com 1 casa decimal
-
-  // Dados para o segundo conta
-  const [orcado4, setOrcado4] = useState(0); // Valor do orçado em reais
-  const [realizado4, setRealizado4] = useState(0); // Valor do realizado em reais
-  const [percentual4, setPercentual4] = useState(0); // ((realizado2 / orcado2) * 100).toFixed(1); // Calcula o percentual com 1 casa decimal
-
-  // Função para formatar valores em reais
-  const formatarValor = (valor) =>
-    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valor);
-
-  // Função para formatar percentual
-  const formatarPercentual = (percentual) => `${percentual}%`;
-
-  function consultarTabela(){
-    
-    return api.post('/v1/acompanhamentodedepsesa1/tabela', {id_grupo_empresa: localStorage.getItem("id_grupo_empresa"), id_empresaerp: id_Filial, dataInicial: moment(dataInicial).format("DD/MM/YYYY"), dataFinal: moment(dataFinal).format("DD/MM/YYYY") , id_contaerp: codconta , codordenador :codOrdenador})
-      .then((retorno) => {        
-          
-         setDadosTabela(retorno.data); 
-         //consultarDashOrcamentoPorConta(retorno.data[0].codconta, retorno.data[0].conta );
-
-      }).catch((err) =>{
-          console.log(err)
-      }); 
-    
-  }
-
-  function consultarDashOrcamentoTotal(){
-     api.post('/v1/acompanhamentodedepsesa1/dashorcamentototal', {id_grupo_empresa: localStorage.getItem("id_grupo_empresa"), id_empresaerp: id_Filial, dataInicial: moment(dataInicial).format("DD/MM/YYYY"), dataFinal: moment(dataFinal).format("DD/MM/YYYY") , id_contaerp: 0, codordenador :0})
-      .then((retorno) => {        
-                    
- 
-          setOrcado1(retorno.data[0].orcado);
-          setRealizado1(retorno.data[0].realizado); // Valor do realizado em reais]          
-          setPercentual1(retorno.data[0].percentual_realizado); // ((realizado1 / orcado1) * 100).toFixed(1); // Calcula o percentual com 1 casa decimal
-
-      }).catch((err) =>{
-          console.log(err)
-      });
-  }
-
-  function consultarDashOrcamentoPorOrdenador(){
-    api.post('/v1/acompanhamentodedepsesa1/dashorcamentototal', {id_grupo_empresa: localStorage.getItem("id_grupo_empresa"), id_empresaerp: id_Filial, dataInicial: moment(dataInicial).format("DD/MM/YYYY"), dataFinal: moment(dataFinal).format("DD/MM/YYYY") , id_contaerp: codconta, codordenador :codOrdenador})
-     .then((retorno) => {        
-                      
-        setOrcado2(retorno.data[0].orcado);
-        setRealizado2(retorno.data[0].realizado); // Valor do realizado em reais]          
-        setPercentual2(retorno.data[0].percentual_realizado); // ((realizado1 / orcado1) * 100).toFixed(1); // Calcula o percentual com 1 casa decimal
-  
-     }).catch((err) =>{
-         console.log(err)
-     });
- }
-
-  function consultarDashOrcamentoPorConta(codconta, conta){
-    api.post('/v1/acompanhamentodedepsesa1/dashorcamenporconta', {id_grupo_empresa: localStorage.getItem("id_grupo_empresa"), id_empresaerp: id_Filial, dataInicial: moment(dataInicial).format("DD/MM/YYYY"), dataFinal: moment(dataFinal).format("DD/MM/YYYY") , id_contaerp: codconta})
-     .then((retorno) => {        
-                   
-        setOrcado3(retorno.data[0].orcado);
-        setRealizado3(retorno.data[0].realizado); // Valor do realizado em reais]          
-        setPercentual3(retorno.data[0].percentual_realizado); // ((realizado1 / orcado1) * 100).toFixed(1); // Calcula o percentual com 1 casa decimal}
-
-         if (conta || "") {
-          setNomeContaGerencial(conta);
-         }else{
-          setNomeContaGerencial("por conta");
-         }
-         
-
-     }).catch((err) =>{
-         console.log(err)
-     });
- }
-
- function consultarDashOrcamentoTotalTab(){
-  api.post('/v1/acompanhamentodedepsesa1/dashorcamentototal', {id_grupo_empresa: localStorage.getItem("id_grupo_empresa"), id_empresaerp: id_Filial, dataInicial: moment(dataInicial).format("DD/MM/YYYY"), dataFinal: moment(dataFinal).format("DD/MM/YYYY") , id_contaerp: codconta, codordenador :codOrdenador})
-   .then((retorno) => {        
-
-        setOrcado4(retorno.data[0].orcado);
-        setRealizado4(retorno.data[0].realizado); // Valor do realizado em reais]          
-        setPercentual4(retorno.data[0].percentual_realizado); // ((realizado1 / orcado1) * 100).toFixed(1); // Calcula o percentual com 1 casa decimal
-  
-   }).catch((err) =>{
-       console.log(err)
-   });
-}
-
-function consultarTudo() {
-  setLoading(true);
-
-  Promise.all([
-    consultarTabela(),
-    consultarDashOrcamentoPorOrdenador(),
-    consultarDashOrcamentoTotal(),
-    consultarDashOrcamentoTotalTab()
-  ]).finally(() => {
-    setLoading(false);
-  });
-
-}
-
-
-  useEffect( () =>{
-   // consultarTudo();              
-  },[id_Filial, codconta, codOrdenador, dataInicial, dataFinal, categoriaFiltrada]);
-
-  
-
-  // Função para determinar a cor do fundo e do texto do percentual
-  const determinarCorPercentual = (percentual) => {
-    let corFundo, corTexto;
-    
-    if (percentual < 30) {
-      corFundo = '#C6EFCD'; // Verde claro
-      corTexto = '#218838'; // Verde escuro (mais forte)
-    } else if (percentual >= 30 && percentual < 60) {
-      corFundo = '#FEEB9C'; // Amarelo
-      corTexto = '#856404'; // Amarelo escuro (mais forte)
-    } else if (percentual >= 60 && percentual < 100) {
-      corFundo = '#F7C11B'; // Laranja
-      corTexto = '#D97A00'; // Laranja escuro (mais forte)
-    } else {
-      corFundo = '#FCC7CD'; // Vermelho
-      corTexto = '#721C24'; // Vermelho escuro (mais forte)
+  useEffect(() => {
+    const matricula = localStorage.getItem("id_usuario");
+    if (!matricula) {
+      setPermissoesCarregadas(true);
+      return;
     }
 
-    return { 
-      backgroundColor: corFundo, 
-      color: corTexto, 
-      textAlign: 'center',  // Centralizando o texto
-      padding: '5px',       // Reduzindo o padding para compactar
-      fontSize: '12px',     // Ajustando o tamanho da fonte
-    };
+    api.post("/v1/consultarPermissoesDoUsuario", { matricula })
+      .then((res) => {
+        const modulos = Array.isArray(res.data) ? res.data : [];
+        let permitirVisualizarTodas = null;
 
-    
+        const normalizarPermitir = (valor) => {
+          if (valor === true || valor === 1) return "S";
+          if (valor === false || valor === 0) return "N";
+          if (typeof valor === "string") {
+            const valorNormalizado = valor.trim().toUpperCase();
+            if (valorNormalizado === "S" || valorNormalizado === "1") return "S";
+            if (valorNormalizado === "N" || valorNormalizado === "0") return "N";
+          }
+          return null;
+        };
+
+        modulos.forEach((modulo) => {
+          (modulo.rotinas || []).forEach((rotina) => {
+            const subpermissoes = rotina.subpermissoes || rotina.subPermissoes || [];
+            subpermissoes.forEach((sub) => {
+              const idSub = Number(sub.id_subpermissao ?? sub.idSubPermissao ?? sub.id);
+              if (idSub === SUBPERMISSOES_ACOMPANHAMENTO.VISUALIZAR_TODAS_CONTAS_GERENCIAIS) {
+                permitirVisualizarTodas = normalizarPermitir(sub.permitir);
+              }
+            });
+          });
+        });
+
+        const deveForcar = permitirVisualizarTodas === "N";
+        setForcarOrdenadorLogado(deveForcar);
+
+        if (deveForcar) {
+          setCodOrdenador(codOrdenadorLogado);
+          setDescricaoOrdenador(descricaoOrdenadorLogado);
+        }
+      })
+      .catch(() => {
+        setForcarOrdenadorLogado(false);
+      })
+      .finally(() => {
+        setPermissoesCarregadas(true);
+      });
+  }, [codOrdenadorLogado, descricaoOrdenadorLogado]);
+
+  const montarPayloadConsulta = useCallback((conta = codConta) => ({
+    id_grupo_empresa: localStorage.getItem("id_grupo_empresa"),
+    id_empresaerp: Number(idFilial) || 0,
+    dataInicial: moment(dataInicial).format("DD/MM/YYYY"),
+    dataFinal: moment(dataFinal).format("DD/MM/YYYY"),
+    id_contaerp: Number(conta) || 0,
+    codordenador: codOrdenadorEfetivo
+  }), [codConta, codOrdenadorEfetivo, dataFinal, dataInicial, idFilial]);
+
+  const consultarTabela = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await api.post("/v1/acompanhamentodedepsesa1/tabela", montarPayloadConsulta());
+      setDadosTabela(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      toast.error(error.response?.data?.error || "Erro ao consultar acompanhamento de despesa.");
+    } finally {
+      setLoading(false);
+    }
+  }, [montarPayloadConsulta]);
+
+  useEffect(() => {
+    if (!permissoesCarregadas) return;
+    consultarTabela();
+  }, [consultarTabela, permissoesCarregadas]);
+
+  const linhasTabela = useMemo(() => (Array.isArray(dadosTabela) ? dadosTabela : []).map((item) => {
+    const orcado = Number(item?.orcado ?? item?.ORCADO ?? 0);
+    const realizado = Number(item?.realizado ?? item?.REALIZADO ?? 0);
+    const percentual = Number(item?.perrealizado ?? item?.PERREALIZADO ?? item?.percentual_realizado ?? 0);
+
+    return {
+      codconta: String(item?.codconta ?? item?.CODCONTA ?? ""),
+      conta: String(item?.conta ?? item?.CONTA ?? "Sem descrição"),
+      orcado,
+      realizado,
+      restante: orcado - realizado,
+      percentual
+    };
+  }), [dadosTabela]);
+
+  const totalOrcado = useMemo(() => linhasTabela.reduce((sum, item) => sum + item.orcado, 0), [linhasTabela]);
+  const totalRealizado = useMemo(() => linhasTabela.reduce((sum, item) => sum + item.realizado, 0), [linhasTabela]);
+  const totalRestante = totalOrcado - totalRealizado;
+  const percentualGeral = totalOrcado > 0 ? (totalRealizado / totalOrcado) * 100 : 0;
+  const mediaRealizada = linhasTabela.length > 0 ? totalRealizado / linhasTabela.length : 0;
+
+  const topContas = useMemo(() =>
+    [...linhasTabela].sort((a, b) => b.realizado - a.realizado).slice(0, 5),
+  [linhasTabela]);
+
+  const contasComparativo = useMemo(() =>
+    [...linhasTabela].sort((a, b) => b.orcado - a.orcado).slice(0, 8),
+  [linhasTabela]);
+
+  const distribuicaoFaixas = useMemo(() => {
+    const dentro = linhasTabela.filter((item) => item.percentual < 80).length;
+    const atencao = linhasTabela.filter((item) => item.percentual >= 80 && item.percentual < 100).length;
+    const excedido = linhasTabela.filter((item) => item.percentual >= 100).length;
+    return [dentro, atencao, excedido];
+  }, [linhasTabela]);
+
+  const detalheCentroCustoNormalizado = useMemo(() => {
+    const totalDetalhe = detalhesCentroCusto.reduce((sum, item) => sum + (Number(item?.realizado ?? item?.REALIZADO ?? 0)), 0);
+
+    return detalhesCentroCusto.map((item) => {
+      const realizado = Number(item?.realizado ?? item?.REALIZADO ?? 0);
+      const quantidadeSolicitacoes = Number(item?.quantidadesolicitacoes ?? item?.QUANTIDADESOLICITACOES ?? 0);
+      return {
+        codCentroCusto: String(item?.codcentrodecusto ?? item?.CODCENTRODECUSTO ?? "0"),
+        centroCusto: String(item?.centrodecusto ?? item?.CENTRODECUSTO ?? "Sem centro de custo"),
+        realizado,
+        quantidadeSolicitacoes,
+        participacao: totalDetalhe > 0 ? (realizado / totalDetalhe) * 100 : 0
+      };
+    });
+  }, [detalhesCentroCusto]);
+
+  const lancamentosCentroCustoNormalizado = useMemo(() =>
+    (Array.isArray(lancamentosCentroCusto) ? lancamentosCentroCusto : []).map((item) => ({
+      numSolicitacao: String(item?.numsolicitacao ?? item?.NUMSOLICITACAO ?? ""),
+      dataSolicitacao: String(item?.datasolicitacao ?? item?.DATASOLICITACAO ?? ""),
+      historico: String(item?.historico ?? item?.HISTORICO ?? "Sem histórico"),
+      quantidade: Number(item?.quantidade ?? item?.QUANTIDADE ?? 0),
+      vlUnit: Number(item?.vlunit ?? item?.VLUNIT ?? 0),
+      valorItem: Number(item?.valoritem ?? item?.VALORITEM ?? 0),
+      percentualRateio: Number(item?.percentualrateio ?? item?.PERCENTUALRATEIO ?? 0),
+      valorRateio: Number(item?.valorrateio ?? item?.VALORRATEIO ?? 0)
+    })),
+  [lancamentosCentroCusto]);
+
+  const handleLimparFiltros = async () => {
+    const novaDataInicial = `${moment().format("YYYY-MM")}-01`;
+    const novaDataFinal = moment().format("YYYY-MM-DD");
+    setIdFilial(0);
+    setFilial("");
+    setCodConta(0);
+    setDescricaoConta("");
+    setCodOrdenador(forcarOrdenadorLogado ? codOrdenadorLogado : 0);
+    setDescricaoOrdenador(forcarOrdenadorLogado ? descricaoOrdenadorLogado : "");
+    setDataInicial(novaDataInicial);
+    setDataFinal(novaDataFinal);
+
+    setLoading(true);
+    try {
+      const response = await api.post("/v1/acompanhamentodedepsesa1/tabela", {
+        id_grupo_empresa: localStorage.getItem("id_grupo_empresa"),
+        id_empresaerp: 0,
+        dataInicial: moment(novaDataInicial).format("DD/MM/YYYY"),
+        dataFinal: moment(novaDataFinal).format("DD/MM/YYYY"),
+        id_contaerp: 0,
+        codordenador: forcarOrdenadorLogado ? codOrdenadorLogado : 0
+      });
+      setDadosTabela(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      toast.error(error.response?.data?.error || "Erro ao limpar filtros.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const abrirModalDetalhe = useCallback(async (row) => {
+    setContaSelecionada(row);
+    setShowModal(true);
+    setCentroCustoSelecionado(null);
+    setLancamentosCentroCusto([]);
+    setLoadingDetalhe(true);
+    try {
+      const response = await api.post("/v1/acompanhamentodedepsesa1/detalhecentrocusto", montarPayloadConsulta(row.codconta));
+      setDetalhesCentroCusto(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      toast.error(error.response?.data?.error || "Erro ao carregar detalhe por centro de custo.");
+      setDetalhesCentroCusto([]);
+    } finally {
+      setLoadingDetalhe(false);
+    }
+  }, [montarPayloadConsulta]);
+
+  const carregarLancamentosCentroCusto = useCallback(async (centro) => {
+    setCentroCustoSelecionado(centro);
+    setLoadingLancamentos(true);
+    try {
+      const payload = {
+        ...montarPayloadConsulta(contaSelecionada?.codconta),
+        id_centrodecusto: String(centro?.codCentroCusto ?? "").trim()
+      };
+
+      const response = await api.post("/v1/acompanhamentodedepsesa1/lancamentoscentrocusto", payload);
+      setLancamentosCentroCusto(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      toast.error(error.response?.data?.error || "Erro ao carregar lançamentos do centro de custo.");
+      setLancamentosCentroCusto([]);
+    } finally {
+      setLoadingLancamentos(false);
+    }
+  }, [contaSelecionada?.codconta, montarPayloadConsulta]);
+
+  const determinarCorPercentual = (percentual) => {
+    if (percentual < 30) return { backgroundColor: "#C6EFCD", color: "#218838" };
+    if (percentual < 60) return { backgroundColor: "#FEEB9C", color: "#856404" };
+    if (percentual < 100) return { backgroundColor: "#F7C11B", color: "#D97A00" };
+    return { backgroundColor: "#FCC7CD", color: "#721C24" };
   };
 
   return (
     <>
       <Menu />
-      <div className="container-fluid Containe-Tela">
-
-
-        <div className="row">
-            <div className="col-lg-3 mb-3">   
-                <label htmlFor="fl-2" className="mb-2">Filial</label>                   
-                <EditComplete autoFocus placeholder={"Razão social ou CNPF"} id={"fl-1"}  
-                              tipoConsulta={"filial1"} 
-                              onClickCodigo={Set_Id_Filial} 
-                              onClickDescricao={SetFilial}
-                              value={filial} />
+      <div className="container-fluid Containe-Tela cadastro-usuario-page acompanhamento-page">
+        <div className="acompanhamento-page-inner">
+        <div className="row mb-4">
+          <div className="col-12 d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div>
+              <h1 className="mb-1 titulo-da-pagina">Acompanhamento de Despesa</h1>
+              <p className="text-muted mb-0 acompanhamento-subtitle">
+                Analise o orçado x realizado, acompanhe o consumo por conta e aprofunde o detalhamento por centro de custo.
+              </p>
             </div>
 
-            <div className="col-lg-2 mb-3">   
-                <label htmlFor="us" className="mb-2">Ordenador</label>                   
-                <EditComplete placeholder={"Nome"} id={"us"}  
-                            tipoConsulta={"us"} 
-                            onClickCodigo={setCodOrdenador} 
-                            onClickDescricao={SetDescricaoOrdenador}
-                            value={descricaoOrdenador} />
-            </div> 
-            
-            <div className="col-lg-2 mb-3">   
-                <label htmlFor="cg-1" className="mb-2">Conta Gerencial</label>                   
-                <EditComplete placeholder={"Código ou Descrição"} id={"cg"}  
-                            tipoConsulta={"cg"} 
-                            onClickCodigo={setCondConta} 
-                            onClickDescricao={SetDescricaoConta}
-                            value={descricaoConta} />
-            </div>
-
-            <div className="col-lg-2 mb-3">
-                    <label htmlFor="DataInicial" className="mb-2">Data Inicial</label>                   
-                    <input type="date" className="form-control" id="DataInicial" 
-                                                        placeholder={dataInicial}
-                                                        onChange={(e) => {SetdataInicial(e.target.value)}}
-                                                        value={dataInicial}/> 
-            </div>
-
-            <div className="col-lg-2">
-                    <label htmlFor="DataFinal" className="mb-2">Data Final</label>                   
-                    <input type="date" className="form-control" id="DataFinal" 
-                                                        placeholder={dataFinal}
-                                                        onChange={(e) => {SetFinal(e.target.value)}}
-                                                        value={dataFinal}/> 
-            </div>
-
-            <div className="col-lg-1 mb-3">
-            <button
-              className="btn btn-primary me-2 btn-analisedespesa w-100"
-              onClick={consultarTudo}
-              disabled={loading}
-            >
-              {loading ? <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> : <i className="bi bi-arrow-clockwise me-1"></i>}
-              {loading ? "" : "Atualizar"}
-            </button>
-            </div>
-            
+          </div>
         </div>
 
+        <div className="row mb-4 align-items-end g-2 cadastro-filtros">
+          <div className="col-md-3 cadastro-filtro-col">
+            <label className="form-label mb-1">Filial</label>
+            <EditComplete
+              autoFocus
+              placeholder={"Razão social ou CNPJ"}
+              id={"fl-1"}
+              tipoConsulta={"filial1"}
+              onClickCodigo={setIdFilial}
+              onClickDescricao={setFilial}
+              value={filial}
+            />
+          </div>
+
+          <div className="col-md-2 cadastro-filtro-col">
+            <label className="form-label mb-1">Ordenador</label>
+            <EditComplete
+              placeholder={"Nome"}
+              id={"us"}
+              tipoConsulta={"us"}
+              onClickCodigo={setCodOrdenador}
+              onClickDescricao={setDescricaoOrdenador}
+              value={descricaoOrdenador}
+              disabled={forcarOrdenadorLogado}
+            />
+          </div>
+
+          <div className="col-md-2 cadastro-filtro-col">
+            <label className="form-label mb-1">Conta Gerencial</label>
+            <EditComplete
+              placeholder={"Código ou descrição"}
+              id={"cg"}
+              tipoConsulta={"cg"}
+              onClickCodigo={setCodConta}
+              onClickDescricao={setDescricaoConta}
+              value={descricaoConta}
+            />
+          </div>
+
+          <div className="col-md-2 cadastro-filtro-col">
+            <label className="form-label mb-1">Data Inicial</label>
+            <input type="date" className="form-control form-control-sm" value={dataInicial} onChange={(e) => setDataInicial(e.target.value)} />
+          </div>
+
+          <div className="col-md-2 cadastro-filtro-col">
+            <label className="form-label mb-1">Data Final</label>
+            <input type="date" className="form-control form-control-sm" value={dataFinal} onChange={(e) => setDataFinal(e.target.value)} />
+          </div>
+
+          <div className="col-md-1 cadastro-filtro-col">
+            <label className="form-label mb-1 invisible">Ações</label>
+            <div className="d-flex flex-column gap-1">
+              <button className="btn btn-primary btn-sm w-100" onClick={consultarTabela} disabled={loading}>
+                {loading ? "..." : "Buscar"}
+              </button>
+              <button className="btn btn-outline-secondary btn-sm w-100" onClick={handleLimparFiltros} disabled={loading}>
+                Limpar
+              </button>
+            </div>
+          </div>
+        </div>
 
         {loading && (
           <div className="text-center mt-4">
             <div className="spinner-border text-primary" role="status">
               <span className="visually-hidden">Carregando...</span>
             </div>
-            <div className="mt-3">Consultando titulos e orçamento, por favor aguarde...</div>
+            <div className="mt-3">Consultando acompanhamento de despesa...</div>
           </div>
         )}
 
+        {!loading && linhasTabela.length > 0 && (
+          <>
+            <p className="cadastro-section-title">Análise</p>
 
-        
-
-       <div className="row">
-          {/* Gráfico 1 */}
-          {!loading && (<div className="col-md-4 mt-2">
-            <ChartView
-              type="donut"
-              series={[orcado1 - realizado1, realizado1]}
-              options={{
-                labels: ["Restante", "Realizado"], // Categorias
-                legend: {
-                  position: "bottom", // Legenda embaixo do gráfico
-                  horizontalAlign: "center", // Centraliza a legenda
-                },
-                tooltip: {
-                  enabled: true,
-                  y: {
-                    formatter: (value, { seriesIndex }) => {
-                      return seriesIndex === 0
-                        ? formatarValor(orcado1 - realizado1)
-                        : formatarValor(realizado1);
-                    },
-                  },
-                },
-                plotOptions: {
-                  pie: {                
-                    donut: {
-                      labels: {
-                        show: true,
-                        name: {
-                          show: true,
-                          fontSize: "16px",
-                          color: "#333",
-                          offsetY: -10,
-                        },
-                        value: {
-                          show: true,
-                          fontSize: "20px",
-                          color: "#333",
-                          formatter: (value) => {
-                            return formatarValor(value);
-                          },
-                        },
-                        total: {
-                          show: true,
-                          label: "Atingimento",
-                          formatter: () => formatarPercentual(percentual1),
-                        },
-                      },
-                    },
-                  },
-                },
-                /*chart: {
-                  events: {
-
-                    dataPointSelection: (event, chartContext, { dataPointIndex }) => {
-                      
-                      if (chartContext.w.config.labels[dataPointIndex] === categoriaFiltrada){
-                        setCategoriaFiltrada("Geral")
-                      }else{                      
-                        setCategoriaFiltrada(chartContext.w.config.labels[dataPointIndex])
-                      }
-                                  
-                    },
-                  }, 
-                },*/
-              }}
-              height={250}
-              title={"Orçamento Total de " + formatarValor(orcado1)}
-            />
-          </div>)}
-
-
-
-          {/* Gráfico 2 */}
-          {!loading && (<div className="col-md-4 mt-2">
-
-        <ChartView
-          type="donut"
-          series={[orcado2 - realizado2, realizado2]}
-          options={{
-            labels: ["Restante", "Realizado"],
-            legend: {
-              position: "bottom", // Legenda embaixo do gráfico
-              horizontalAlign: "center", // Centraliza a legenda
-            },
-            tooltip: {
-              enabled: true,
-              y: {
-                formatter: (value, { seriesIndex }) => {
-                  // Mostra os valores originais no tooltip
-                  return seriesIndex === 0 
-                    ? formatarValor(orcado2 - realizado2) // Valor original do orçado
-                    : formatarValor(realizado2); // Valor original do realizado
-                },
-              },
-            },
-            plotOptions: {
-              pie: {
-                donut: {
-                  labels: {
-                    show: true,
-                    name: {
-                      show: true,
-                      fontSize: "16px",
-                      color: "#333",
-                      offsetY: -10,                      
-                    },
-                    value: {
-                      show: true,
-                      fontSize: "20px",
-                      color: "#333",
-
-                      formatter: (value) => {
-                        return formatarValor(value);
-                      }
-                      
-                      ,
-                    },
-                    total: {
-                      show: true,
-                      label: "Atingimento",
-                      formatter: () => formatarPercentual(percentual2), // Exibe o percentual de atingimento no centro
-                    },
-                  },
-                },
-              },
-            },
-          }}
-          height={250}
-          title={"Por ordenador "+descricaoOrdenador+" "+formatarValor(orcado2)}
-        />
-      </div>)}
-
-      {/* Gráfico 2 */}
-      {!loading && (<div className="col-md-4 mt-2">
-        <ChartView
-          type="donut"
-          series={[orcado3 - realizado3, realizado3]}
-          options={{
-            labels: ["Restante", "Realizado"],
-            legend: {
-              position: "bottom", // Legenda embaixo do gráfico
-              horizontalAlign: "center", // Centraliza a legenda
-            },
-            tooltip: {
-              enabled: true,
-              y: {
-                formatter: (value, { seriesIndex }) => {
-                  // Mostra os valores originais no tooltip
-                  return seriesIndex === 0 
-                    ? formatarValor(orcado3 - realizado3) // Valor original do orçado
-                    : formatarValor(realizado3); // Valor original do realizado
-                },
-              },
-            },
-            plotOptions: {
-              pie: {
-                donut: {
-                  labels: {
-                    show: true,
-                    name: {
-                      show: true,
-                      fontSize: "16px",
-                      color: "#333",
-                      offsetY: -10,                      
-                    },
-                    value: {
-                      show: true,
-                      fontSize: "20px",
-                      color: "#333",
-
-                      formatter: (value) => {
-                        return formatarValor(value);
-                      }
-                      
-                      ,
-                    },
-                    total: {
-                      show: true,
-                      label: "Atingimento",
-                      formatter: () => formatarPercentual(percentual3), // Exibe o percentual de atingimento no centro
-                    },
-                  },
-                },
-              },
-            },
-          }}
-          height={250}
-          title={"Por conta "+nomeContaGerencial+" "+formatarValor(orcado3)}
-        />
-      </div>)} 
-
-          {/* Legenda de cores abaixo da tabela */}
-          {!loading && (<div className="mt-3">
-            <div className="d-flex align-items-center ChartFundo">
-              <h6 className="m-2"><strong  style={{ fontSize: '13px'}}>{"Legenda do Campo (% Realizado): "}</strong></h6>
-              <div className="d-flex flex-wrap align-items-center mt-2">
-                <div className="d-flex align-items-center me-4 mb-2">
-                  <div className="rounded-circle me-2" style={{ width: '20px', height: '20px', backgroundColor: '#C6EFCD' }}></div>
-                  <span style={{ fontSize: '13px'}}>{"< 30%"}</span>
+            <div className="row g-3 mb-4">
+              <div className="col-6 col-md-3">
+                <div className="orcamento-kpi-card">
+                  <span className="orcamento-kpi-label">Total Orçado</span>
+                  <span className="orcamento-kpi-value">{fmtCurrency(totalOrcado)}</span>
                 </div>
-                <div className="d-flex align-items-center me-4 mb-2">
-                  <div className="rounded-circle me-2" style={{ width: '20px', height: '20px', backgroundColor: '#FEEB9C' }}></div>
-                  <span style={{ fontSize: '13px'}}>{"> 30% e < 60%"}</span>
+              </div>
+              <div className="col-6 col-md-3">
+                <div className="orcamento-kpi-card acompanhamento-kpi-card--realizado">
+                  <span className="orcamento-kpi-label">Total Realizado</span>
+                  <span className="orcamento-kpi-value">{fmtCurrency(totalRealizado)}</span>
                 </div>
-                <div className="d-flex align-items-center me-4 mb-2">
-                  <div className="rounded-circle me-2" style={{ width: '20px', height: '20px', backgroundColor: '#F7C11B' }}></div>
-                  <span style={{ fontSize: '13px'}}>{"> 60% e < 100%"}</span>
+              </div>
+              <div className="col-6 col-md-3">
+                <div className="orcamento-kpi-card orcamento-kpi-card--destaque">
+                  <span className="orcamento-kpi-label">Saldo Disponível</span>
+                  <span className="orcamento-kpi-value">{fmtCurrency(totalRestante)}</span>
+                  <span className="orcamento-kpi-sub">{fmtPercent(percentualGeral)} realizado</span>
                 </div>
-                <div className="d-flex align-items-center me-4 mb-2">
-                  <div className="rounded-circle me-2" style={{ width: '20px', height: '20px', backgroundColor: '#FCC7CD' }}></div>
-                  <span style={{ fontSize: '13px'}}> {">= 100%"}</span>
+              </div>
+              <div className="col-6 col-md-3">
+                <div className="orcamento-kpi-card">
+                  <span className="orcamento-kpi-label">Média Realizada</span>
+                  <span className="orcamento-kpi-value">{fmtCurrency(mediaRealizada)}</span>
+                  <span className="orcamento-kpi-sub">{linhasTabela.length} contas analisadas</span>
                 </div>
               </div>
             </div>
-          </div>)}
 
-          {!loading && (<div className="col-12 mt-3">              
-
-            <table className="table tablefont table-hover">
-              <thead>
-                <tr>
-                  <th scope="col">CONTA GERENCIAL</th>
-                  <th className="text-center" scope="col">ORÇADO</th>
-                  <th className="text-center" scope="col">REALIZADO</th>
-                  <th className="text-center" scope="col">RESTANTE</th>
-                  <th className="text-center" scope="col">% REALIZADO</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dadosTabela.length > 0 ? (
-                  dadosTabela.map((i) => (
-                    <tr key={i.codconta} onClick={() => consultarDashOrcamentoPorConta(i.codconta, i.conta)}>
-                      <td>{i.codconta+' - '+i.conta}</td>
-                      <td className="text-center">{new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(i.orcado)}</td>
-                      <td className="text-center">{new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(i.realizado)}</td>
-                      <td className="text-center">{new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(i.orcado - i.realizado)}</td>
-                      <td style={determinarCorPercentual(i.perrealizado)}>{formatarPercentual(i.perrealizado)}</td>
-                    </tr>
-                  ))
+            <div className="row g-3 mb-4">
+              <div className="col-12 col-lg-8">
+                {contasComparativo.length > 0 ? (
+                  <ChartView
+                    type="bar"
+                    series={[
+                      { name: "Orçado", data: contasComparativo.map((item) => item.orcado) },
+                      { name: "Realizado", data: contasComparativo.map((item) => item.realizado) }
+                    ]}
+                    options={{
+                      chart: { stacked: false, toolbar: { show: false } },
+                      legend: { show: true, position: "top" },
+                      colors: ["#0d6efd", "#20c997"],
+                      dataLabels: { enabled: false },
+                      xaxis: { categories: contasComparativo.map((item) => String(item.codconta || "")) },
+                      yaxis: { labels: { formatter: (value) => fmtCurrency(value) } },
+                      tooltip: { y: { formatter: (value) => fmtCurrency(value) } }
+                    }}
+                    height={320}
+                    title="Comparativo Orçado x Realizado por Conta"
+                  />
                 ) : (
-                  <tr>
-                    <td colSpan={5} className="text-center">Dados não encontrados</td>
-                  </tr>
+                  <div className="cadastro-card h-100 d-flex align-items-center justify-content-center">
+                    <span className="text-muted">Sem dados para exibir</span>
+                  </div>
                 )}
-              </tbody>
+              </div>
 
+              <div className="col-12 col-lg-4">
+                {distribuicaoFaixas.some((v) => v > 0) ? (
+                  <ChartView
+                    type="donut"
+                    series={distribuicaoFaixas}
+                    options={{
+                      labels: ["Consumo controlado", "Atenção", "Estourado"],
+                      legend: { position: "bottom" },
+                      colors: ["#20c997", "#ffc107", "#dc3545"],
+                      tooltip: { y: { formatter: (value) => `${value} conta(s)` } }
+                    }}
+                    height={320}
+                    title="Faixas de Consumo"
+                  />
+                ) : (
+                  <div className="cadastro-card h-100 d-flex align-items-center justify-content-center">
+                    <span className="text-muted">Sem dados para exibir</span>
+                  </div>
+                )}
+              </div>
+            </div>
 
-              {/* Rodapé com Totais */}
-              <tfoot>
-                <tr>
-                  <td><strong>TOTAL</strong></td>
-                  <td className="text-center bolt">
-                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(orcado4)}
-                  </td>
-                  <td className="text-center bolt">
-                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(realizado4)}
-                  </td>
-                  <td className="text-center bolt">
-                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(orcado4 - realizado4)}
-                  </td>
-                  <td className="text-center bolt">
-                    {formatarPercentual(percentual4)}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>                        
-          </div>)}
+            <div className="row g-3 mb-4">
+              <div className="col-12">
+                <div className="cadastro-card p-0">
+                  <div className="orcamento-topcontas-header">
+                    <label className="ChartTitle">Top 5 Contas por Realizado</label>
+                  </div>
+                  <div className="orcamento-topcontas-body">
+                    {topContas.map((item, index) => {
+                      const percentual = totalRealizado > 0 ? (item.realizado / totalRealizado) * 100 : 0;
+                      return (
+                        <button
+                          key={`${item.codconta}-${index}`}
+                          type="button"
+                          className="orcamento-topcontas-item orcamento-topcontas-button"
+                          onClick={() => abrirModalDetalhe(item)}
+                          title={`Ver detalhe da conta ${item.conta}`}
+                        >
+                          <div className="d-flex justify-content-between align-items-center mb-1">
+                            <span className="orcamento-topcontas-nome">
+                              <span className="orcamento-topcontas-rank">{index + 1}</span>
+                              {item.conta}
+                            </span>
+                            <span className="orcamento-topcontas-valor">{fmtCurrency(item.realizado)}</span>
+                          </div>
+                          <div className="orcamento-progress-track">
+                            <div className="orcamento-progress-bar acompanhamento-progress-bar" style={{ width: `${Math.min(percentual, 100)}%` }} />
+                          </div>
+                          <div className="d-flex justify-content-between mt-1">
+                            <small className="text-muted">{item.codconta}</small>
+                            <small className="text-muted">{fmtPercent(percentual)} do realizado</small>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <p className="cadastro-section-title">Resumo por Conta</p>
+            <div className="cadastro-card cadastro-table-card mb-4">
+              <div className="acompanhamento-legend-row">
+                <span><span className="acompanhamento-legend-dot acompanhamento-legend-dot--ok"></span>Abaixo de 30%</span>
+                <span><span className="acompanhamento-legend-dot acompanhamento-legend-dot--mid"></span>Entre 30% e 60%</span>
+                <span><span className="acompanhamento-legend-dot acompanhamento-legend-dot--warn"></span>Entre 60% e 100%</span>
+                <span><span className="acompanhamento-legend-dot acompanhamento-legend-dot--over"></span>Acima de 100%</span>
+              </div>
+              <div className="table-responsive">
+                <table className="table table-hover mb-0 cadastro-table orcamento-table-resumo acompanhamento-table-resumo">
+                  <thead>
+                    <tr>
+                      <th>Conta Gerencial</th>
+                      <th className="text-end">Orçado</th>
+                      <th className="text-end">Realizado</th>
+                      <th className="text-end">Restante</th>
+                      <th className="text-end">% Realizado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {linhasTabela.map((item) => (
+                      <tr key={item.codconta} className="cadastro-row-clickable" onClick={() => abrirModalDetalhe(item)}>
+                        <td>
+                          <div className="acompanhamento-account-cell">
+                            <strong>{item.codconta}</strong>
+                            <span>{item.conta}</span>
+                          </div>
+                        </td>
+                        <td className="text-end">{fmtCurrency(item.orcado)}</td>
+                        <td className="text-end">{fmtCurrency(item.realizado)}</td>
+                        <td className="text-end">{fmtCurrency(item.restante)}</td>
+                        <td className="text-end">
+                          <span className="acompanhamento-percent-pill" style={determinarCorPercentual(item.percentual)}>
+                            {fmtPercent(item.percentual)}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="orcamento-table-total-row">
+                      <td style={{ fontWeight: 700 }}>Total Geral</td>
+                      <td className="text-end" style={{ fontWeight: 700 }}>{fmtCurrency(totalOrcado)}</td>
+                      <td className="text-end" style={{ fontWeight: 700 }}>{fmtCurrency(totalRealizado)}</td>
+                      <td className="text-end" style={{ fontWeight: 700 }}>{fmtCurrency(totalRestante)}</td>
+                      <td className="text-end" style={{ fontWeight: 700 }}>{fmtPercent(percentualGeral)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+
+        {!loading && linhasTabela.length === 0 && (
+          <div className="cadastro-card acompanhamento-empty-state">
+            <h4>Nenhum dado encontrado</h4>
+            <p className="text-muted mb-0">Ajuste os filtros e execute uma nova consulta para visualizar o acompanhamento.</p>
+          </div>
+        )}
+
+        {showModal && createPortal((
+          <div className="modal-overlay-importacao" onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}>
+            <div className="modal-content-importacao acompanhamento-modal-content">
+              <div className="importacao-modal-header d-flex justify-content-between align-items-center">
+                <div>
+                  <h4 className="mb-1">Detalhe por Centro de Custo</h4>
+                  <p className="mb-0 text-muted"><strong>{contaSelecionada?.codconta}</strong> - {contaSelecionada?.conta}</p>
+                </div>
+                <button type="button" className="btn btn-outline-secondary btn-fechar-importacao" onClick={() => setShowModal(false)}>
+                  Fechar
+                </button>
+              </div>
+
+              <div className="importacao-modal-body">
+                <div className="row g-3 mb-4">
+                  <div className="col-md-3">
+                    <div className="orcamento-kpi-card">
+                      <span className="orcamento-kpi-label">Orçado da Conta</span>
+                      <span className="orcamento-kpi-value">{fmtCurrency(contaSelecionada?.orcado)}</span>
+                    </div>
+                  </div>
+                  <div className="col-md-3">
+                    <div className="orcamento-kpi-card acompanhamento-kpi-card--realizado">
+                      <span className="orcamento-kpi-label">Realizado da Conta</span>
+                      <span className="orcamento-kpi-value">{fmtCurrency(contaSelecionada?.realizado)}</span>
+                    </div>
+                  </div>
+                  <div className="col-md-3">
+                    <div className="orcamento-kpi-card orcamento-kpi-card--destaque">
+                      <span className="orcamento-kpi-label">Restante</span>
+                      <span className="orcamento-kpi-value">{fmtCurrency(contaSelecionada?.restante)}</span>
+                    </div>
+                  </div>
+                  <div className="col-md-3">
+                    <div className="orcamento-kpi-card">
+                      <span className="orcamento-kpi-label">% Realizado</span>
+                      <span className="orcamento-kpi-value">{fmtPercent(contaSelecionada?.percentual)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {loadingDetalhe ? (
+                  <div className="text-center py-4">
+                    <div className="spinner-border text-primary" role="status">
+                      <span className="visually-hidden">Carregando...</span>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="row g-3 mb-4">
+                      <div className="col-12 col-lg-5">
+                        {detalheCentroCustoNormalizado.some((item) => item.realizado > 0) ? (
+                          <ChartView
+                            type="donut"
+                            series={detalheCentroCustoNormalizado.map((item) => item.realizado)}
+                            options={{
+                              labels: detalheCentroCustoNormalizado.map((item) => String(item.centroCusto || "")),
+                              legend: { position: "bottom" },
+                              tooltip: { y: { formatter: (value) => fmtCurrency(value) } }
+                            }}
+                            height={300}
+                            title="Participação por Centro de Custo"
+                          />
+                        ) : (
+                          <div className="cadastro-card h-100 d-flex align-items-center justify-content-center">
+                            <span className="text-muted">Sem dados para exibir</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="col-12 col-lg-7">
+                        <div className="cadastro-card h-100">
+                          <div className="orcamento-topcontas-header">
+                            <label className="ChartTitle">Centros com Maior Consumo</label>
+                          </div>
+                          <div className="orcamento-topcontas-body">
+                            {detalheCentroCustoNormalizado.map((item) => (
+                              <div key={`${item.codCentroCusto}-${item.centroCusto}`} className="orcamento-topcontas-item">
+                                <div className="d-flex justify-content-between align-items-center mb-1">
+                                  <span className="orcamento-topcontas-nome">{item.centroCusto}</span>
+                                  <span className="orcamento-topcontas-valor">{fmtCurrency(item.realizado)}</span>
+                                </div>
+                                <div className="orcamento-progress-track">
+                                  <div className="orcamento-progress-bar acompanhamento-progress-bar" style={{ width: `${Math.min(item.participacao, 100)}%` }} />
+                                </div>
+                                <div className="d-flex justify-content-between mt-1">
+                                  <small className="text-muted">Centro {item.codCentroCusto}</small>
+                                  <small className="text-muted">{fmtPercent(item.participacao)}</small>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="table-responsive">
+                      <table className="table table-hover mb-0 cadastro-table orcamento-table-resumo acompanhamento-table-resumo">
+                        <thead>
+                          <tr>
+                            <th>Centro de Custo</th>
+                            <th className="text-end">Solicitações</th>
+                            <th className="text-end">Realizado</th>
+                            <th className="text-end">Participação</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {detalheCentroCustoNormalizado.length === 0 && (
+                            <tr>
+                              <td colSpan={4} className="text-center py-3 text-muted">Nenhum centro de custo encontrado para esta conta no período.</td>
+                            </tr>
+                          )}
+                          {detalheCentroCustoNormalizado.map((item) => (
+                            <tr
+                              key={`${item.codCentroCusto}-table`}
+                              className="cadastro-row-clickable"
+                              onClick={() => carregarLancamentosCentroCusto(item)}
+                            >
+                              <td>
+                                <div className="acompanhamento-account-cell">
+                                  <strong>{item.codCentroCusto}</strong>
+                                  <span>{item.centroCusto}</span>
+                                </div>
+                              </td>
+                              <td className="text-end">{item.quantidadeSolicitacoes}</td>
+                              <td className="text-end">{fmtCurrency(item.realizado)}</td>
+                              <td className="text-end">{fmtPercent(item.participacao)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {centroCustoSelecionado && (
+                      <div className="mt-4">
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <h5 className="mb-0">
+                            Lançamentos do Centro de Custo <strong>{centroCustoSelecionado.codCentroCusto}</strong> - {centroCustoSelecionado.centroCusto}
+                          </h5>
+                          <small className="text-muted">Clique em outro centro para alternar</small>
+                        </div>
+
+                        {loadingLancamentos ? (
+                          <div className="text-center py-3">
+                            <div className="spinner-border text-primary" role="status">
+                              <span className="visually-hidden">Carregando...</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="table-responsive">
+                            <table className="table table-hover mb-0 cadastro-table orcamento-table-resumo acompanhamento-table-resumo">
+                              <thead>
+                                <tr>
+                                  <th>Solicitação</th>
+                                  <th>Data</th>
+                                  <th>Item</th>
+                                  <th className="text-end">Qtd</th>
+                                  <th className="text-end">Vl. Unit</th>
+                                  <th className="text-end">Vl. Item</th>
+                                  <th className="text-end">% Rateio</th>
+                                  <th className="text-end">Vl. Rateio</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {lancamentosCentroCustoNormalizado.length === 0 && (
+                                  <tr>
+                                    <td colSpan={8} className="text-center py-3 text-muted">Nenhum lançamento encontrado para este centro no período.</td>
+                                  </tr>
+                                )}
+                                {lancamentosCentroCustoNormalizado.map((item, index) => (
+                                  <tr key={`${item.numSolicitacao}-${index}`}>
+                                    <td>{item.numSolicitacao}</td>
+                                    <td>{item.dataSolicitacao}</td>
+                                    <td>{item.historico}</td>
+                                    <td className="text-end">{item.quantidade}</td>
+                                    <td className="text-end">{fmtCurrency(item.vlUnit)}</td>
+                                    <td className="text-end">{fmtCurrency(item.valorItem)}</td>
+                                    <td className="text-end">{fmtPercent(item.percentualRateio)}</td>
+                                    <td className="text-end">{fmtCurrency(item.valorRateio)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        ), document.body)}
+
+        <ToastContainer />
         </div>
       </div>
     </>

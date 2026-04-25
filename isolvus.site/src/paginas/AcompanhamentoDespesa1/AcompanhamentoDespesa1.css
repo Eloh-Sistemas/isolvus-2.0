@@ -1,0 +1,141 @@
+.acompanhamento-page {
+	background: linear-gradient(180deg, #f7fbff 0%, #f3f5f8 100%);
+	position: fixed;
+	top: 60px;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	width: 100% !important;
+	max-width: none !important;
+	margin: 0 !important;
+	padding-top: calc(0.25rem + 43px) !important;
+	overflow-y: auto;
+	overflow-x: hidden;
+}
+
+.acompanhamento-page-inner {
+	padding-left: 1rem;
+	padding-right: 1rem;
+}
+
+.acompanhamento-subtitle {
+	font-size: 0.95rem;
+}
+
+.acompanhamento-header-chip {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 220px;
+	padding: 12px 16px;
+	border: 1px solid #d8e7fb;
+	border-radius: 14px;
+	background: #ffffff;
+	box-shadow: 0 10px 24px rgba(13, 110, 253, 0.06);
+}
+
+.acompanhamento-header-chip span {
+	font-size: 0.78rem;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: #6b7280;
+	font-weight: 700;
+}
+
+.acompanhamento-header-chip strong {
+	color: #0d6efd;
+}
+
+.acompanhamento-kpi-card--realizado .orcamento-kpi-value {
+	color: #198754;
+}
+
+.acompanhamento-progress-bar {
+	background: linear-gradient(90deg, #20c997 0%, #0d6efd 100%);
+}
+
+.acompanhamento-legend-row {
+	display: flex;
+	align-items: center;
+	gap: 18px;
+	flex-wrap: wrap;
+	padding: 14px 16px 0;
+	color: #495057;
+	font-size: 0.82rem;
+}
+
+.acompanhamento-legend-dot {
+	width: 10px;
+	height: 10px;
+	border-radius: 999px;
+	display: inline-block;
+	margin-right: 6px;
+}
+
+.acompanhamento-legend-dot--ok {
+	background: #C6EFCD;
+}
+
+.acompanhamento-legend-dot--mid {
+	background: #FEEB9C;
+}
+
+.acompanhamento-legend-dot--warn {
+	background: #F7C11B;
+}
+
+.acompanhamento-legend-dot--over {
+	background: #FCC7CD;
+}
+
+.acompanhamento-table-resumo td,
+.acompanhamento-table-resumo th {
+	vertical-align: middle;
+}
+
+.acompanhamento-account-cell {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.acompanhamento-account-cell strong {
+	color: #0f172a;
+}
+
+.acompanhamento-account-cell span {
+	color: #6b7280;
+	font-size: 0.82rem;
+}
+
+.acompanhamento-percent-pill {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 88px;
+	border-radius: 999px;
+	padding: 6px 10px;
+	font-size: 0.8rem;
+	font-weight: 700;
+}
+
+.acompanhamento-empty-state {
+	padding: 48px 24px;
+	text-align: center;
+}
+
+.acompanhamento-empty-state h4 {
+	color: #0f172a;
+}
+
+.acompanhamento-modal-content {
+	width: min(1120px, 96vw);
+	max-height: 92vh;
+	overflow-y: auto;
+}
+
+@media (max-width: 991px) {
+	.acompanhamento-header-chip {
+		width: 100%;
+	}
+}

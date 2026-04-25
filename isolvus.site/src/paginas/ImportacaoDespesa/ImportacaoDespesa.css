@@ -6,7 +6,7 @@
     bottom: 0;
     background-color: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(4px);
-    z-index: 1050;
+    z-index: 110000;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -23,6 +23,8 @@
     flex-direction: column;
     overflow: hidden;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+    position: relative;
+    z-index: 110001;
 }
 
 .importacao-modal-header {
