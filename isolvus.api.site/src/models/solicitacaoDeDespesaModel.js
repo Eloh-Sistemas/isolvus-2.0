@@ -713,13 +713,13 @@ export async function listarModel(params) {
       const binds = {};
       
       if (params.dataSolicitacaoInicial) {
-        query += " AND TRUNC(c.datasolicitacao) >= :dataInicial";
-        binds.dataInicial = parseDateBR(params.dataSolicitacaoInicial);
+        query += " AND TRUNC(c.datasolicitacao) >= TO_DATE(:dataInicial, 'DD/MM/YYYY')";
+        binds.dataInicial = params.dataSolicitacaoInicial;
       }
 
       if (params.dataSolicitacaoFinal) {
-        query += " AND TRUNC(c.datasolicitacao) <= :dataFinal";
-        binds.dataFinal = parseDateBR(params.dataSolicitacaoFinal);
+        query += " AND TRUNC(c.datasolicitacao) <= TO_DATE(:dataFinal, 'DD/MM/YYYY')";
+        binds.dataFinal = params.dataSolicitacaoFinal;
       }
 
       if (params.pnumsolicitacao > 0) {
@@ -3214,7 +3214,7 @@ export async function recalcularRaterioModel(dto){
   await validarSolicitacaoParaAcao(
     dto.numsolicitacao,
     'recalcular rateio',
-    ['A', 'P'],
+    ['A', 'P', 'L'],
     'O rateio só pode ser alterado enquanto a solicitação estiver pendente do solicitante ou da controladoria.'
   );
 
@@ -3824,46 +3824,28 @@ export async function conformidadeSolicitacaoModel(jsonReq) {
       
       const hostClient = await executeQuery(ssqlHost, {numsolicitacao: jsonReq.numsolicitacao});  
       
-      if (jsonPostClient[0].status == 'F' || jsonReq.id_rotina_integracao != 99999){        
+      if (Number(jsonReq.id_rotina_integracao) === 99999) {
 
-          try {            
+          // Rejeicao financeira deve retornar para o ordenador revisar novamente.
+          await executeQuery(ssqlEnviarOrdenador, {numsolicitacao: jsonReq.numsolicitacao}, true);
 
-            const respose = await axios.post(hostClient[0].host+`/v1/SolicitaDespesa`, jsonPostClient[0], authApiClient);           
+      } else {
+
+          try {
+
+            const respose = await axios.post(hostClient[0].host+`/v1/SolicitaDespesa`, jsonPostClient[0], authApiClient);
 
             if (respose.status == 200 ){
               await executeQuery(ssqlSicronizaERP, {numsolicitacao: jsonReq.numsolicitacao}, true);
-            }   
-    
+            }
+
           } catch (error) {
 
             await executeQuery(ssqlPendenteIntegracao, {numsolicitacao: jsonReq.numsolicitacao}, true);
 
             console.log(error.error)
-            console.log('Erro ao integrar despesa com Winhor: '+error.error)  
+            console.log('Erro ao integrar despesa com Winhor: '+error.error)
           }
-
-      }else{
-
-
-            if (jsonReq.id_rotina_integracao == '99999'){        
-
-              try {            
-
-                const respose = await axios.post(hostClient[0].host+`/v1/SolicitaDespesa`, jsonPostClient[0], authApiClient);           
-
-                if (respose.status == 200 ){
-                  await executeQuery(ssqlEnviarOrdenador, {numsolicitacao: jsonReq.numsolicitacao}, true);
-                }   
-        
-              } catch (error) {
-
-                await executeQuery(ssqlPendenteIntegracao, {numsolicitacao: jsonReq.numsolicitacao}, true);
-
-                console.log(error.error)
-                console.log('Erro ao integrar despesa com Winhor: '+error.error)  
-              }
-
-            }
 
       }
                  
@@ -4074,5 +4056,81 @@ export async function armazenarDespesas(dataDespesas) {
     await connection.close();
   }
   
+}
 
+// ─────────────────────────────────────────────────────────────
+// HISTÓRICO DE FLUXO DA SOLICITAÇÃO DE DESPESA
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Registra uma entrada no histórico do fluxo da solicitação.
+ * @param {object} dto
+ * @param {number} dto.numsolicitacao
+ * @param {number} dto.id_grupo_empresa
+ * @param {string} dto.etapa          - Ex: 'SOLICITACAO' | 'CONTROLADORIA' | 'ORDENADOR' | 'FINANCEIRO'
+ * @param {string} dto.status_antes   - Status anterior (pode ser null)
+ * @param {string} dto.status_depois  - Novo status
+ * @param {number} dto.id_usuario
+ * @param {string} dto.nome_usuario
+ * @param {string} [dto.observacao]
+ */
+export async function inserirHistoricoSolicitacaoModel(dto) {
+
+  // Resolver ID_USUARIO_ERP → ID_USUARIO (chave primária)
+  let idUsuario = dto.id_usuario;
+  try {
+    const usr = await executeQuery(
+      `SELECT ID_USUARIO FROM BSTAB_USUSARIOS WHERE ID_USUARIO_ERP = :erp`,
+      { erp: dto.id_usuario }
+    );
+    if (usr && usr.length > 0) idUsuario = usr[0].id_usuario;
+  } catch (_) {}
+
+  const ssql = `
+    INSERT INTO BSTAB_SOLICITADESPESA_HISTORICO (
+      ID_HISTORICO, NUMSOLICITACAO, ID_GRUPO_EMPRESA,
+      ETAPA, STATUS_ANTES, STATUS_DEPOIS,
+      ID_USUARIO, NOME_USUARIO, OBSERVACAO, DATAHORA
+    ) VALUES (
+      SEQ_SOLICITADESPESA_HISTORICO.NEXTVAL,
+      :numsolicitacao, :id_grupo_empresa,
+      :etapa, :status_antes, :status_depois,
+      :id_usuario, :nome_usuario, :observacao, SYSDATE
+    )
+  `;
+
+  await executeQuery(ssql, {
+    numsolicitacao:   dto.numsolicitacao,
+    id_grupo_empresa: dto.id_grupo_empresa,
+    etapa:            dto.etapa,
+    status_antes:     dto.status_antes || null,
+    status_depois:    dto.status_depois,
+    id_usuario:       idUsuario,
+    nome_usuario:     null,
+    observacao:       dto.observacao || null,
+  }, true);
+}
+
+/**
+ * Consulta o histórico completo de uma solicitação, ordenado por data.
+ */
+export async function consultarHistoricoSolicitacaoModel(numsolicitacao) {
+  const ssql = `
+    SELECT
+      H.ID_HISTORICO,
+      H.ETAPA,
+      H.STATUS_ANTES,
+      H.STATUS_DEPOIS,
+      H.ID_USUARIO,
+      U.NOME AS NOME_USUARIO,
+      DBMS_LOB.SUBSTR(H.OBSERVACAO, 4000, 1) AS OBSERVACAO,
+      H.DATAHORA
+    FROM BSTAB_SOLICITADESPESA_HISTORICO H
+    LEFT JOIN BSTAB_USUSARIOS U ON U.ID_USUARIO = H.ID_USUARIO
+    WHERE H.NUMSOLICITACAO = :numsolicitacao
+    ORDER BY H.DATAHORA DESC
+  `;
+
+  const result = await executeQuery(ssql, { numsolicitacao });
+  return result;
 }

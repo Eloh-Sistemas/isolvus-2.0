@@ -1,200 +1,324 @@
-/* Container geral dos arquivos (caixas) */
-.saved-box, .preview-box {
-  position: relative;
-  width: 1px;
-  min-width: 170px;
-  min-height: 200px; /* você pode ajustar conforme desejar */
-  border: 1px solid #ddd;
-  border-radius: 0.5rem;
-  padding: 0.5rem;
-  background-color: #fff;
+/* ── Upload zone ─────────────────────────────────────── */
+.upload-zone {
+  width: 100%;
+  border: 2px dashed #94a3b8;
+  border-radius: 0.75rem;
+  padding: 1.4rem 1rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.35rem;
-  box-shadow: 0 1px 4px rgb(0 0 0 / 0.1);
+  color: #64748b;
+  cursor: pointer;
+  background: #f8fafc;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  user-select: none;
+  margin-bottom: 1rem;
+}
+.upload-zone:hover {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+.upload-zone.disabled {
+  cursor: default;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.upload-zone-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+.upload-zone-text {
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+.upload-zone-hint {
+  font-size: 0.76rem;
+  color: #94a3b8;
+}
+
+/* ── Section header ──────────────────────────────────── */
+.upload-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.65rem;
+}
+.upload-section-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.upload-section-count {
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+.upload-pending-info {
+  color: #d97706;
+  font-weight: 600;
+}
+
+/* ── Files grid ──────────────────────────────────────── */
+.files-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+/* ── File card ───────────────────────────────────────── */
+.file-card {
+  position: relative;
+  width: 200px;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.65rem;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.07);
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
   cursor: default;
   user-select: none;
-  transition: box-shadow 0.2s ease;
 }
-
-
-.saved-box:hover, .preview-box:hover {
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
+.file-card:hover {
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.13);
+  transform: translateY(-2px);
 }
-
-/* Imagem ou ícone centralizados e dimensionados */
-.image-fit {
-  width: 100%;
-  height: 100px;
-  object-fit: contain;
-  border-radius: 0.3rem;
-  background-color: #f8f9fa;
+.file-card.is-image {
   cursor: pointer;
 }
 
-.file-icon {
-  font-size: 5rem;
-  color: #6c757d;
-  cursor: default;
-}
-
-/* Botões excluir/remover no canto superior direito */
-.button-circle {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 44px;
-  height: 26px;
-  padding: 0;
-  border-radius: 50%;
+/* Card thumbnail */
+.file-card-thumb {
+  width: 100%;
+  height: 140px;
   display: flex;
+  align-items: center;
   justify-content: center;
-  align-items: center;
-  font-size: 1rem;
-  line-height: 1;
-  cursor: pointer;
-  z-index: 10;
+  background: #f1f5f9;
+  overflow: hidden;
+  flex-shrink: 0;
 }
-
-/* Informações do arquivo - nome e download alinhados */
-.file-info {
+.file-card-thumb img {
   width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.file-type-icon {
+  font-size: 3.2rem;
+  color: #64748b;
+}
+.file-type-icon.pdf   { color: #ef4444; }
+.file-type-icon.word  { color: #2563eb; }
+.file-type-icon.excel { color: #16a34a; }
+.file-type-icon.ppt   { color: #ea580c; }
+.file-type-icon.zip   { color: #7c3aed; }
+
+/* Card body */
+.file-card-body {
+  width: 100%;
+  padding: 0.45rem 0.5rem 0.4rem;
   display: flex;
-  flex-direction: column; /* mantém nome acima do botão */
-  align-items: center;
-  gap: 0.25rem;
-  margin-top: auto;
+  flex-direction: column;
+  gap: 0.3rem;
 }
-
-
-/* Nome do arquivo - truncado com tooltip */
-.file-name {
-  width: 100%;
-  font-size: 0.85rem;
-  color: #212529;
+.file-card-name {
+  font-size: 0.82rem;
+  color: #334155;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   text-align: center;
-  cursor: default;
-  user-select: text;
-}
-
-/* Botão download - ocupa toda a largura do container, alinhado ao centro */
-.file-info a.btn {
   width: 100%;
-  font-size: 0.8rem;
-  padding: 0.25rem 0;
-  text-align: center;
-  white-space: nowrap;
-  user-select: none;
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  gap: 0.25rem;
-  transition: background-color 0.2s ease, color 0.2s ease;
 }
-
-/* Ícone download no botão */
-.file-info a.btn i {
-  font-size: 1rem;
-}
-
-/* Prevenir que clique no botão download abra modal */
-.file-info a.btn:active, .file-info a.btn:focus {
-  outline: none;
-  box-shadow: none;
-}
-
-/* Upload box (botão de adicionar arquivo) */
-.upload-box {
-  width: 170px;
-  min-width: 170px;  
-  height: 220px;
-  border: 2px dashed #6c757d;
-  border-radius: 0.5rem;
+.file-card-actions {
   display: flex;
   justify-content: center;
-  align-items: center;
-  color: #6c757d;
-  cursor: pointer;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  width: 100%;
 }
-.upload-box:hover {
-  background-color: #e9f0ff;
-  border-color: #375aeb;
-  color: #375aeb;
+.file-card-actions .btn {
+  font-size: 0.72rem;
+  padding: 0.18rem 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  width: 100%;
 }
 
-/* Estilos do modal - MANTENHA ESTES EXATAMENTE IGUAIS */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
+/* Remove button */
+.file-card-remove {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 22px;
+  min-height: 22px;
+  max-width: 22px;
+  max-height: 22px;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  line-height: 1;
+  z-index: 10;
+  opacity: 0.85;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.file-card-remove:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* Pending badge */
+.file-card-pending-badge {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  font-size: 0.62rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 20px;
+  background: #fbbf24;
+  color: #78350f;
+  font-weight: 700;
+  line-height: 1.5;
+  pointer-events: none;
+}
+
+/* ── Empty state ─────────────────────────────────────── */
+.files-empty-state {
   width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.6);
+  padding: 1.75rem 1rem;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  border: 1px dashed #e2e8f0;
+  border-radius: 0.65rem;
+  background: #fafafa;
+}
+.files-empty-state i {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 0.4rem;
+  color: #cbd5e1;
+}
+
+/* ── Lightbox ────────────────────────────────────────── */
+.lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
   z-index: 80000;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-
-.modal-content {
+.lightbox-content {
   position: relative;
-  max-width: 90%;
-  max-height: 90%;
-  background: #fff;
-  padding: 1rem;
-  border-radius: 8px;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-  display: flex; /* Adicionado para centralizar a imagem */
-  justify-content: center;
+  max-width: min(92vw, 1000px);
+  max-height: 90vh;
+  display: flex;
   align-items: center;
+  justify-content: center;
 }
-
-/* ----- ESTILO DA IMAGEM DENTRO DO MODAL - AJUSTADO ----- */
-.modal-image {
+.lightbox-image {
   max-width: 100%;
-  max-height: 80vh;
-  width: auto; /* Permite que a largura se ajuste automaticamente */
-  height: auto; /* Permite que a altura se ajuste automaticamente */
-  border-radius: 4px;
-  object-fit: contain; /* Garante que a imagem mantenha a proporção dentro do container */
+  max-height: 86vh;
+  border-radius: 6px;
+  object-fit: contain;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
 }
-/* -------------------------------------------------------- */
-
-.close-button {
-  position: absolute;
-  top: 8px;
-  right: 12px;
-  font-size: 2rem;
-  background: transparent;
-  border: none;
-  color: #000;
+.lightbox-close {
+  position: fixed;
+  top: 14px;
+  right: 18px;
+  font-size: 1.4rem;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #fff;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  transition: background 0.2s;
+  z-index: 80001;
 }
-
-.modal-nav-button {
-  position: absolute;
+.lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+.lightbox-nav {
+  position: fixed;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 2rem;
-  background: transparent;
-  border: none;
-  color: #000;
+  font-size: 1.3rem;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #fff;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  transition: background 0.2s;
+  z-index: 80001;
+}
+.lightbox-nav:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+.lightbox-nav:disabled {
+  opacity: 0.25;
+  cursor: default;
+  pointer-events: none;
+}
+.lightbox-nav.prev { left: 16px; }
+.lightbox-nav.next { right: 16px; }
+.lightbox-counter {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.82rem;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 0.2rem 0.8rem;
+  border-radius: 20px;
+  z-index: 80001;
 }
 
-.modal-prev-button {
-  left: 10px;
-}
-
-.modal-next-button {
-  right: 10px;
-}
-
-.close-button {  
-  color: #000000; /* ou uma cor visível */
+/* ── Mobile: 2 cards por linha ───────────────────────── */
+@media (max-width: 768px) {
+  .files-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.6rem;
+  }
+  .file-card {
+    width: 100%;
+  }
+  .file-card-thumb {
+    height: 110px;
+  }
+  .file-card-remove {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px;
+    min-height: 32px;
+    max-width: 32px;
+    max-height: 32px;
+    font-size: 0.8rem;
+    top: 6px;
+    right: 6px;
+  }
 }

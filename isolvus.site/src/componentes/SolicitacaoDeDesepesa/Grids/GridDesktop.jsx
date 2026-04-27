@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import "./GridDesktop.css";
+import "../../../paginas/CadastroDeUsuario/CadastroDeUsuario.css";
 
 function GridDesktop(props) {  
 
@@ -36,31 +37,39 @@ function GridDesktop(props) {
 
   return (
     <div className="grid-desktop-itemdespesa">
-      <div className="bg-grid">
 
+      <div className="grid-item-toolbar">
+        <div className="grid-item-totais">
+          <span><strong>Itens:</strong> {qtRegistro}</span>
+          <span>
+            <strong>Total:</strong>{" "}
+            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total - (props.totalvale || 0))}
+          </span>
+        </div>
+        {props.tabhabilitada && (
+          <button
+            onClick={() => NovoItem()}
+            className="btn-add-item"
+            title="Adicionar novo item"
+          >
+            <i className="bi-plus-lg me-1"></i> Adicionar
+          </button>
+        )}
+      </div>
+
+      <div className="cadastro-table-card">
         <div className="tableFixHead">
-          <table className="table table-hover">
-            <thead className="Titulos-Table">
+          <table className="table table-hover mb-0 cadastro-table">
+            <thead>
               <tr>
-                <th scope="col" className="text-center" style={{ width: "80px" }}>Código</th>
-                <th scope="col">Descrição</th>
-                <th scope="col" className="text-center" style={{ width: "110px" }}>Qtd</th>
-                <th scope="col" className="text-end" style={{ width: "140px" }}>Valor Unit.</th>
-                <th scope="col" className="text-end" style={{ width: "140px" }}>Valor Total</th>
-                <th scope="col" style={{ width: "60px" }}>
-                  {props.tabhabilitada && (
-                    <button
-                      onClick={() => NovoItem()}
-                      className="btn-add-item"
-                      title="Adicionar novo item"
-                    >
-                      <i className="bi-plus-lg"></i>
-                    </button>
-                  )}
-                </th>
+                <th style={{ width: "80px" }}>Código</th>
+                <th>Descrição</th>
+                <th className="text-center" style={{ width: "110px" }}>Qtd</th>
+                <th className="text-end" style={{ width: "140px" }}>Valor Unit.</th>
+                <th className="text-end" style={{ width: "140px" }}>Valor Total</th>
+                <th style={{ width: "40px" }}></th>
               </tr>
             </thead>
-
             <tbody>
               {props.dados.length === 0 ? (
                 <tr>
@@ -71,39 +80,30 @@ function GridDesktop(props) {
                   <tr
                     key={index}
                     onClick={() => SelecinarItem(i, index)}
-                    className="item-Table"
+                    className={props.tabhabilitada ? "cadastro-row-clickable" : ""}
                   >
-                    <td className="text-center">{i.coditem}</td>
+                    <td><span className="grid-item-cod-badge">{i.coditem}</span></td>
                     <td>{i.descricao}</td>
                     <td className="text-center">{i.quantidade}</td>
                     <td className="text-end">
                       {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(i.vlunit)}
                     </td>
-                    <td className="text-end">
+                    <td className="text-end fw-semibold">
                       {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(i.quantidade * i.vlunit)}
                     </td>
-                    <td></td>
+                    <td className="text-center">
+                      {props.tabhabilitada && (
+                        <i className="bi bi-pencil grid-item-edit-icon"></i>
+                      )}
+                    </td>
                   </tr>
                 ))
               )}
-            </tbody>                  
-          </table>                                
-        </div>              
-
-        <div className="Total d-flex w-100 justify-content-between">
-          <div>
-            <label>Registros:</label>
-            <span>{qtRegistro}</span>
-          </div>
-          <div>   
-            <label>Total:</label>
-            <span>
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total - props.totalvale)}
-            </span>
-          </div>
+            </tbody>
+          </table>
         </div>
-
       </div>
+
     </div>
   );
 }

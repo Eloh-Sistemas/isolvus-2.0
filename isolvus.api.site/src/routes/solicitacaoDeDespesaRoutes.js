@@ -43,7 +43,8 @@ import {
          conformidadeSolicitacoesLote,
          controlededespesa,
          AutorizacaoDePagamento,
-         preAnalise
+         preAnalise,
+         consultarHistorico
         } from '../controllers/solicitacaoDeDespesaController.js';
 
 const router = express.Router();
@@ -80,5 +81,6 @@ router.post('/solicitacaoDespesa/importa/conformidadeSolicitacoesLote', validate
 router.post('/solicitacaoDespesa/relatorio/controlededespesa', validate(relcontrolededespesaSchema), controlededespesa);
 router.post('/solicitacaoDespesa/relatorio/AutorizacaoDePagamento', validate(relautorizacaoPagamentoSchema),  AutorizacaoDePagamento);
 
+router.post('/solicitacaoDespesa/consultarHistorico', validate(consultarSolicitacaoNumeroSchema), consultarHistorico);
 
 export default router;

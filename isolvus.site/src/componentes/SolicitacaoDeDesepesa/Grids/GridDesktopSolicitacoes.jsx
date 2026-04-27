@@ -103,8 +103,8 @@ function GridDesktopSolicitacao(props){
         <div>Solicitante</div>
       </th>
       <th >
-        <div>Data Solicitada</div> 
-        <div>Data Estimada</div>
+        <div>Solicitada</div> 
+        <div>Estimada</div>
       </th>
       <th>
         <div>Conta Gerencial</div>

@@ -314,21 +314,15 @@ export const conformidadeSolicitacaoSchema = z.object({
   .trim()
   .min(1, "Parecer financeiro é obrigatório"),
 
-  historico1: z.string({
-    required_error: "Historico 1 é obrigatório",
-    invalid_type_error: "Historico 1 é obrigatório"
-  })
+  historico1: z.string()
   .trim()
-  .min(1, "Historico 1 é obrigatório")
-  .max(200, "Quantidade de caracteres maior que o permitido para o historico 1"),
+  .max(200, "Quantidade de caracteres maior que o permitido para o historico 1")
+  .optional(),
 
-  historico2: z.string({
-    required_error: "Historico 2 é obrigatório",
-    invalid_type_error: "Historico 2 é obrigatório"
-  })
+  historico2: z.string()
   .trim()
-  .min(1, "Historico 2 é obrigatório")
-  .max(200, "Quantidade de caracteres maior que o permitido para o historico 2"),
+  .max(200, "Quantidade de caracteres maior que o permitido para o historico 2")
+  .optional(),
 
 }).superRefine((data, ctx) => {
 
@@ -336,6 +330,22 @@ export const conformidadeSolicitacaoSchema = z.object({
     ctx.addIssue({
       path: ["id_caixabanco"],
       message: "Caixa/Banco é obrigatório para esta integração",
+      code: z.ZodIssueCode.custom
+    });
+  }
+
+  if (data.id_rotina_integracao !== 99999 && !String(data.historico1 || "").trim()) {
+    ctx.addIssue({
+      path: ["historico1"],
+      message: "Historico 1 é obrigatório",
+      code: z.ZodIssueCode.custom
+    });
+  }
+
+  if (data.id_rotina_integracao !== 99999 && !String(data.historico2 || "").trim()) {
+    ctx.addIssue({
+      path: ["historico2"],
+      message: "Historico 2 é obrigatório",
       code: z.ZodIssueCode.custom
     });
   }
@@ -381,27 +391,37 @@ export const conformidadeSolicitacoesLoteSchema = z.object({
   .trim()
   .min(1, 'Parecer financeiro é obrigatório'),
 
-  historico1: z.string({
-    required_error: 'Historico 1 é obrigatório',
-    invalid_type_error: 'Historico 1 é obrigatório'
-  })
+  historico1: z.string()
   .trim()
-  .min(1, 'Historico 1 é obrigatório')
-  .max(200, 'Quantidade de caracteres maior que o permitido para o historico 1'),
+  .max(200, 'Quantidade de caracteres maior que o permitido para o historico 1')
+  .optional(),
 
-  historico2: z.string({
-    required_error: 'Historico 2 é obrigatório',
-    invalid_type_error: 'Historico 2 é obrigatório'
-  })
+  historico2: z.string()
   .trim()
-  .min(1, 'Historico 2 é obrigatório')
   .max(200, 'Quantidade de caracteres maior que o permitido para o historico 2')
+  .optional()
 
 }).superRefine((data, ctx) => {
   if (data.id_rotina_integracao === 631 && !data.id_caixabanco) {
     ctx.addIssue({
       path: ['id_caixabanco'],
       message: 'Caixa/Banco é obrigatório para esta integração',
+      code: z.ZodIssueCode.custom
+    });
+  }
+
+  if (data.id_rotina_integracao !== 99999 && !String(data.historico1 || '').trim()) {
+    ctx.addIssue({
+      path: ['historico1'],
+      message: 'Historico 1 é obrigatório',
+      code: z.ZodIssueCode.custom
+    });
+  }
+
+  if (data.id_rotina_integracao !== 99999 && !String(data.historico2 || '').trim()) {
+    ctx.addIssue({
+      path: ['historico2'],
+      message: 'Historico 2 é obrigatório',
       code: z.ZodIssueCode.custom
     });
   }

@@ -1,37 +1,63 @@
 
-.bsmodal-header{
-    
-    border-bottom-style: solid;
-    border-bottom-width: 1px;
-    border-block-color: #d3d3d3;
-    padding: 12px 0px 12px 0px;
-    color: #545454; 
-    font-size: 18px;   
-    margin-bottom: 30px;
-    
-    
+.despesa-item-modal-content {
+    width: min(1000px, 96vw);
+    height: min(74vh, 800px);
+    min-height: 620px;
+    max-height: 92vh;
 }
 
-.bsmodal-body {
-    border-bottom-style: solid;
-    border-bottom-width: 1px;
-    border-block-color: #d3d3d3;
-    color: #6b6b6b;  
-    margin-bottom: 18px;
-    font-size: 14px;      
+.despesa-item-modal-content .EditComplete-items {
+    z-index: 1200;
 }
 
-.CaixaLabel{
-  font-size: 15px;
-  color: #6b6b6b;   
+.despesa-item-modal-content .EditComplete-items .container-lista {
+    max-height: 225px;
+    overflow-y: auto;
 }
 
-.btn-anexo{
-    height: 23px;
-    width: 100%;    
-    font-size: 15px;    
-    display: flex;
-    align-items: center;
-    text-align: center;
-    margin-top: 8px;    
+.despesa-item-footer {
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.despesa-item-btn {
+    min-width: 130px;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.95rem;
+}
+
+@media (max-width: 768px) {
+    .cad-modal-overlay.despesa-item-modal-overlay {
+        padding: 0.45rem;
+    }
+
+    .despesa-item-modal-content {
+        width: calc(100vw - 0.9rem);
+        height: calc(100dvh - 0.9rem);
+        max-height: calc(100dvh - 0.9rem);
+    }
+
+    .despesa-item-footer {
+        flex-direction: row;
+        gap: 0.5rem;
+    }
+
+    .despesa-item-btn {
+        flex: 1;
+        min-width: 0;
+        font-size: 0.9rem;
+        padding: 0.55rem 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .cad-modal-overlay.despesa-item-modal-overlay {
+        padding: 0.3rem;
+    }
+
+    .despesa-item-modal-content {
+        width: calc(100vw - 0.6rem);
+        height: calc(100dvh - 0.6rem);
+        max-height: calc(100dvh - 0.6rem);
+    }
 }

@@ -7,6 +7,7 @@ services:
       - ./isolvus.api.site/.env
     environment:
       - ORACLE_CLIENT_DIR=/opt/oracle/instantclient_21_21
+      - TZ=America/Fortaleza
     volumes:
       - ./isolvus.api.site/arquivodeintegracaofornecedor:/app/arquivodeintegracaofornecedor
       - ./isolvus.api.site/src/documentos:/app/src/documentos
@@ -23,6 +24,7 @@ services:
       - ./isolvus.api.cliente/.env
     environment:
       - ORACLE_CLIENT_DIR=/opt/oracle/instantclient_21_21
+      - TZ=America/Fortaleza
     restart: unless-stopped
 
   site:

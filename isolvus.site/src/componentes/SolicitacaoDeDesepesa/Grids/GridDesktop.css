@@ -1,29 +1,60 @@
-.grid-desktop-itemdespesa .bg-grid {
-    padding: 13px;
+.grid-desktop-itemdespesa {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
 }
 
-.grid-desktop-itemdespesa .table {
-    border-collapse: collapse;
-    border-style: dashed;
-    border-width: 1px;
-    min-width: 760px;
+.grid-item-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f8fafd;
+    border: 1px solid #e9ecef;
+    border-bottom: none;
+    padding: 8px 12px;
+    gap: 8px;
 }
 
-.grid-desktop-itemdespesa .Titulos-Table th {
-    background-color: #f3f7f8;
-    border: none;
+.grid-item-totais {
+    display: flex;
+    gap: 20px;
+    font-size: 0.84rem;
+    flex-wrap: wrap;
+    color: #374151;
+}
+
+.grid-item-totais strong {
     font-weight: 600;
-    height: 45px;
-    vertical-align: middle;
+    margin-right: 4px;
+}
+
+.btn-add-item {
+    display: flex;
+    align-items: center;
+    background-color: #1a56db;
+    color: #fff;
+    border: none;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 6px 14px;
+    white-space: nowrap;
+    transition: background-color 0.2s;
+    gap: 4px;
+}
+
+.btn-add-item:hover {
+    background-color: #1e429f;
+}
+
+.grid-desktop-itemdespesa .cadastro-table-card {
+    border: 1px solid #e9ecef;
 }
 
 .grid-desktop-itemdespesa .tableFixHead {
-    border-width: 1px;
-    border-style: dashed;
-    border-color: #cfcfcf;
-    overflow: auto;
+    overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    max-height: 420px;
+    max-height: 380px;
+    overflow-y: auto;
 }
 
 .grid-desktop-itemdespesa .tableFixHead thead th {
@@ -32,41 +63,25 @@
     z-index: 2;
 }
 
-.grid-desktop-itemdespesa .item-Table:hover {
-    background-color: #f8f9fa;
-    cursor: pointer;
+.grid-desktop-itemdespesa .cadastro-table {
+    min-width: 600px;
 }
 
-.grid-desktop-itemdespesa .btn-add-item {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    background-color: #dbdbdb;
-    color: #000;
-    border: none;
-    font-size: 15px;
-    margin-left: auto;
-    transition: background-color 0.2s;
+.grid-item-cod-badge {
+    display: inline-block;
+    background: #edf3fb;
+    color: #1e3a5f;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 3px;
 }
 
-.grid-desktop-itemdespesa .btn-add-item:hover {
-    background-color: #c7c7c7;
+.grid-item-edit-icon {
+    color: #9ca3af;
+    font-size: 0.85rem;
 }
 
-.grid-desktop-itemdespesa .Total {
-    border-width: 1px;
-    border-color: #cfcfcf;
-    height: 45px;
-    background-color: #f3f7f8;
-    border-style: dashed;
-    border-top: none;
-    align-items: center;
-    padding: 0 13px;
-}
-
-.grid-desktop-itemdespesa .Total label {
-    font-weight: 600;
-    margin-right: 5px;
+.cadastro-row-clickable:hover .grid-item-edit-icon {
+    color: #1a56db;
 }

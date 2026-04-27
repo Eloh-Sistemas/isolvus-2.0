@@ -1,25 +1,28 @@
-.grid-desktop-rateio .bg-grid {    
-    padding: 13px;
+/* ── Wrapper ─────────────────────────────────────────── */
+.grid-desktop-rateio {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
 }
 
-.grid-desktop-rateio .table {
-    border-collapse: collapse;
-    border-style: dashed;
-    border-width: 1px;
+.grid-desktop-rateio-compact {
+    margin-top: -6px;
 }
 
-.grid-desktop-rateio .Titulos-Table th {
-    background-color: #f3f7f8;
-    border: none;
-    font-weight: 600;
-    height: 45px;
-    vertical-align: middle;
+/* ── Table card (mesma aparência que itens) ──────────── */
+.grid-desktop-rateio .cadastro-table-card {
+    border: 1px solid #e9ecef;
+    border-radius: 0;
+    overflow: hidden;
+    padding: 0;
+    box-shadow: none;
 }
 
 .grid-desktop-rateio .tableFixHead {
-    border-width: 1px;
-    border-style: dashed;
-    border-color: #cfcfcf;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-height: 280px;
+    overflow-y: auto;
 }
 
 .grid-desktop-rateio .tableFixHead thead th {
@@ -28,34 +31,37 @@
     z-index: 2;
 }
 
-.grid-desktop-rateio .item-Table:hover {
-    background-color: #f8f9fa;
-    cursor: pointer;
+/* ── Totalizador (barra inferior) ────────────────────── */
+.grid-rateio-totals {
+    display: flex;
+    align-items: center;
+    background: #f8fafd;
+    border: 1px solid #e9ecef;
+    border-top: none;
+    padding: 7px 12px;
+    gap: 20px;
+    font-size: 0.84rem;
+    flex-wrap: wrap;
+    color: #374151;
 }
 
+.grid-rateio-totals strong {
+    font-weight: 600;
+    margin-right: 4px;
+}
+
+/* ── Botão remover ───────────────────────────────────── */
 .grid-desktop-rateio .btn-remove {
     background: none;
     border: none;
     color: #dc3545;
-    font-size: 16px;
+    font-size: 0.95rem;
+    padding: 0.15rem 0.35rem;
+    border-radius: 4px;
+    transition: background 0.15s, color 0.15s;
 }
 
 .grid-desktop-rateio .btn-remove:hover {
     color: #a71d2a;
+    background: #fde8ea;
 }
-
-.grid-desktop-rateio .Total {
-    margin-top: -17px;
-    border-width: 1px;
-    border-color: #cfcfcf;
-    height: 45px;
-    background-color: #f3f7f8;
-    border-style: dashed;
-    align-items: center;
-}
-
-.grid-desktop-rateio .Total label {
-    font-weight: 600;
-    margin-right: 5px;
-}
-

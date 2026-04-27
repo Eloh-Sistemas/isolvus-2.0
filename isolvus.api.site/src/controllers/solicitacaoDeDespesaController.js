@@ -20,7 +20,8 @@ import { addRateioService, alterarSolicitaDespesaService,
          processarDespesasImportacaoService,
          proximoidsolicitadespesaService, 
          recalcularRaterioService, 
-         validarSolicitacaoOrcamentoService } from '../services/solicitacaoDespesa.service.js';
+         validarSolicitacaoOrcamentoService,
+         consultarHistoricoSolicitacaoService } from '../services/solicitacaoDespesa.service.js';
          
 import { autorizacaoDePagamentoModel} from "../models/solicitacaoDeDespesaModel.js";
 
@@ -301,6 +302,17 @@ export async function deletePreAnalise(req, res, next) {
 
     try {
         const dados = await deletePreAnaliseService(req.body);
+        return res.status(200).json(dados);
+    } catch (error) {
+        next(error);
+    }
+
+}
+
+export async function consultarHistorico(req, res, next) {
+
+    try {
+        const dados = await consultarHistoricoSolicitacaoService(req.body);
         return res.status(200).json(dados);
     } catch (error) {
         next(error);

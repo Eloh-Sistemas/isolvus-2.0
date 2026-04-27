@@ -23,7 +23,9 @@ import { addRateioModel, alterarSolicitaDespesaModel,
          processarDespesasImportacaoModel,
          proximoidsolicitadespesaModal, 
          recalcularRaterioModel, 
-         validarSolicitacaoOrcamentoModel } from '../models/solicitacaoDeDespesaModel.js';
+         validarSolicitacaoOrcamentoModel,
+         inserirHistoricoSolicitacaoModel,
+         consultarHistoricoSolicitacaoModel } from '../models/solicitacaoDeDespesaModel.js';
 
 import { baixaValeModel } from '../models/valeModal.js';
 
@@ -48,6 +50,17 @@ export async function cadastrarSolicitaDespesaService(dto) {
     throw new AppError('Erro ao cadastrar solicitação de despesa', 500);
   }
 
+  inserirHistoricoSolicitacaoModel({
+    numsolicitacao:   dto.numsolicitacao,
+    id_grupo_empresa: dto.id_grupo_empresa,
+    etapa:            'SOLICITACAO',
+    status_antes:     null,
+    status_depois:    'A',
+    id_usuario:       dto.id_solicitante,
+    nome_usuario:     dto.nomesolicitante || null,
+    observacao:       null,
+  }).catch(() => {});
+
   return dados; 
 }
 
@@ -58,6 +71,17 @@ export async function direcionarSolicitacaoService(dto) {
   if (!dados){
     throw new AppError('Erro ao direcionar solicitação de despesa', 500);
   }
+
+  inserirHistoricoSolicitacaoModel({
+    numsolicitacao:   dto.numsolicitacao,
+    id_grupo_empresa: dto.id_grupo_empresa || 0,
+    etapa:            'CONTROLADORIA',
+    status_antes:     'A',
+    status_depois:    'EA',
+    id_usuario:       dto.id_user_controladoria,
+    nome_usuario:     null,
+    observacao:       null,
+  }).catch(() => {});
 
   return dados; 
 }
@@ -174,6 +198,17 @@ export async function ordenarSolicitacaoService(dto) {
     throw new AppError('Erro ao ordenar solicitação', 500);
   }
 
+  inserirHistoricoSolicitacaoModel({
+    numsolicitacao:   dto.numsolicitacao,
+    id_grupo_empresa: dto.id_grupo_empresa || 0,
+    etapa:            'ORDENADOR',
+    status_antes:     'EA',
+    status_depois:    dto.status,
+    id_usuario:       dto.id_ordenador,
+    nome_usuario:     null,
+    observacao:       dto.obs_ordenador || null,
+  }).catch(() => {});
+
   return dados;
   
 }
@@ -243,6 +278,17 @@ export async function conformidadeSolicitacaoService(dto) {
   
   const dados = await conformidadeSolicitacaoModel(dto);
 
+  inserirHistoricoSolicitacaoModel({
+    numsolicitacao:   dto.numsolicitacao,
+    id_grupo_empresa: dto.id_grupo_empresa || 0,
+    etapa:            'FINANCEIRO',
+    status_antes:     'P',
+    status_depois:    dto.status || 'F',
+    id_usuario:       dto.id_user_financeiro,
+    nome_usuario:     null,
+    observacao:       dto.obs_financeiro || null,
+  }).catch(() => {});
+
   return dados;
 }
 
@@ -293,4 +339,20 @@ export async function consultarDespesasVinculadasLeituraService(dto) {
 
   return dados;
   
+}
+
+export async function consultarHistoricoSolicitacaoService(dto) {
+  const dados = await consultarHistoricoSolicitacaoModel(dto.pnumsolicitacao);
+
+  // Garantir que observacao seja sempre texto legível
+  // Registros antigos foram gravados como hex via Buffer.from() — converter de volta
+  const decodeObs = (obs) => {
+    if (!obs || typeof obs !== 'string') return obs;
+    if (/^[0-9a-fA-F]+$/.test(obs) && obs.length % 2 === 0) {
+      try { return Buffer.from(obs, 'hex').toString('utf-8'); } catch { return obs; }
+    }
+    return obs;
+  };
+
+  return dados.map(row => ({ ...row, observacao: decodeObs(row.observacao) }));
 }

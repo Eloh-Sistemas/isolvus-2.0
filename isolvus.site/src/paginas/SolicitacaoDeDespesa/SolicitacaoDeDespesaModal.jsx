@@ -76,11 +76,68 @@ function SolicitacaoDeDespesaModal(props){
     const [valesSelecionados, setValesSelecionados] = useState([]);
     const [historico1, sethistorico1] = useState("");
     const [historico2, sethistorico2] = useState("");
-    const [abaAtiva, setAbaAtiva] = useState("solicitacao");
+    const [historicoFluxo, setHistoricoFluxo] = useState([]);
+    const [historicoFluxoLoading, setHistoricoFluxoLoading] = useState(false);
+    const [abaAtiva, setAbaAtiva] = useState(props.id_solicitacao ? "historico" : "solicitacao");
+    const tabsRef = useRef(null);
+    const tabsButtonsRef = useRef({});
+    const [temAbaOcultaEsquerda, setTemAbaOcultaEsquerda] = useState(false);
+    const [temAbaOcultaDireita, setTemAbaOcultaDireita] = useState(false);
 
     const [percentualRateio, setpercentualRateio] = useState(0);
     const [valorRateio, setvalorRateio] = useState(0);
     const [valorTotalRateio, setvalorTotalRateio] = useState(0);    
+
+    function atualizarIndicadoresDeAbas() {
+        const tabs = tabsRef.current;
+
+        if (!tabs) {
+            return;
+        }
+
+        const maxScroll = tabs.scrollWidth - tabs.clientWidth;
+        const tolerancia = 4;
+
+        setTemAbaOcultaEsquerda(tabs.scrollLeft > tolerancia);
+        setTemAbaOcultaDireita(maxScroll - tabs.scrollLeft > tolerancia);
+    }
+
+    function ajustarScrollDaAba(aba, smooth = true) {
+        const tabs = tabsRef.current;
+        const botao = tabsButtonsRef.current[aba];
+
+        if (!tabs || !botao || tabs.scrollWidth <= tabs.clientWidth) {
+            atualizarIndicadoresDeAbas();
+            return;
+        }
+
+        const centroBotao = botao.offsetLeft + (botao.offsetWidth / 2);
+        const metadeViewport = tabs.clientWidth / 2;
+        const alvo = Math.max(
+            0,
+            Math.min(centroBotao - metadeViewport, tabs.scrollWidth - tabs.clientWidth)
+        );
+
+        tabs.scrollTo({
+            left: alvo,
+            behavior: smooth ? "smooth" : "auto"
+        });
+
+        requestAnimationFrame(atualizarIndicadoresDeAbas);
+    }
+
+    function onClickAba(aba) {
+        setAbaAtiva(aba);
+        requestAnimationFrame(() => ajustarScrollDaAba(aba, true));
+
+        if (aba === "historico" && props.id_solicitacao) {
+            setHistoricoFluxoLoading(true);
+            api.post('/v1/solicitacaoDespesa/consultarHistorico', { pnumsolicitacao: props.id_solicitacao })
+                .then(r => setHistoricoFluxo(r.data || []))
+                .catch(() => setHistoricoFluxo([]))
+                .finally(() => setHistoricoFluxoLoading(false));
+        }
+    }
 
 
     function onChangePercentual(e) {
@@ -330,6 +387,38 @@ function SolicitacaoDeDespesaModal(props){
         TipoGrid();             
     },[]);
 
+    useEffect(() => {
+        if (!props.isOpen) {
+            return;
+        }
+
+        const onResize = () => {
+            atualizarIndicadoresDeAbas();
+        };
+
+        requestAnimationFrame(() => {
+            ajustarScrollDaAba(abaAtiva, false);
+            atualizarIndicadoresDeAbas();
+        });
+
+        window.addEventListener("resize", onResize);
+
+        return () => {
+            window.removeEventListener("resize", onResize);
+        };
+    }, [props.isOpen]);
+
+    useEffect(() => {
+        if (!props.isOpen) {
+            return;
+        }
+
+        requestAnimationFrame(() => {
+            ajustarScrollDaAba(abaAtiva, true);
+            atualizarIndicadoresDeAbas();
+        });
+    }, [abaAtiva, props.isOpen]);
+
     function TipoGrid(){
         if (window.innerWidth > 769) {
             setTipoGrid("D");
@@ -394,7 +483,7 @@ function SolicitacaoDeDespesaModal(props){
         setAgencia("");
         setcontaBancaria("");
         setOperacao("");
-        setAbaAtiva("solicitacao");
+        setAbaAtiva(props.id_solicitacao ? "historico" : "solicitacao");
         SetObjetivo("");
         SetObs_ordenador("");
         SetObs_financeiro("");
@@ -408,6 +497,14 @@ function SolicitacaoDeDespesaModal(props){
         SetdescricaoCaixaBanco("");
                         
         CarregarDadosSolicitacao(props.id_solicitacao);
+
+        if (props.id_solicitacao) {
+            setHistoricoFluxoLoading(true);
+            api.post('/v1/solicitacaoDespesa/consultarHistorico', { pnumsolicitacao: props.id_solicitacao })
+                .then(r => setHistoricoFluxo(r.data || []))
+                .catch(() => setHistoricoFluxo([]))
+                .finally(() => setHistoricoFluxoLoading(false));
+        }
     };
 
     // FUNÇÃO PARA CONSULTAR DADOS DA SOLICITAÇÃO
@@ -831,7 +928,7 @@ function SolicitacaoDeDespesaModal(props){
                     .then((retorno) =>{    
                     
 
-                        const resposta = JSON.parse(retorno.request.response);                
+                        const resposta = retorno.data;                
 
                         toast.update(id1, {
                             render: "Solicitação Nº:"+ resposta.numsolicitacao +" cadastrada com sucesso !", 
@@ -842,13 +939,17 @@ function SolicitacaoDeDespesaModal(props){
                             onclose : FechaModal(1000),
                             onClose: props.onRequestClose2} );                    
                             
-                            uploadRef.current.handleUpload();
+                            uploadRef.current?.handleUpload();
                     
                     })
                     .catch((err) =>{       
+                        console.error("[Nova] erro ao salvar:", err);
+                        const mensagem = err?.response?.data?.detalhes?.[0]?.message
+                            || err?.response?.data?.error
+                            || "Erro inesperado. Tente novamente.";
 
                         toast.update(id1, {
-                            render: err.response.data.detalhes[0].message, 
+                            render: mensagem, 
                             type: "error", 
                             isLoading: false,
                             autoClose: 2000,
@@ -871,7 +972,7 @@ function SolicitacaoDeDespesaModal(props){
             .then((retorno) =>{    
             
 
-                const resposta = JSON.parse(retorno.request.response);
+                const resposta = retorno.data;
 
                 toast.update(id1, {
                     render: "Solicitação Nº:"+ resposta.numsolicitacao +" Direcionada com sucesso !", 
@@ -884,6 +985,7 @@ function SolicitacaoDeDespesaModal(props){
             
             })
             .catch((err) => {
+                console.error("[Direcionar] erro:", err);
                 let mensagem = "Erro inesperado. Tente novamente.";
 
                 if (err?.response?.data?.detalhes?.[0]?.message) {
@@ -934,7 +1036,7 @@ function SolicitacaoDeDespesaModal(props){
             .then((retorno) =>{    
             
 
-                const resposta = JSON.parse(retorno.request.response);
+                const resposta = retorno.data;
 
                 toast.update(id1, {
                     render: "Solicitação Nº:"+ resposta.numsolicitacao +" alterado com sucesso !", 
@@ -947,13 +1049,17 @@ function SolicitacaoDeDespesaModal(props){
                     onClose: props.onRequestClose2
                 });
             
-                uploadRef.current.handleUpload();
+                uploadRef.current?.handleUpload();
 
             })
             .catch((err) =>{       
+                console.error("[Editar] erro ao salvar:", err);
+                const mensagem = err?.response?.data?.detalhes?.[0]?.message
+                    || err?.response?.data?.error
+                    || "Erro inesperado. Tente novamente.";
 
                 toast.update(id1, {
-                    render: err.response.data.detalhes[0].message, 
+                    render: mensagem, 
                     type: "error", 
                     isLoading: false,
                     autoClose: 2000,
@@ -982,7 +1088,7 @@ function SolicitacaoDeDespesaModal(props){
                         api.post('/v1/solicitacaoDespesa/ordenarSolicitacao', dados)
                         .then((retorno) =>{                                                             
             
-                            const resposta = JSON.parse(retorno.request.response);    
+                            const resposta = retorno.data;    
                             
                             Swal.fire("Solicitação encaminhada para controladoria!", "", "success");           
                             props.onRequestClose2();
@@ -992,8 +1098,12 @@ function SolicitacaoDeDespesaModal(props){
                         
                         })
                         .catch((err) =>{       
-            
-                            Swal.fire(err.response.data.detalhes[0].message, "", "warning");
+                            console.error("[Ordenar/AJ] erro:", err);
+                            const mensagem = err?.response?.data?.detalhes?.[0]?.message
+                                || err?.response?.data?.error
+                                || "Erro inesperado. Tente novamente.";
+
+                            Swal.fire(mensagem, "", "warning");
                                 
                         });
                     
@@ -1016,7 +1126,7 @@ function SolicitacaoDeDespesaModal(props){
                         api.post('/v1/solicitacaoDespesa/ordenarSolicitacao', dados)
                         .then((retorno) =>{                                                             
             
-                            const resposta = JSON.parse(retorno.request.response); 
+                            const resposta = retorno.data; 
                                                         
                             toast.update(id1, {
                                 render: "Solicitação Nº:"+ resposta.numsolicitacao +" alterado com sucesso !", 
@@ -1031,11 +1141,13 @@ function SolicitacaoDeDespesaModal(props){
                         
                         })
                         .catch((err) =>{       
-
-                            console.log(err);
+                            console.error("[Ordenar] erro:", err);
+                            const mensagem = err?.response?.data?.detalhes?.[0]?.message
+                                || err?.response?.data?.error
+                                || "Erro inesperado. Tente novamente.";
             
                             toast.update(id1, {
-                                render: err.response.data.detalhes[0].message, 
+                                render: mensagem, 
                                 type: "error", 
                                 isLoading: false,
                                 autoClose: 2000,
@@ -1063,7 +1175,7 @@ function SolicitacaoDeDespesaModal(props){
             api.post('/v1/solicitacaoDespesa/conformidadeSolicitacao', dados)
             .then((retorno) =>{                                                             
 
-                const resposta = JSON.parse(retorno.request.response); 
+                const resposta = retorno.data; 
                                             
                 toast.update(id1, {
                     render: "Solicitação Nº:"+ resposta.numsolicitacao +" autorizada com sucesso !", 
@@ -1078,9 +1190,13 @@ function SolicitacaoDeDespesaModal(props){
             
             })
             .catch((err) =>{  
-                
+                console.error("[Conformidade] erro:", err);
+                const mensagem = err?.response?.data?.detalhes?.[0]?.message
+                    || err?.response?.data?.error
+                    || "Erro inesperado. Tente novamente.";
+
                 toast.update(id1, {
-                    render: err.response.data.detalhes[0].message, 
+                    render: mensagem, 
                     type: "error", 
                     isLoading: false,
                     autoClose: 2000,
@@ -1353,6 +1469,12 @@ function SolicitacaoDeDespesaModal(props){
     },[vlGastoTotal, vlSaldoDisponivel]);
 
 
+    const statusAtualCodigo = String(status || statusCarregadoBanco || "").trim().toUpperCase();
+    const statusAtualDescricao = listaDeStatus.find(
+        (item) => String(item.status || "").trim().toUpperCase() === statusAtualCodigo
+    )?.descricao || "Não informado";
+
+
 
     return(
 
@@ -1401,13 +1523,29 @@ function SolicitacaoDeDespesaModal(props){
                         </div> : null
                         }
 
-                        <div className="solicitacao-tabs" role="tablist" aria-label="Abas da solicitação de despesa">
+                        <div className={`solicitacao-tabs-wrap ${temAbaOcultaEsquerda ? "tem-aba-esquerda" : ""} ${temAbaOcultaDireita ? "tem-aba-direita" : ""}`}>
+                            {temAbaOcultaEsquerda ? <span className="solicitacao-tabs-arrow esquerda" aria-hidden="true">&#x2039;</span> : null}
+                            {temAbaOcultaDireita ? <span className="solicitacao-tabs-arrow direita" aria-hidden="true">&#x203A;</span> : null}
+                        <div className="solicitacao-tabs" role="tablist" aria-label="Abas da solicitação de despesa" ref={tabsRef} onScroll={atualizarIndicadoresDeAbas}>
+                            {props.id_solicitacao ? (
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={abaAtiva === "historico"}
+                                className={`solicitacao-tab-btn ${abaAtiva === "historico" ? "active" : ""}`}
+                                onClick={() => onClickAba("historico")}
+                                ref={(elemento) => { tabsButtonsRef.current.historico = elemento; }}
+                            >
+                                HISTÓRICO
+                            </button>
+                            ) : null}
                             <button
                                 type="button"
                                 role="tab"
                                 aria-selected={abaAtiva === "solicitacao"}
                                 className={`solicitacao-tab-btn ${abaAtiva === "solicitacao" ? "active" : ""}`}
-                                onClick={() => setAbaAtiva("solicitacao")}
+                                onClick={() => onClickAba("solicitacao")}
+                                ref={(elemento) => { tabsButtonsRef.current.solicitacao = elemento; }}
                             >
                                 DADOS GERAIS
                             </button>
@@ -1416,7 +1554,8 @@ function SolicitacaoDeDespesaModal(props){
                                 role="tab"
                                 aria-selected={abaAtiva === "anexo"}
                                 className={`solicitacao-tab-btn ${abaAtiva === "anexo" ? "active" : ""}`}
-                                onClick={() => setAbaAtiva("anexo")}
+                                onClick={() => onClickAba("anexo")}
+                                ref={(elemento) => { tabsButtonsRef.current.anexo = elemento; }}
                             >
                                 ANEXO
                             </button>
@@ -1425,7 +1564,8 @@ function SolicitacaoDeDespesaModal(props){
                                 role="tab"
                                 aria-selected={abaAtiva === "itens"}
                                 className={`solicitacao-tab-btn ${abaAtiva === "itens" ? "active" : ""}`}
-                                onClick={() => setAbaAtiva("itens")}
+                                onClick={() => onClickAba("itens")}
+                                ref={(elemento) => { tabsButtonsRef.current.itens = elemento; }}
                             >
                                 ITENS
                             </button>
@@ -1434,7 +1574,8 @@ function SolicitacaoDeDespesaModal(props){
                                 role="tab"
                                 aria-selected={abaAtiva === "controladoria"}
                                 className={`solicitacao-tab-btn ${abaAtiva === "controladoria" ? "active" : ""}`}
-                                onClick={() => setAbaAtiva("controladoria")}
+                                onClick={() => onClickAba("controladoria")}
+                                ref={(elemento) => { tabsButtonsRef.current.controladoria = elemento; }}
                             >
                                 CONTROLADORIA
                             </button>
@@ -1443,7 +1584,8 @@ function SolicitacaoDeDespesaModal(props){
                                 role="tab"
                                 aria-selected={abaAtiva === "ordenador"}
                                 className={`solicitacao-tab-btn ${abaAtiva === "ordenador" ? "active" : ""}`}
-                                onClick={() => setAbaAtiva("ordenador")}
+                                onClick={() => onClickAba("ordenador")}
+                                ref={(elemento) => { tabsButtonsRef.current.ordenador = elemento; }}
                             >
                                 ORDENADOR
                             </button>
@@ -1452,10 +1594,18 @@ function SolicitacaoDeDespesaModal(props){
                                 role="tab"
                                 aria-selected={abaAtiva === "financeiro"}
                                 className={`solicitacao-tab-btn ${abaAtiva === "financeiro" ? "active" : ""}`}
-                                onClick={() => setAbaAtiva("financeiro")}
+                                onClick={() => onClickAba("financeiro")}
+                                ref={(elemento) => { tabsButtonsRef.current.financeiro = elemento; }}
                             >
                                 FINANCEIRO
                             </button>
+                        </div>
+                        </div>
+
+                        <div className="solicitacao-status-alert" role="alert" aria-live="polite">
+                            <span className="solicitacao-status-alert-label">Status da solicitação:</span>
+                            <span className="solicitacao-status-alert-value">{statusAtualDescricao}</span>
+                            <span className="solicitacao-status-alert-code">({statusAtualCodigo || "-"})</span>
                         </div>
                         
                         {abaAtiva === "solicitacao" ? <>
@@ -1587,74 +1737,6 @@ function SolicitacaoDeDespesaModal(props){
                                                 </select>
                 
                                         </div> 
-
-                                        {/* ALERTA DE VALES VENCIDOS */}
-                                        {(listaVala1 && listaVala1.length > 0 && ["Conformidade", "Ordenar"].includes(props.tipoTela)  ) && (
-                                        <div className="col-12">
-                                            <div className="alert alert-danger shadow-sm rounded-3 p-3" role="alert">
-
-                                            {/* Título */}
-                                            <h5 className="text-center fw-bold mb-3">Vales Abetos</h5>
-
-                                            {/* Lista de vales */}
-                                            <hr className="my-0" />
-                                            <div className="pt-2 small">
-                                                {listaVala1.map((vale) => (
-                                                <div key={vale.id_vale} className="mb-1 d-flex align-items-center gap-2">
-
-                                                    {/* CHECKBOX */}
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={valesSelecionados.some((v) => v.id_vale === vale.id_vale)}
-                                                        disabled={props.somenteLeitura === true || vale.flegar === "B" || ["Conformidade"].includes(props.tipoTela) || ["I"].includes(status) } 
-                                                        onChange={() => toggleVale(vale)}
-                                                        style={{ width: "18px", height: "18px", cursor: vale.flegar === "B" ? "not-allowed" : "pointer" }}
-                                                    />
-
-                                                    {/* TEXTO */}
-                                                    <label className="fw-semibold mb-0">
-                                                    {`Vale: ${vale.id_vale} | Venc: ${moment(vale.data_vencimento).format("DD/MM/YYYY")} | Total: ${
-                                                        new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(vale.valor)
-                                                    }`}
-                                                    </label>
-
-                                                </div>
-                                                ))}
-                                            </div>
-
-                                            <hr className="my-2" />
-
-                                            {/* Total Geral + Desconto */}
-                                            <div className="text-center mb-3">
-
-                                                {/* TOTAL GERAL */}
-                                                <h6 className="fw-bold text-uppercase mb-0">
-                                                Total:
-                                                <span className="text-dark ms-2">
-                                                    {
-                                                    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-                                                    .format(listaVala1.reduce((acc, v) => acc + (v.valor || 0), 0))
-                                                    }
-                                                </span>
-                                                </h6>
-
-                                                {/* DESCONTO */}
-                                                <h6 className="fw-bold text-uppercase mt-1 text-danger">
-                                                Baixa:
-                                                <span className="ms-2">
-                                                    {
-                                                    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-                                                    .format(totalSelecionado)
-                                                    }
-                                                </span>
-                                                </h6>
-
-                                            </div>
-
-                                            </div>
-                                        </div>
-                                        )}
-
 
                                        
                                         
@@ -1855,23 +1937,15 @@ function SolicitacaoDeDespesaModal(props){
                                         </div></>: null
                                         }
                                         
-                                        {/*Tabela de rateio */}
-
-                                        { visibleCentroDeCusto == true ?
-                                        <div className="col-12">
-                                            <p className="cad-section-title">2.1 - RATEIO</p>
-                                        </div> : null
-                                        }
-
                                         { visibleCentroDeCusto == true ? <>
 
-                                        <div className="grid-desktop-rateio">
-                                        <div className="bg-grid">
+                                        <div className="grid-desktop-rateio grid-desktop-rateio-compact">
+                                        <div className="cadastro-table-card">
 
                                             {/* GRID */}
-                                            <div className="row tableFixHead">
-                                            <table className="table table-hover">
-                                                <thead className="Titulos-Table">
+                                            <div className="tableFixHead">
+                                            <table className="table table-hover mb-0 cadastro-table">
+                                                <thead>
                                                 <tr>
                                                     <th>Centro de Custo</th>
                                                     <th className="text-center" style={{ width: "90px" }}>%</th>
@@ -1883,7 +1957,7 @@ function SolicitacaoDeDespesaModal(props){
                                                 <tbody>
                                                 {rateio.length > 0 ? (
                                                     rateio.map((item, index) => (
-                                                    <tr key={index} className="item-Table">
+                                                    <tr key={index} className="cadastro-row-clickable">
                                                         <td>
                                                         <strong>{item.id_centrodecusto}</strong> - {item.descricao}
                                                         </td>
@@ -1925,30 +1999,11 @@ function SolicitacaoDeDespesaModal(props){
                                             </div>
 
                                             {/* TOTALIZADOR */}
-                                            <div className="row">
-                                            <div className="Total d-flex w-100 justify-content-between">
-                                                <div>
-                                                <label>Registros:</label>
-                                                <span>{qtRegistro}</span>
-                                                </div>
-
-                                                <div>
-                                                <label>% Total:</label>
-                                                <span>{totalPercentual.toFixed(2)}%</span>
-                                                </div>
-
-                                                <div>
-                                                <label>Valor Total:</label>
-                                                <span>
-                                                    {new Intl.NumberFormat("pt-BR", {
-                                                    style: "currency",
-                                                    currency: "BRL",
-                                                    }).format(totalValor)}
-                                                </span>
-                                                </div>
-                                            </div>
-                                            </div>
-
+                                        </div>
+                                        <div className="grid-rateio-totals">
+                                            <span><strong>Registros:</strong> {qtRegistro}</span>
+                                            <span><strong>% Total:</strong> {totalPercentual.toFixed(2)}%</span>
+                                            <span><strong>Valor Total:</strong> {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalValor)}</span>
                                         </div>
                                         </div> </>: null
                                         }
@@ -2072,6 +2127,99 @@ function SolicitacaoDeDespesaModal(props){
                                                 </div> : null
                                         }
 
+                                        {/* PAINEL DE VALES */}
+                                        {(listaVala1 && listaVala1.length > 0 && ["Conformidade", "Ordenar"].includes(props.tipoTela)) && (
+                                        <div className="col-12">
+                                            <div className="vale-panel">
+
+                                                {/* Cabeçalho */}
+                                                <div className="vale-panel-header">
+                                                    <i className="bi bi-cash-coin vale-panel-header-icon"></i>
+                                                    <span className="vale-panel-header-title">Vales em Aberto</span>
+                                                    <span className="vale-panel-header-badge">{listaVala1.length}</span>
+                                                </div>
+
+                                                {/* Tabela */}
+                                                <div className="vale-panel-table-wrap">
+                                                    <table className="vale-panel-table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th className="vale-col-check"></th>
+                                                                <th className="vale-col-id">Nº Vale</th>
+                                                                <th className="vale-col-venc">Vencimento</th>
+                                                                <th className="vale-col-valor">Valor</th>
+                                                                <th className="vale-col-status">Situação</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {listaVala1.map((vale) => {
+                                                                const selecionado = valesSelecionados.some((v) => v.id_vale === vale.id_vale);
+                                                                const jaBaixado = vale.flegar === "B";
+                                                                const disabled = props.somenteLeitura === true || jaBaixado || ["I"].includes(status);
+                                                                return (
+                                                                    <tr key={vale.id_vale} className={`vale-row${selecionado ? " vale-row-selected" : ""}${jaBaixado ? " vale-row-baixado" : ""}`}>
+                                                                        <td className="vale-col-check">
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                className="vale-checkbox"
+                                                                                checked={selecionado}
+                                                                                disabled={disabled}
+                                                                                onChange={() => toggleVale(vale)}
+                                                                            />
+                                                                        </td>
+                                                                        <td className="vale-col-id">
+                                                                            <span className="vale-id-pill">#{vale.id_vale}</span>
+                                                                        </td>
+                                                                        <td className="vale-col-venc">
+                                                                            {moment(vale.data_vencimento).format("DD/MM/YYYY")}
+                                                                        </td>
+                                                                        <td className="vale-col-valor">
+                                                                            {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(vale.valor)}
+                                                                        </td>
+                                                                        <td className="vale-col-status">
+                                                                            {jaBaixado
+                                                                                ? <span className="vale-badge vale-badge-baixado">Baixado</span>
+                                                                                : <span className="vale-badge vale-badge-aberto">Em Aberto</span>
+                                                                            }
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+
+                                                {/* Rodapé com totais */}
+                                                <div className="vale-panel-totals">
+                                                    <div className="vale-total-item">
+                                                        <span className="vale-total-label">Total Geral</span>
+                                                        <span className="vale-total-value">
+                                                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+                                                                .format(listaVala1.reduce((acc, v) => acc + (v.valor || 0), 0))}
+                                                        </span>
+                                                    </div>
+                                                    <div className="vale-total-divider"></div>
+                                                    <div className="vale-total-item">
+                                                        <span className="vale-total-label">Selecionado para Baixa</span>
+                                                        <span className="vale-total-value vale-total-value-baixa">
+                                                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+                                                                .format(totalSelecionado)}
+                                                        </span>
+                                                    </div>
+                                                    <div className="vale-total-divider"></div>
+                                                    <div className="vale-total-item">
+                                                        <span className="vale-total-label">Saldo Restante</span>
+                                                        <span className="vale-total-value vale-total-value-saldo">
+                                                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+                                                                .format(listaVala1.reduce((acc, v) => acc + (v.valor || 0), 0) - totalSelecionado)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                            </div>
+                                        </div>
+                                        )}
+
                                         { visibleParecerFinanceiro == true ?
                                                         <div className="col-12 mb-3">
                                                         <label htmlFor="parefin" className="mb-2">Parecer Financeiro</label>
@@ -2126,13 +2274,88 @@ function SolicitacaoDeDespesaModal(props){
                         </div>
                         </div>
                         </> : null}
+
+                        {abaAtiva === "historico" ? <>
+                        <div className="solicitacao-tab-panel">
+                            <div className="row conteiner-campos g-3">
+                                <div className="col-12">
+                                    <div className="solicitacao-subsection-block">
+
+                                        {historicoFluxoLoading ? (
+                                            <div className="text-center py-4 text-muted">
+                                                <span className="spinner-border spinner-border-sm me-2"></span>
+                                                Carregando histórico...
+                                            </div>
+                                        ) : (
+                                        <div className="historico-timeline">
+
+                                            {historicoFluxo.length === 0 && (
+                                                <div className="text-muted text-center py-3">Nenhum registro de histórico encontrado.</div>
+                                            )}
+
+                                            {historicoFluxo.map((item, idx) => {
+                                                const etapaMap = {
+                                                    SOLICITACAO:   { label: 'Solicitação Criada',          icon: 'bi-person-fill',    dotClass: 'historico-dot-solicitante' },
+                                                    CONTROLADORIA: { label: 'Controladoria',               icon: 'bi-journal-check',  dotClass: 'historico-dot-controladoria' },
+                                                    ORDENADOR:     { label: 'Ordenador',                   icon: 'bi-check2-circle',  dotClass: 'historico-dot-ordenador' },
+                                                    FINANCEIRO:    { label: 'Financeiro',                  icon: 'bi-bank2',          dotClass: 'historico-dot-financeiro' },
+                                                };
+                                                const statusMap = {
+                                                    A:  { label: 'Aguardando',           bg: '#fff8e1', color: '#f57f17', border: '#ffe082' },
+                                                    EA: { label: 'Em Análise',           bg: '#e3f2fd', color: '#1565c0', border: '#90caf9' },
+                                                    P:  { label: 'Pendente',             bg: '#fce4ec', color: '#c62828', border: '#ef9a9a' },
+                                                    L:  { label: 'Liberado',             bg: '#e8f5e9', color: '#2e7d32', border: '#a5d6a7' },
+                                                    F:  { label: 'Finalizado',           bg: '#e8f5e9', color: '#2e7d32', border: '#a5d6a7' },
+                                                    N:  { label: 'Não Autorizado',       bg: '#fbe9e7', color: '#bf360c', border: '#ffab91' },
+                                                    AJ: { label: 'Ajuste Solicitado',    bg: '#fff3e0', color: '#e65100', border: '#ffcc80' },
+                                                    I:  { label: 'Inativo',              bg: '#f5f5f5', color: '#616161', border: '#e0e0e0' },
+                                                };
+                                                const etapa = (item.etapa || '').toUpperCase();
+                                                const meta = etapaMap[etapa] || { label: item.etapa, icon: 'bi-clock-history', dotClass: 'historico-dot-pendente' };
+                                                const statusInfo = statusMap[(item.status_depois || '').toUpperCase()] || { label: item.status_depois, bg: '#e8f5e9', color: '#388e3c', border: '#a5d6a7' };
+                                                const data = item.datahora ? moment(item.datahora).format('DD/MM/YYYY HH:mm') : '';
+                                                return (
+                                                <div key={idx} className="historico-item">
+                                                    <div className={`historico-dot ${meta.dotClass}`}>
+                                                        <i className={`bi ${meta.icon}`}></i>
+                                                    </div>
+                                                    <div className="historico-content">
+                                                        <div className="historico-header">
+                                                            <span className="historico-etapa">{meta.label}</span>
+                                                            {item.status_depois && (
+                                                                <span className="historico-badge-pend" style={{background: statusInfo.bg, color: statusInfo.color, borderColor: statusInfo.border}}>
+                                                                    {statusInfo.label}
+                                                                </span>
+                                                            )}
+                                                            {data && <span className="historico-data">{data}</span>}
+                                                        </div>
+                                                        {item.nome_usuario && (
+                                                            <div className="historico-usuario"><i className="bi bi-person me-1"></i>{item.nome_usuario}</div>
+                                                        )}
+                                                        {item.observacao && item.observacao.trim() && (
+                                                            <div className="historico-obs"><i className="bi bi-chat-left-text me-1"></i>{item.observacao}</div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                );
+                                            })}
+
+                                        </div>
+                                        )}
+
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        </> : null}
+
             </div>
 
 
 
             <div className="cad-modal-footer">
-                <div className="cad-modal-footer-actions ms-auto">
-                {  habilitarbtnSalvar ? <div> 
+                <div className="cad-modal-footer-actions">
+                {  habilitarbtnSalvar ?
                     <button
                     type="button"
                     className="btn btn-primary cad-footer-btn"
@@ -2140,9 +2363,8 @@ function SolicitacaoDeDespesaModal(props){
                     >
                     Salvar
                     </button>
-                    </div> : null
+                    : null
                 }
-
                 </div>
             </div>
 
