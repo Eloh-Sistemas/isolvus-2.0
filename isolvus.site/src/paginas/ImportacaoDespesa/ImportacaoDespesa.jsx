@@ -42,6 +42,8 @@ function ImportacaoDespesa(){
     const [uploadRemessaLoading, setUploadRemessaLoading] = useState(false);
     const [arquivoRemessaSalvo, setArquivoRemessaSalvo] = useState(false);
     const [atualizandoCadastroBancarioId, setAtualizandoCadastroBancarioId] = useState('');
+    const [rateioPorSolicitacao, setRateioPorSolicitacao] = useState({});
+    const [rateioCarregandoPorSolicitacao, setRateioCarregandoPorSolicitacao] = useState({});
     const modalContentRef = useRef(null);
 
     useEffect(() => {
@@ -123,6 +125,159 @@ function ImportacaoDespesa(){
         if (!valor) return '-';
         return new Date(valor).toLocaleString('pt-BR');
     };
+
+    const normalizarRateioSolicitacao = (lista = []) => {
+        if (!Array.isArray(lista)) {
+            return [];
+        }
+
+        return lista
+            .map((item) => {
+                const idCentro = String(
+                    item?.id_centrodecusto
+                    ?? item?.ID_CENTRODECUSTO
+                    ?? item?.codcentrodecusto
+                    ?? item?.CODCENTRODECUSTO
+                    ?? ''
+                ).trim();
+
+                const descricaoCentro = String(
+                    item?.descricao
+                    ?? item?.DESCRICAO
+                    ?? item?.centrodecusto
+                    ?? item?.CENTRODECUSTO
+                    ?? ''
+                ).trim();
+
+                const percentual = Number(
+                    item?.percentual
+                    ?? item?.PERCENTUAL
+                    ?? item?.perrateio
+                    ?? item?.PERRATEIO
+                    ?? 0
+                );
+
+                if (!idCentro && !descricaoCentro) {
+                    return null;
+                }
+
+                const centro = idCentro && descricaoCentro
+                    ? `${idCentro} - ${descricaoCentro}`
+                    : (descricaoCentro || idCentro);
+
+                return percentual > 0
+                    ? `${centro} (${formatPercent(percentual)})`
+                    : centro;
+            })
+            .filter(Boolean);
+    };
+
+    const getNumSolicitacaoItem = (item) => {
+        const valor = Number(item?.NUMSOLICITACAO ?? item?.numsolicitacao ?? 0);
+        return Number.isFinite(valor) && valor > 0 ? valor : 0;
+    };
+
+    const carregarRateioSolicitacao = async (numsolicitacao) => {
+        const numero = Number(numsolicitacao || 0);
+
+        if (!numero) {
+            return [];
+        }
+
+        const chave = String(numero);
+
+        if (Array.isArray(rateioPorSolicitacao[chave])) {
+            return rateioPorSolicitacao[chave];
+        }
+
+        setRateioCarregandoPorSolicitacao((prev) => ({
+            ...prev,
+            [chave]: true
+        }));
+
+        try {
+            const response = await api.post('/v1/solicitacaoDespesa/consultarRateio', {
+                pnumsolicitacao: numero
+            });
+
+            const rateioNormalizado = normalizarRateioSolicitacao(response?.data);
+
+            setRateioPorSolicitacao((prev) => ({
+                ...prev,
+                [chave]: rateioNormalizado
+            }));
+
+            return rateioNormalizado;
+        } catch (error) {
+            setRateioPorSolicitacao((prev) => ({
+                ...prev,
+                [chave]: []
+            }));
+
+            return [];
+        } finally {
+            setRateioCarregandoPorSolicitacao((prev) => ({
+                ...prev,
+                [chave]: false
+            }));
+        }
+    };
+
+    const getCentrosDeCustoItem = (item) => {
+        const numsolicitacao = getNumSolicitacaoItem(item);
+
+        if (numsolicitacao) {
+            const rateio = rateioPorSolicitacao[String(numsolicitacao)];
+
+            if (Array.isArray(rateio) && rateio.length > 0) {
+                return rateio;
+            }
+        }
+
+        const centroDeCusto = String(item?.CENTRODECUSTO || '').trim();
+
+        if (!centroDeCusto) {
+            return [];
+        }
+
+        return centroDeCusto
+            .split(' / ')
+            .map((valor) => String(valor || '').trim())
+            .filter(Boolean);
+    };
+
+    const centroDeCustoRateioCarregando = (item) => {
+        const numsolicitacao = getNumSolicitacaoItem(item);
+
+        if (!numsolicitacao) {
+            return false;
+        }
+
+        const chave = String(numsolicitacao);
+        return Boolean(rateioCarregandoPorSolicitacao[chave]) && !Array.isArray(rateioPorSolicitacao[chave]);
+    };
+
+    useEffect(() => {
+        const listaItens = modalTipo === 'detalhe' ? detalhesLeitura : dados;
+
+        if (!Array.isArray(listaItens) || listaItens.length === 0) {
+            return;
+        }
+
+        const solicitacoes = [...new Set(listaItens
+            .map((item) => getNumSolicitacaoItem(item))
+            .filter((numero) => numero > 0))];
+
+        solicitacoes.forEach((numero) => {
+            const chave = String(numero);
+            const jaTemRateio = Array.isArray(rateioPorSolicitacao[chave]);
+            const carregando = Boolean(rateioCarregandoPorSolicitacao[chave]);
+
+            if (!jaTemRateio && !carregando) {
+                carregarRateioSolicitacao(numero);
+            }
+        });
+    }, [modalTipo, dados, detalhesLeitura, rateioPorSolicitacao, rateioCarregandoPorSolicitacao]);
 
     const getRemessaBadgeClass = (status) => {
         const statusNormalizado = String(status || 'SEM REMESSA').toUpperCase();
@@ -856,6 +1011,8 @@ function ImportacaoDespesa(){
         setArquivoRemessaLoading(false);
         setUploadRemessaLoading(false);
         setArquivoRemessaSalvo(false);
+        setRateioPorSolicitacao({});
+        setRateioCarregandoPorSolicitacao({});
         setIsModalOpen(true);
     };
 
@@ -865,6 +1022,8 @@ function ImportacaoDespesa(){
         setDetalhesLeitura(Array.isArray(item?.itens) ? item.itens : []);
         setDetalhesLoading(true);
         setArquivosRemessaDetalhe([]);
+        setRateioPorSolicitacao({});
+        setRateioCarregandoPorSolicitacao({});
         setArquivoRemessaSalvo(Array.isArray(item?.arquivosRemessa) && item.arquivosRemessa.length > 0);
         setIsModalOpen(true);
         carregarDetalhesImportacao(item?.IDLEITURA);
@@ -886,6 +1045,8 @@ function ImportacaoDespesa(){
         setArquivoRemessaLoading(false);
         setUploadRemessaLoading(false);
         setArquivoRemessaSalvo(false);
+        setRateioPorSolicitacao({});
+        setRateioCarregandoPorSolicitacao({});
 
         if (dataInicial && dataFinal) {
             await carregarHistorico(searchTerm.trim());
@@ -1536,12 +1697,14 @@ function ImportacaoDespesa(){
                                                             <td className={detalhe.HISTORICO ? '' : 'table-danger'}>
                                                                 {detalhe.HISTORICO || 'Dados não encontrado no SGS'}
                                                             </td>
-                                                            <td className={!detalhe.CENTRODECUSTO ? 'table-danger' : ''}>
-                                                                {detalhe.CENTRODECUSTO
-                                                                    ? detalhe.CENTRODECUSTO.split(' / ').map((cc, i) => (
-                                                                        <div key={i} className="item-dado-secundario">{cc}</div>
-                                                                    ))
-                                                                    : <span className="text-muted">Não configurado</span>}
+                                                            <td className={getCentrosDeCustoItem(detalhe).length === 0 ? 'table-danger' : ''}>
+                                                                {centroDeCustoRateioCarregando(detalhe)
+                                                                    ? <span className="text-muted">Carregando rateio...</span>
+                                                                    : getCentrosDeCustoItem(detalhe).length > 0
+                                                                        ? getCentrosDeCustoItem(detalhe).map((centro, i) => (
+                                                                            <div key={i} className="item-dado-secundario">{centro}</div>
+                                                                        ))
+                                                                        : <span className="text-muted">Não configurado</span>}
                                                             </td>
                                                             <td className={String(detalhe.REMESSA_OK || '') === 'N' ? 'table-danger text-center' : 'text-center'} title={detalhe.REMESSA_ERRO || ''}>
                                                                 <span className={`badge rounded-pill ${getRemessaBadgeClass(detalhe.REMESSA_STATUS)}`}>
@@ -1856,12 +2019,14 @@ function ImportacaoDespesa(){
                                                         </div>
                                                     </td>
                                                     <td className={item.HISTORICO ? '' : 'table-danger'}>{item.HISTORICO || 'Dados não encontrado no SGS'}</td>
-                                                    <td className={!item.CENTRODECUSTO ? 'table-danger' : ''}>
-                                                        {item.CENTRODECUSTO
-                                                            ? item.CENTRODECUSTO.split(' / ').map((cc, i) => (
-                                                                <div key={i} className="item-dado-secundario">{cc}</div>
-                                                            ))
-                                                            : <span className="text-muted">Não configurado</span>}
+                                                    <td className={getCentrosDeCustoItem(item).length === 0 ? 'table-danger' : ''}>
+                                                        {centroDeCustoRateioCarregando(item)
+                                                            ? <span className="text-muted">Carregando rateio...</span>
+                                                            : getCentrosDeCustoItem(item).length > 0
+                                                                ? getCentrosDeCustoItem(item).map((centro, i) => (
+                                                                    <div key={i} className="item-dado-secundario">{centro}</div>
+                                                                ))
+                                                                : <span className="text-muted">Não configurado</span>}
                                                     </td>
                                                     <td className={String(item.REMESSA_OK || '') === 'N' ? 'table-danger text-center' : 'text-center'} title={item.REMESSA_ERRO || ''}>
                                                         <span className={`badge rounded-pill ${getRemessaBadgeClass(item.REMESSA_STATUS)}`}>

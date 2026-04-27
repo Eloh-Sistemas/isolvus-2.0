@@ -406,10 +406,11 @@ function ModalSolicitacaoImportacaoLote({
             return;
         }
 
-        const idUserControladoria = Number(localStorage.getItem('id_usuario_erp') || localStorage.getItem('id_usuario') || 0);
+        const idUserControladoria = Number(localStorage.getItem('id_usuario') || 0);
+        const idGrupoEmpresa = Number(localStorage.getItem('id_grupo_empresa') || 0);
 
-        if (!idUserControladoria) {
-            toast.warning('Usuário da controladoria não identificado.');
+        if (!idUserControladoria || !idGrupoEmpresa) {
+            toast.warning('Usuário da controladoria ou grupo de empresa não identificado.');
             return;
         }
 
@@ -437,7 +438,9 @@ function ModalSolicitacaoImportacaoLote({
         try {
             const { data } = await api.post('/v1/solicitacaoDespesa/importa/direcionarSolicitacoesLote', {
                 idleitura: Number(idleitura),
-                id_user_controladoria: idUserControladoria
+                id_user_controladoria: idUserControladoria,
+                id_usuario: Number(localStorage.getItem('id_usuario') || 0),
+                id_grupo_empresa: idGrupoEmpresa
             });
 
             await carregarDetalhesImportacao(idleitura);
@@ -487,10 +490,11 @@ function ModalSolicitacaoImportacaoLote({
         }
 
         const idOrdenador = Number(localStorage.getItem('id_usuario') || 0);
+        const idGrupoEmpresa = Number(localStorage.getItem('id_grupo_empresa') || 0);
         const parecer = String(obsOrdenadorLote || '').trim();
 
-        if (!idOrdenador) {
-            toast.warning('Usuário responsável pela aprovação não identificado.');
+        if (!idOrdenador || !idGrupoEmpresa) {
+            toast.warning('Usuário responsável pela aprovação ou grupo de empresa não identificado.');
             return;
         }
 
@@ -552,8 +556,10 @@ function ModalSolicitacaoImportacaoLote({
             const { data } = await api.post('/v1/solicitacaoDespesa/importa/ordenarSolicitacoesLote', {
                 idleitura: Number(idleitura),
                 id_ordenador: idOrdenador,
+                id_usuario: Number(localStorage.getItem('id_usuario') || 0),
                 status: statusParaSalvar,
-                obs_ordenador: parecerParaSalvar
+                obs_ordenador: parecerParaSalvar,
+                id_grupo_empresa: idGrupoEmpresa
             });
 
             await carregarDetalhesImportacao(idleitura);
@@ -664,6 +670,7 @@ function ModalSolicitacaoImportacaoLote({
                 idleitura: Number(idleitura),
                 id_rotina_integracao: integracaoSelecionada,
                 obs_financeiro: String(obsFinanceiroLote || '').trim(),
+                id_usuario: Number(localStorage.getItem('id_usuario') || 0),
                 id_user_financeiro: idUserFinanceiro,
                 id_caixabanco: Number(codCaixaBancoLote || 0) || undefined,
                 historico1: String(historico1Lote || '').trim().toUpperCase(),

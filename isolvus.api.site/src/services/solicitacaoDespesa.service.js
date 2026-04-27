@@ -30,6 +30,20 @@ import { addRateioModel, alterarSolicitaDespesaModel,
 import { baixaValeModel } from '../models/valeModal.js';
 
 
+function obterIdUsuarioHistorico(dto, camposAlternativos = []) {
+  const candidatos = [dto?.id_usuario, ...camposAlternativos.map((campo) => dto?.[campo])];
+
+  for (const candidato of candidatos) {
+    const numero = Number(candidato || 0);
+    if (numero > 0) {
+      return numero;
+    }
+  }
+
+  return null;
+}
+
+
 
 export async function proximoidsolicitadespesaService(dto) {
 
@@ -56,7 +70,7 @@ export async function cadastrarSolicitaDespesaService(dto) {
     etapa:            'SOLICITACAO',
     status_antes:     null,
     status_depois:    'A',
-    id_usuario:       dto.id_solicitante,
+    id_usuario:       obterIdUsuarioHistorico(dto, ['id_solicitante']),
     nome_usuario:     dto.nomesolicitante || null,
     observacao:       null,
   }).catch(() => {});
@@ -78,7 +92,7 @@ export async function direcionarSolicitacaoService(dto) {
     etapa:            'CONTROLADORIA',
     status_antes:     'A',
     status_depois:    'EA',
-    id_usuario:       dto.id_user_controladoria,
+    id_usuario:       obterIdUsuarioHistorico(dto, ['id_user_controladoria']),
     nome_usuario:     null,
     observacao:       null,
   }).catch(() => {});
@@ -93,6 +107,20 @@ export async function direcionarSolicitacoesLoteService(dto) {
   if (!dados) {
     throw new AppError('Erro ao direcionar solicitações do lote', 500);
   }
+
+  const numSolicitacoes = Array.isArray(dados.numsolicitacoes) ? dados.numsolicitacoes : [];
+  await Promise.allSettled(
+    numSolicitacoes.map((numsolicitacao) => inserirHistoricoSolicitacaoModel({
+      numsolicitacao,
+      id_grupo_empresa: dto.id_grupo_empresa || 0,
+      etapa: 'CONTROLADORIA',
+      status_antes: null,
+      status_depois: 'EA',
+      id_usuario: obterIdUsuarioHistorico(dto, ['id_user_controladoria']),
+      nome_usuario: null,
+      observacao: null,
+    }))
+  );
 
   return dados;
 }
@@ -204,7 +232,7 @@ export async function ordenarSolicitacaoService(dto) {
     etapa:            'ORDENADOR',
     status_antes:     'EA',
     status_depois:    dto.status,
-    id_usuario:       dto.id_ordenador,
+    id_usuario:       obterIdUsuarioHistorico(dto, ['id_ordenador']),
     nome_usuario:     null,
     observacao:       dto.obs_ordenador || null,
   }).catch(() => {});
@@ -220,6 +248,20 @@ export async function ordenarSolicitacoesLoteService(dto) {
   if (!dados) {
     throw new AppError('Erro ao ordenar solicitações do lote', 500);
   }
+
+  const numSolicitacoes = Array.isArray(dados.numsolicitacoes) ? dados.numsolicitacoes : [];
+  await Promise.allSettled(
+    numSolicitacoes.map((numsolicitacao) => inserirHistoricoSolicitacaoModel({
+      numsolicitacao,
+      id_grupo_empresa: dto.id_grupo_empresa || 0,
+      etapa: 'ORDENADOR',
+      status_antes: null,
+      status_depois: dto.status,
+      id_usuario: obterIdUsuarioHistorico(dto, ['id_ordenador']),
+      nome_usuario: null,
+      observacao: dto.obs_ordenador || null,
+    }))
+  );
 
   return dados;
 }
@@ -284,7 +326,7 @@ export async function conformidadeSolicitacaoService(dto) {
     etapa:            'FINANCEIRO',
     status_antes:     'P',
     status_depois:    dto.status || 'F',
-    id_usuario:       dto.id_user_financeiro,
+    id_usuario:       obterIdUsuarioHistorico(dto, ['id_user_financeiro']),
     nome_usuario:     null,
     observacao:       dto.obs_financeiro || null,
   }).catch(() => {});
@@ -299,6 +341,20 @@ export async function conformidadeSolicitacoesLoteService(dto) {
   if (!dados) {
     throw new AppError('Erro ao realizar a conformidade financeira do lote', 500);
   }
+
+  const numSolicitacoes = Array.isArray(dados.numsolicitacoes) ? dados.numsolicitacoes : [];
+  await Promise.allSettled(
+    numSolicitacoes.map((numsolicitacao) => inserirHistoricoSolicitacaoModel({
+      numsolicitacao,
+      id_grupo_empresa: dto.id_grupo_empresa || 0,
+      etapa: 'FINANCEIRO',
+      status_antes: null,
+      status_depois: dto.status || 'F',
+      id_usuario: obterIdUsuarioHistorico(dto, ['id_user_financeiro']),
+      nome_usuario: null,
+      observacao: dto.obs_financeiro || null,
+    }))
+  );
 
   return dados;
 }

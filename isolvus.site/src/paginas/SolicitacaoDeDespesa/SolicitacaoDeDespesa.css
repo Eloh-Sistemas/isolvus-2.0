@@ -7,12 +7,14 @@
 
 .cad-modal-overlay.solicitacao-modal-overlay {
     padding: clamp(0.35rem, 1.2vw, 0.95rem);
+    z-index: 115000 !important;
 }
 
 .cad-modal-content.solicitacao-modal-content {
     width: min(1600px, calc(100vw - clamp(0.7rem, 2.4vw, 1.9rem)));
     height: min(94vh, calc(100dvh - clamp(0.7rem, 2.4vw, 1.9rem)));
     max-height: calc(100dvh - clamp(0.7rem, 2.4vw, 1.9rem));
+    z-index: 115001;
 }
 
 .solicitacao-modal-content .cad-modal-header,

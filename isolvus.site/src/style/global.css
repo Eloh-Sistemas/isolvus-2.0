@@ -14,7 +14,15 @@
 
 
 .swal2-container {
-  z-index: 99999 !important;
+  z-index: 120000 !important;
+}
+
+.Toastify__toast-container {
+  z-index: 130000 !important;
+}
+
+.Toastify__toast {
+  z-index: 130001 !important;
 }
 
 

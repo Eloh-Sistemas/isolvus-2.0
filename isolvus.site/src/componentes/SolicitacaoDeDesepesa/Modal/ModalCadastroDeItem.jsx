@@ -238,14 +238,7 @@ function ModalCadastroDeItem(props){
             </div>
 
             <div className="cad-modal-footer">
-                <div className="cad-modal-footer-actions ms-auto">
-                    <button
-                        type="button"
-                        className="btn btn-outline-secondary cad-footer-btn"
-                        onClick={props.onRequestClose}
-                    >
-                        Voltar
-                    </button>
+                <div className="cad-modal-footer-actions ms-auto">                    
                     <button
                         type="button"
                         className="btn btn-primary cad-footer-btn"

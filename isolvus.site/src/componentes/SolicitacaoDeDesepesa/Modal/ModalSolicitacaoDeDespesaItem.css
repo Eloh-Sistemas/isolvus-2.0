@@ -4,6 +4,11 @@
     height: min(74vh, 800px);
     min-height: 620px;
     max-height: 92vh;
+    z-index: 115101;
+}
+
+.cad-modal-overlay.despesa-item-modal-overlay {
+    z-index: 115100 !important;
 }
 
 .despesa-item-modal-content .EditComplete-items {

@@ -906,6 +906,7 @@ function SolicitacaoDeDespesaModal(props){
                                    id_EmpresaFunc, 
                                    id_Filialdespesa, 
                                    id_solicitante:codFunc, 
+                                   id_usuario: Number(localStorage.getItem("id_usuario") || 0),
                                    dataEstimada: dataEstimada, 
                                    objetivo,  
                                    tipofornecedor: tipofornecedor, 
@@ -968,7 +969,13 @@ function SolicitacaoDeDespesaModal(props){
 
             const id1 = toast.loading("Direcionado solicitação de Despesa...", {position : "top-center"});
 
-            api.post('/v1/solicitacaoDespesa/direcionarSolicitacao', {numsolicitacao: props.id_solicitacao, codconta, codCentroDeCusto, id_user_controladoria : localStorage.getItem("id_usuario_erp")})
+            api.post('/v1/solicitacaoDespesa/direcionarSolicitacao', {
+                numsolicitacao: props.id_solicitacao,
+                codconta,
+                codCentroDeCusto,
+                id_user_controladoria: Number(localStorage.getItem("id_usuario") || 0),
+                id_usuario: Number(localStorage.getItem("id_usuario") || 0)
+            })
             .then((retorno) =>{    
             
 
@@ -1083,7 +1090,13 @@ function SolicitacaoDeDespesaModal(props){
                     /* Read more about isConfirmed, isDenied below */
                     if (result.isConfirmed) {
                         
-                        const dados = {numsolicitacao: props.id_solicitacao,  id_ordenador:codFunc, status: "AJ", obs_ordenador: "Solicitado ajuste do orcamento"};            
+                        const dados = {
+                            numsolicitacao: props.id_solicitacao,
+                            id_ordenador: codFunc,
+                            id_usuario: Number(localStorage.getItem("id_usuario") || 0),
+                            status: "AJ",
+                            obs_ordenador: "Solicitado ajuste do orcamento"
+                        };
 
                         api.post('/v1/solicitacaoDespesa/ordenarSolicitacao', dados)
                         .then((retorno) =>{                                                             
@@ -1120,7 +1133,14 @@ function SolicitacaoDeDespesaModal(props){
             }else{
                        
                         const id1 = toast.loading("alterando solicitação de Despesa...", {position : "top-center"});
-                        const dados = {numsolicitacao: props.id_solicitacao,  id_ordenador:codFunc, status, obs_ordenador, valesSelecionados};                                           
+                        const dados = {
+                            numsolicitacao: props.id_solicitacao,
+                            id_ordenador: codFunc,
+                            id_usuario: Number(localStorage.getItem("id_usuario") || 0),
+                            status,
+                            obs_ordenador,
+                            valesSelecionados
+                        };
                                                        
                         console.log(dados);
                         api.post('/v1/solicitacaoDespesa/ordenarSolicitacao', dados)
@@ -1164,6 +1184,7 @@ function SolicitacaoDeDespesaModal(props){
             const dados = {numsolicitacao: props.id_solicitacao,  
                            id_rotina_integracao: integracao, 
                            obs_financeiro,
+                           id_usuario: Number(localStorage.getItem("id_usuario")),
                            id_user_financeiro: Number(localStorage.getItem("id_usuario")),
                            id_caixabanco: codCaixaBanco,
                            valesSelecionados,
