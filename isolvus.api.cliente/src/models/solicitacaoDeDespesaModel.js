@@ -3,7 +3,7 @@ import { executeQuery, getConnection } from "../config/database.js";
 
 export async function registrarSolicitacao(jsonReq) {
 
-    console.log(jsonReq);
+    //console.log(jsonReq);
 
     const ssqlConsultarProxNumLanc = `
         SELECT NVL(MAX(PROXNUMLANC),1) PROXNUMLANC FROM PCCONSUM
