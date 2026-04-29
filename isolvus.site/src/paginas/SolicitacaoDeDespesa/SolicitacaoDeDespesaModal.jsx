@@ -336,7 +336,7 @@ function SolicitacaoDeDespesaModal(props){
 
 
     async function recalcularRateioComVales(novosVales) {
-        if (!props.id_solicitacao) {
+        if (!props.id_solicitacao || props.origemLote) {
             return;
         }
 
@@ -366,7 +366,7 @@ function SolicitacaoDeDespesaModal(props){
             (total, item) => total + Number(item.valor || 0), 0
         );
 
-        if (novoTotalSelecionado > totalGasto) {
+        if (!props.origemLote && novoTotalSelecionado > totalGasto) {
             toast.warning("O valor total dos vales não pode ser maior que o valor total dos itens.", { position: "top-center" });
             return;
         }
@@ -374,7 +374,9 @@ function SolicitacaoDeDespesaModal(props){
         setValesSelecionados(novosVales);
 
         try {
-            await recalcularRateioComVales(novosVales);
+            if (!props.origemLote) {
+                await recalcularRateioComVales(novosVales);
+            }
         } catch (erro) {
             setValesSelecionados(prev);
             toast.error("Erro ao recalcular o rateio com os vales selecionados.", { position: "top-center" });
@@ -394,7 +396,7 @@ function SolicitacaoDeDespesaModal(props){
     const itensComValeVisual = useMemo(() => {
         const itensBase = [...listaDeGasto];
 
-        if (valesSelecionados && valesSelecionados.length > 0) {
+        if (!props.origemLote && valesSelecionados && valesSelecionados.length > 0) {
             valesSelecionados.forEach((vale) => {
                 const idVale = vale?.id_vale;
                 const valorVale = Number(vale?.valor || 0);
@@ -412,7 +414,7 @@ function SolicitacaoDeDespesaModal(props){
         }
 
         return itensBase;
-    }, [listaDeGasto, valesSelecionados]);
+    }, [listaDeGasto, valesSelecionados, props.origemLote]);
 
     
 
@@ -1186,7 +1188,8 @@ function SolicitacaoDeDespesaModal(props){
                             id_usuario: Number(localStorage.getItem("id_usuario") || 0),
                             status,
                             obs_ordenador,
-                            valesSelecionados
+                            valesSelecionados,
+                            origemLote: props.origemLote === true
                         };
                                                        
                         console.log(dados);
@@ -1240,6 +1243,7 @@ function SolicitacaoDeDespesaModal(props){
                            id_user_financeiro: Number(localStorage.getItem("id_usuario")),
                            id_caixabanco: codCaixaBanco,
                            valesSelecionados,
+                           origemLote: props.origemLote === true,
                            historico1,
                            historico2,
                            id_grupo_empresa: localStorage.getItem("id_grupo_empresa")

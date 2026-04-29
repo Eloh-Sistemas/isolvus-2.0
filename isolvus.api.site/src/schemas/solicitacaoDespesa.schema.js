@@ -233,6 +233,8 @@ export const ordenarSolicitacaoSchema = z.object({
     invalid_type_error: "Nº Solicitação deve ser numérico"
   }),
 
+  origemLote: z.coerce.boolean().optional(),
+
   valesSelecionados: z.array(valeConformidadeSchema).optional(),
 
   id_ordenador: z.coerce.number({
@@ -282,6 +284,8 @@ export const conformidadeSolicitacaoSchema = z.object({
     required_error: "Nº Solicitação é obrigatório",
     invalid_type_error: "Nº Solicitação deve ser numérico"
   }),
+
+  origemLote: z.coerce.boolean().optional(),
 
   id_rotina_integracao: z.coerce.number({
     required_error: "Informe uma integração válida",

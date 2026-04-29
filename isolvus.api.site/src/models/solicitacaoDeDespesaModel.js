@@ -3348,6 +3348,7 @@ export async function ordenarSolicitacaoModel(jsonReq) {
     const valesSelecionados = Array.isArray(jsonReq.valesSelecionados)
       ? jsonReq.valesSelecionados
       : [];
+    const origemLote = jsonReq.origemLote === true;
 
     // -----------------------------
     // SQLs
@@ -3398,11 +3399,12 @@ export async function ordenarSolicitacaoModel(jsonReq) {
       (acc, item) => acc + Number(item.valor || 0),
       0
     );
+    const totalValeAplicadoNaDespesa = origemLote ? 0 : totalvale;
 
     // -----------------------------
     // VALIDAÇÃO
     // -----------------------------
-    if ((vlDespesa - totalvale) < 0) {
+    if ((vlDespesa - totalValeAplicadoNaDespesa) < 0) {
       throw 'Despesa não pode ser menor que R$ 0,00';
     }
 
@@ -3431,7 +3433,9 @@ export async function ordenarSolicitacaoModel(jsonReq) {
       }
     }
 
-    await atualizarRateioPorValorLiquido(jsonReq.numsolicitacao, vlDespesa - totalvale);
+    if (!origemLote) {
+      await atualizarRateioPorValorLiquido(jsonReq.numsolicitacao, vlDespesa - totalValeAplicadoNaDespesa);
+    }
 
     // -----------------------------
     // ATUALIZA SOLICITAÇÃO
@@ -3824,15 +3828,19 @@ export async function conformidadeSolicitacaoModel(jsonReq) {
       
       const valorDespesa = await executeQuery(ssqlValorDespesa, {NUMSOLICITACAO: jsonReq.numsolicitacao});      
       const valesSelecionados = Array.isArray(jsonReq.valesSelecionados) ? jsonReq.valesSelecionados : [];
-      const totalvale = valesSelecionados.reduce((acc, item) => acc + Number(item.valor || 0), 0);      
+      const origemLote = jsonReq.origemLote === true;
+      const totalvale = valesSelecionados.reduce((acc, item) => acc + Number(item.valor || 0), 0);
+      const totalValeAplicadoNaDespesa = origemLote ? 0 : totalvale;
 
 
-      if ((valorDespesa[0].vldespesa - totalvale) < 0){
+      if ((valorDespesa[0].vldespesa - totalValeAplicadoNaDespesa) < 0){
         throw 'O valor total dos vales não pode ser maior que o valor total dos itens da solicitação.';
         
       }
 
-      await atualizarRateioPorValorLiquido(jsonReq.numsolicitacao, Number(valorDespesa?.[0]?.vldespesa || 0) - totalvale);
+      if (!origemLote) {
+        await atualizarRateioPorValorLiquido(jsonReq.numsolicitacao, Number(valorDespesa?.[0]?.vldespesa || 0) - totalValeAplicadoNaDespesa);
+      }
       
       if (!jsonReq.obs_financeiro) {
         await executeQuery(ssqlUpdate,{
