@@ -43,6 +43,8 @@ function AcompanhamentoDespesa1() {
   const [dataFinal, setDataFinal] = useState(moment().format("YYYY-MM-DD"));
   const [forcarOrdenadorLogado, setForcarOrdenadorLogado] = useState(false);
   const [permissoesCarregadas, setPermissoesCarregadas] = useState(false);
+  const [filtroContaDashboard, setFiltroContaDashboard] = useState("");
+  const [filtroFaixaDashboard, setFiltroFaixaDashboard] = useState(null);
 
   const codOrdenadorLogado = Number(localStorage.getItem("id_usuario")) || 0;
   const nomeOrdenadorLogado = localStorage.getItem("nome") || "";
@@ -143,26 +145,63 @@ function AcompanhamentoDespesa1() {
     };
   }), [dadosTabela]);
 
-  const totalOrcado = useMemo(() => linhasTabela.reduce((sum, item) => sum + item.orcado, 0), [linhasTabela]);
-  const totalRealizado = useMemo(() => linhasTabela.reduce((sum, item) => sum + item.realizado, 0), [linhasTabela]);
+  const linhasTela = useMemo(() => linhasTabela.filter((item) => {
+    const aplicaConta = filtroContaDashboard ? String(item.codconta) === String(filtroContaDashboard) : true;
+
+    let aplicaFaixa = true;
+    if (filtroFaixaDashboard === 0) aplicaFaixa = item.percentual < 80;
+    if (filtroFaixaDashboard === 1) aplicaFaixa = item.percentual >= 80 && item.percentual < 100;
+    if (filtroFaixaDashboard === 2) aplicaFaixa = item.percentual >= 100;
+
+    return aplicaConta && aplicaFaixa;
+  }), [linhasTabela, filtroContaDashboard, filtroFaixaDashboard]);
+
+  const totalOrcado = useMemo(() => linhasTela.reduce((sum, item) => sum + item.orcado, 0), [linhasTela]);
+  const totalRealizado = useMemo(() => linhasTela.reduce((sum, item) => sum + item.realizado, 0), [linhasTela]);
   const totalRestante = totalOrcado - totalRealizado;
   const percentualGeral = totalOrcado > 0 ? (totalRealizado / totalOrcado) * 100 : 0;
-  const mediaRealizada = linhasTabela.length > 0 ? totalRealizado / linhasTabela.length : 0;
+  const mediaRealizada = linhasTela.length > 0 ? totalRealizado / linhasTela.length : 0;
 
   const topContas = useMemo(() =>
-    [...linhasTabela].sort((a, b) => b.realizado - a.realizado).slice(0, 5),
-  [linhasTabela]);
+    [...linhasTela].sort((a, b) => b.realizado - a.realizado).slice(0, 5),
+  [linhasTela]);
 
   const contasComparativo = useMemo(() =>
-    [...linhasTabela].sort((a, b) => b.orcado - a.orcado).slice(0, 8),
-  [linhasTabela]);
+    [...linhasTela].sort((a, b) => b.orcado - a.orcado).slice(0, 8),
+  [linhasTela]);
 
   const distribuicaoFaixas = useMemo(() => {
-    const dentro = linhasTabela.filter((item) => item.percentual < 80).length;
-    const atencao = linhasTabela.filter((item) => item.percentual >= 80 && item.percentual < 100).length;
-    const excedido = linhasTabela.filter((item) => item.percentual >= 100).length;
+    const dentro = linhasTela.filter((item) => item.percentual < 80).length;
+    const atencao = linhasTela.filter((item) => item.percentual >= 80 && item.percentual < 100).length;
+    const excedido = linhasTela.filter((item) => item.percentual >= 100).length;
     return [dentro, atencao, excedido];
-  }, [linhasTabela]);
+  }, [linhasTela]);
+
+  const descricaoFaixaAtiva = useMemo(() => {
+    if (filtroFaixaDashboard === 0) return "Consumo controlado";
+    if (filtroFaixaDashboard === 1) return "Atenção";
+    if (filtroFaixaDashboard === 2) return "Estourado";
+    return "";
+  }, [filtroFaixaDashboard]);
+
+  const handleSelecionarContaComparativo = useCallback((_event, _chartContext, config) => {
+    const index = Number(config?.dataPointIndex ?? -1);
+    if (index < 0) return;
+    const conta = contasComparativo[index];
+    if (!conta?.codconta) return;
+    setFiltroContaDashboard((atual) => (String(atual) === String(conta.codconta) ? "" : String(conta.codconta)));
+  }, [contasComparativo]);
+
+  const handleSelecionarFaixaConsumo = useCallback((_event, _chartContext, config) => {
+    const index = Number(config?.dataPointIndex ?? -1);
+    if (index < 0) return;
+    setFiltroFaixaDashboard((atual) => (atual === index ? null : index));
+  }, []);
+
+  const limparFiltrosDashboard = useCallback(() => {
+    setFiltroContaDashboard("");
+    setFiltroFaixaDashboard(null);
+  }, []);
 
   const detalheCentroCustoNormalizado = useMemo(() => {
     const totalDetalhe = detalhesCentroCusto.reduce((sum, item) => sum + (Number(item?.realizado ?? item?.REALIZADO ?? 0)), 0);
@@ -204,6 +243,7 @@ function AcompanhamentoDespesa1() {
     setDescricaoOrdenador(forcarOrdenadorLogado ? descricaoOrdenadorLogado : "");
     setDataInicial(novaDataInicial);
     setDataFinal(novaDataFinal);
+    limparFiltrosDashboard();
 
     setLoading(true);
     try {
@@ -358,6 +398,19 @@ function AcompanhamentoDespesa1() {
           <>
             <p className="cadastro-section-title">Análise</p>
 
+            {(filtroContaDashboard || filtroFaixaDashboard !== null) && (
+              <div className="cadastro-card p-2 mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <small className="text-muted">
+                  Filtro da dashboard ativo:
+                  {filtroContaDashboard ? ` Conta ${filtroContaDashboard}` : ""}
+                  {filtroFaixaDashboard !== null ? ` | Faixa ${descricaoFaixaAtiva}` : ""}
+                </small>
+                <button type="button" className="btn btn-outline-secondary btn-sm" onClick={limparFiltrosDashboard}>
+                  Limpar filtro da dashboard
+                </button>
+              </div>
+            )}
+
             <div className="row g-3 mb-4">
               <div className="col-6 col-md-3">
                 <div className="orcamento-kpi-card">
@@ -382,7 +435,7 @@ function AcompanhamentoDespesa1() {
                 <div className="orcamento-kpi-card">
                   <span className="orcamento-kpi-label">Média Realizada</span>
                   <span className="orcamento-kpi-value">{fmtCurrency(mediaRealizada)}</span>
-                  <span className="orcamento-kpi-sub">{linhasTabela.length} contas analisadas</span>
+                  <span className="orcamento-kpi-sub">{linhasTela.length} contas analisadas</span>
                 </div>
               </div>
             </div>
@@ -401,7 +454,10 @@ function AcompanhamentoDespesa1() {
                         stacked: false,
                         toolbar: { show: false },
                         zoom: { enabled: false },
-                        selection: { enabled: false }
+                        selection: { enabled: false },
+                        events: {
+                          dataPointSelection: handleSelecionarContaComparativo
+                        }
                       },
                       legend: { show: true, position: "top" },
                       colors: ["#0d6efd", "#20c997"],
@@ -441,6 +497,11 @@ function AcompanhamentoDespesa1() {
                     type="donut"
                     series={distribuicaoFaixas}
                     options={{
+                      chart: {
+                        events: {
+                          dataPointSelection: handleSelecionarFaixaConsumo
+                        }
+                      },
                       labels: ["Consumo controlado", "Atenção", "Estourado"],
                       legend: { position: "bottom" },
                       colors: ["#20c997", "#ffc107", "#dc3545"],
@@ -516,7 +577,7 @@ function AcompanhamentoDespesa1() {
                     </tr>
                   </thead>
                   <tbody>
-                    {linhasTabela.map((item) => (
+                    {linhasTela.map((item) => (
                       <tr key={item.codconta} className="cadastro-row-clickable" onClick={() => abrirModalDetalhe(item)}>
                         <td>
                           <div className="acompanhamento-account-cell">
