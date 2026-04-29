@@ -195,8 +195,13 @@ function SolicitacaoDeDespesaModal(props){
     );           
     
     useEffect(()=>{
-        setvalorTotalRateio(totalGasto);
-    },[listaDeGasto]);
+        const totalValeSelecionado = props.origemLote
+            ? 0
+            : valesSelecionados.reduce((acc, item) => acc + Number(item.valor || 0), 0);
+
+        const baseRateio = Math.max(0, totalGasto - totalValeSelecionado);
+        setvalorTotalRateio(baseRateio);
+    },[totalGasto, valesSelecionados, props.origemLote]);
 
     
     function onClickIncluirRateio() {
@@ -330,25 +335,51 @@ function SolicitacaoDeDespesaModal(props){
     
 
 
-    const toggleVale = (vale) => {
-        setValesSelecionados((prev) => {
-            const jaSelecionado = prev.some(v => v.id_vale === vale.id_vale);
+    async function recalcularRateioComVales(novosVales) {
+        if (!props.id_solicitacao) {
+            return;
+        }
 
-            const novosVales = jaSelecionado
-            ? prev.filter(v => v.id_vale !== vale.id_vale) // desmarca
-            : [...prev, vale];                              // marca
+        const totalValeSelecionado = props.origemLote
+            ? 0
+            : novosVales.reduce((acc, item) => acc + Number(item.valor || 0), 0);
 
-            const novoTotalSelecionado = novosVales.reduce(
-            (total, item) => total + Number(item.valor || 0), 0
-            );
+        const valorDespesaLiquida = Math.max(0, totalGasto - totalValeSelecionado);
 
-            if (novoTotalSelecionado > totalGasto) {
-                toast.warning("O valor total dos vales não pode ser maior que o valor total dos itens.", { position: "top-center" });
-                return prev;
-            }
-
-            return novosVales;
+        const response = await api.post('/v1/solicitacaoDespesa/recalcularRaterio', {
+            numsolicitacao: props.id_solicitacao,
+            valorDespesa: valorDespesaLiquida
         });
+
+        setRateio(Array.isArray(response.data) ? response.data : []);
+    }
+
+    const toggleVale = async (vale) => {
+        const prev = [...valesSelecionados];
+        const jaSelecionado = prev.some(v => v.id_vale === vale.id_vale);
+
+        const novosVales = jaSelecionado
+            ? prev.filter(v => v.id_vale !== vale.id_vale)
+            : [...prev, vale];
+
+        const novoTotalSelecionado = novosVales.reduce(
+            (total, item) => total + Number(item.valor || 0), 0
+        );
+
+        if (novoTotalSelecionado > totalGasto) {
+            toast.warning("O valor total dos vales não pode ser maior que o valor total dos itens.", { position: "top-center" });
+            return;
+        }
+
+        setValesSelecionados(novosVales);
+
+        try {
+            await recalcularRateioComVales(novosVales);
+        } catch (erro) {
+            setValesSelecionados(prev);
+            toast.error("Erro ao recalcular o rateio com os vales selecionados.", { position: "top-center" });
+            console.log(erro);
+        }
     };
     
 
@@ -1977,7 +2008,7 @@ function SolicitacaoDeDespesaModal(props){
                                         { visibleRespControladoria == true ?
                                         <div className="col-lg-1 mb-3">   
                                             <label htmlFor="rescontro" className="mb-2">Despesa</label>                   
-                                            <input type="number" step={"0.01"} className="form-control" placeholder={"% Rateio ..."} id={"rescontro"} value={valorTotalRateio - totalSelecionado} disabled/> 
+                                            <input type="number" step={"0.01"} className="form-control" placeholder={"% Rateio ..."} id={"rescontro"} value={valorTotalRateio} disabled/> 
                                         </div> : null
                                         }  
                                         

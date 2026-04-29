@@ -103,7 +103,7 @@ const rotas = [
 
 //buscando atualização nos cliente
 //Integrar();
-//setInterval(Integrar, 10000)
+setInterval(Integrar, 10000)
 
 // Aplica todas as rotas dinamicamente
 rotas.forEach(route => app.use(apiVersion, route));

@@ -806,8 +806,8 @@ export async function consultarSolicitacaoCabModel(params) {
             INITCAP(E.RAZAOSOCIAL) AS EMPRESASOLICITANTE,
             U.ID_USUARIO AS ID_SOLICITANTE,
             U.NOME,
-            (SELECT US.Id_Usuario FROM BSTAB_USUSARIOS US WHERE US.ID_USUARIO_ERP = C.ID_USER_CONTROLADORIA AND US.ID_GRUPO_EMPRESA = C.ID_GRUPO_EMPRESA) ID_USER_CONTROLADORIA,
-            (SELECT US.NOME FROM BSTAB_USUSARIOS US WHERE US.ID_USUARIO_ERP = C.ID_USER_CONTROLADORIA AND US.ID_GRUPO_EMPRESA = C.ID_GRUPO_EMPRESA) USERCONTROLADORIA,
+            (SELECT US.Id_Usuario FROM BSTAB_USUSARIOS US WHERE US.ID_USUARIO = C.ID_USER_CONTROLADORIA AND US.ID_GRUPO_EMPRESA = C.ID_GRUPO_EMPRESA) ID_USER_CONTROLADORIA,
+            (SELECT US.NOME FROM BSTAB_USUSARIOS US WHERE US.ID_USUARIO = C.ID_USER_CONTROLADORIA AND US.ID_GRUPO_EMPRESA = C.ID_GRUPO_EMPRESA) USERCONTROLADORIA,
             ID_FILIALDESPESA,
             'F' || LPAD(C.ID_FILIALDESPESA, 2, 0) || ' - ' || E2.RAZAOSOCIAL AS EMPRESADESPESA,
             C.DATASOLICITACAO,
@@ -3244,7 +3244,7 @@ export async function recalcularRaterioModel(dto){
     valorDespesa: dto.valorDespesa
   }, true);
 
-  const dados = executeQuery(ssqlConsultar, {id_solicitacao: dto.numsolicitacao});
+  const dados = await executeQuery(ssqlConsultar, {id_solicitacao: dto.numsolicitacao});
   return dados;
 }
 
@@ -3307,6 +3307,29 @@ export async function addRateioModel(jsonReq) {
   }
 
 
+}
+
+async function atualizarRateioPorValorLiquido(numsolicitacao, valorLiquidoDespesa) {
+  const valorBase = Number(valorLiquidoDespesa || 0);
+
+  if (valorBase < 0) {
+    throw new AppError('Despesa líquida não pode ser menor que R$ 0,00.', 400);
+  }
+
+  const ssqlRecalcularRateio = `
+    UPDATE BSTAB_SOLICITADESPESA_RATEIO R
+       SET R.VALOR = ROUND((NVL(R.PERCENTUAL, 0) / 100) * :valor_base, 2)
+     WHERE R.ID_SOLICITACAO = :numsolicitacao
+  `;
+
+  await executeQuery(
+    ssqlRecalcularRateio,
+    {
+      valor_base: valorBase,
+      numsolicitacao
+    },
+    true
+  );
 }
 
 export async function ordenarSolicitacaoModel(jsonReq) {
@@ -3407,6 +3430,8 @@ export async function ordenarSolicitacaoModel(jsonReq) {
         );
       }
     }
+
+    await atualizarRateioPorValorLiquido(jsonReq.numsolicitacao, vlDespesa - totalvale);
 
     // -----------------------------
     // ATUALIZA SOLICITAÇÃO
@@ -3806,6 +3831,8 @@ export async function conformidadeSolicitacaoModel(jsonReq) {
         throw 'O valor total dos vales não pode ser maior que o valor total dos itens da solicitação.';
         
       }
+
+      await atualizarRateioPorValorLiquido(jsonReq.numsolicitacao, Number(valorDespesa?.[0]?.vldespesa || 0) - totalvale);
       
       if (!jsonReq.obs_financeiro) {
         await executeQuery(ssqlUpdate,{

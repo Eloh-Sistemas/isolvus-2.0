@@ -465,7 +465,7 @@ export const recalcularRaterioSchema = z.object({
     invalid_type_error: "Nº Solicitação deve ser numérico"
     }),
 
-    valorDespesa: z.number().min(0.001, "Valor da despesa não pode ser menor ou igual a zero.")  
+  valorDespesa: z.number().min(0, "Valor da despesa não pode ser negativo.")  
 })
 
 
