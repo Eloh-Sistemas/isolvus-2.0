@@ -338,36 +338,14 @@ function SolicitacaoDeDespesaModal(props){
             ? prev.filter(v => v.id_vale !== vale.id_vale) // desmarca
             : [...prev, vale];                              // marca
 
-            // calcula o valor com base no NOVO estado
             const novoTotalSelecionado = novosVales.reduce(
-            (total, v) => total + v.valor, 0
+            (total, item) => total + Number(item.valor || 0), 0
             );
 
-            const valor = valorTotalRateio - novoTotalSelecionado;
-
-            // chama API ANTES de confirmar visualmente
-            api.post('/v1/solicitacaoDespesa/recalcularRaterio', {
-            numsolicitacao: props.id_solicitacao,
-            valorDespesa: valor
-            })
-            .then((response) => {
-            setRateio(response.data);
-            //só aqui o state já está correto
-            })
-            .catch((err) => {
-            let mensagem = "Erro inesperado. Tente novamente.";
-
-            if (err?.response?.data?.detalhes?.[0]?.message) {
-                mensagem = err.response.data.detalhes[0].message;
-            } else if (err?.response?.data?.error) {
-                mensagem = err.response.data.error;
+            if (novoTotalSelecionado > totalGasto) {
+                toast.warning("O valor total dos vales não pode ser maior que o valor total dos itens.", { position: "top-center" });
+                return prev;
             }
-
-            toast.error(mensagem, { position: "top-center" });
-
-            //Cancela a alteração → retorna estado anterior
-            setValesSelecionados(prev);
-            });
 
             return novosVales;
         });
@@ -379,6 +357,8 @@ function SolicitacaoDeDespesaModal(props){
     (acc, v) => acc + (v.valor || 0),
     0
     );
+
+    const totalValeAplicadoNosItens = props.origemLote ? 0 : totalSelecionado;
 
     
 
@@ -1862,7 +1842,7 @@ function SolicitacaoDeDespesaModal(props){
                                                                         onClikSalvar={onClikSalvar}
                                                                         setIndex = {setIndex}
                                                                         tabhabilitada={tabhabilitada}
-                                                                        totalvale={totalSelecionado}
+                                                                        totalvale={totalValeAplicadoNosItens}
                                                                         habilitarbtnSalvar={habilitarbtnSalvar}/>
 
                                                             : <GridDesktop openModalItem={openModalItem}
@@ -1872,7 +1852,7 @@ function SolicitacaoDeDespesaModal(props){
                                                                         onClikSalvar={onClikSalvar}
                                                                         setIndex = {setIndex}
                                                                         tabhabilitada={tabhabilitada}
-                                                                        totalvale={totalSelecionado}
+                                                                        totalvale={totalValeAplicadoNosItens}
                                                                         habilitarbtnSalvar={habilitarbtnSalvar}
                                                                         />
                                                                                         }

@@ -30,6 +30,7 @@ function SolicitacaoDeDespesaConsultar(){
     const [id_solicitacao, setid_solicitacao] = useState("");
     const [tipoTela, setTipoTela] = useState("");
     const [somenteLeituraSolicitacao, setSomenteLeituraSolicitacao] = useState(false);
+    const [origemLoteSolicitacao, setOrigemLoteSolicitacao] = useState(false);
     const [isImportacaoModalOpen, setIsImportacaoModalOpen] = useState(false);
     const [idleituraImportacaoSelecionada, setIdleituraImportacaoSelecionada] = useState(null);
     const [fotoUsuario, setFotoUsuario] = useState(() => localStorage.getItem('foto_usuario') || '');
@@ -52,6 +53,7 @@ function SolicitacaoDeDespesaConsultar(){
     function onRequestClose(){
         setIsOpen(false); 
         setSomenteLeituraSolicitacao(false);
+        setOrigemLoteSolicitacao(false);
     }
 
     function onRequestCloseImportacao(){
@@ -62,7 +64,8 @@ function SolicitacaoDeDespesaConsultar(){
     function onRequestClose2(){
         ConsultarSolicitacao();
         setIsOpen(false);
-        setSomenteLeituraSolicitacao(false);         
+        setSomenteLeituraSolicitacao(false);
+        setOrigemLoteSolicitacao(false);
     }
     
     function TipoGrid(){
@@ -77,6 +80,7 @@ function SolicitacaoDeDespesaConsultar(){
         
         setTipoTela("Nova");
         setid_solicitacao(0);
+        setOrigemLoteSolicitacao(false);
         openModalSolicitacao(false);
         
         //navigate('/SolicitacaoDeDespesa/Solcitacao/Nova');
@@ -446,6 +450,7 @@ function SolicitacaoDeDespesaConsultar(){
             id_solicitacao={id_solicitacao}
             tipoTela={tipoTela}
             somenteLeitura={somenteLeituraSolicitacao}
+            origemLote={origemLoteSolicitacao}
             onRequestClose={onRequestClose}
             onRequestClose2={onRequestClose2}
         />
@@ -458,7 +463,8 @@ function SolicitacaoDeDespesaConsultar(){
             onAtualizarSolicitacoes={ConsultarSolicitacao}
             onAbrirSolicitacao={(numeroSolicitacao) => {
                 setid_solicitacao(numeroSolicitacao);
-                openModalSolicitacao(true);
+                setOrigemLoteSolicitacao(true);
+                openModalSolicitacao(tipoTela !== 'Conformidade');
             }}
         />
 

@@ -3802,8 +3802,7 @@ export async function conformidadeSolicitacaoModel(jsonReq) {
 
 
       if ((valorDespesa[0].vldespesa - totalvale) < 0){
-        
-        throw 'Despesa não pode ser menor que R$ 0,00';
+        throw 'O valor total dos vales não pode ser maior que o valor total dos itens da solicitação.';
         
       }
       
