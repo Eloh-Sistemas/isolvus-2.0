@@ -397,15 +397,35 @@ function AcompanhamentoDespesa1() {
                       { name: "Realizado", data: contasComparativo.map((item) => item.realizado) }
                     ]}
                     options={{
-                      chart: { stacked: false, toolbar: { show: false } },
+                      chart: {
+                        stacked: false,
+                        toolbar: { show: false },
+                        zoom: { enabled: false },
+                        selection: { enabled: false }
+                      },
                       legend: { show: true, position: "top" },
                       colors: ["#0d6efd", "#20c997"],
                       dataLabels: { enabled: false },
-                      xaxis: { categories: contasComparativo.map((item) => String(item.codconta || "")) },
+                      xaxis: { 
+                        tickPlacement: "on",
+                        categories: contasComparativo.map((item) => {
+                          const texto = String(item.conta || "");
+                          return texto.trim().split(/\s+/).filter(Boolean);
+                        }),
+                        labels: {
+                          rotate: 0,
+                          offsetX: -6,
+                          offsetY: 0,
+                          trim: false,
+                          minHeight: 48,
+                          maxHeight: 120,
+                          style: { fontSize: "12px" }
+                        }
+                      },
                       yaxis: { labels: { formatter: (value) => fmtCurrency(value) } },
                       tooltip: { y: { formatter: (value) => fmtCurrency(value) } }
                     }}
-                    height={320}
+                    height={420}
                     title="Comparativo Orçado x Realizado por Conta"
                   />
                 ) : (
