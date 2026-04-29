@@ -71,7 +71,7 @@ const UploadArquivos = forwardRef((props, ref) => {
       }
     }
 
-    if (props.idRotina && props.idRelacional) {
+    if (props.idRotina && props.idRelacional > 0) {
       fetchArquivos();
     }
     
@@ -120,13 +120,19 @@ const UploadArquivos = forwardRef((props, ref) => {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleUpload = async () => {
+  const handleUpload = async (idRelacionalOverride) => {
     if (files.length === 0) return;
+
+    const idRelacional = (idRelacionalOverride != null && idRelacionalOverride > 0)
+      ? idRelacionalOverride
+      : props.idRelacional;
+
+    if (!idRelacional || idRelacional <= 0) return;
 
     const formData = new FormData();
     files.forEach((file) => formData.append("files", file));
     formData.append("id_rotina", props.idRotina);
-    formData.append("id_relacional", props.idRelacional);
+    formData.append("id_relacional", idRelacional);
     formData.append("id_grupo_empresa", localStorage.getItem("id_grupo_empresa"));
 
     try {

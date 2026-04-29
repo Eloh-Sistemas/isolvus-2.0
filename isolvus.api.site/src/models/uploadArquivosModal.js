@@ -48,7 +48,7 @@ export async function SetregistrarArquivo(id_rotina, id_relacional, filePath, id
 export async function ListarArquivosPorRotinaRelacional(id_rotina, id_relacional) {
   const ssql = `
     SELECT       
-      f.valor || '/' ||REPLACE( REPLACE(REPLACE(a.file_path, 'src\\', ''), '\\', '/'), '//', '/') AS file_path,
+      f.valor || REPLACE( REPLACE(REPLACE(a.file_path, 'src\\', ''), '\\', '/'), '//', '/') AS file_path,
       id_arquivo
     FROM 
       bstab_arquivos a

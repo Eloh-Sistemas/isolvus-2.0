@@ -104,7 +104,11 @@ async function obterSituacaoSolicitacao(numsolicitacao) {
 async function validarSolicitacaoParaAcao(numsolicitacao, acao, statusesPermitidos = [], mensagemStatusInvalido = '') {
   const situacao = await obterSituacaoSolicitacao(numsolicitacao);
 
-  if (['F', 'I'].includes(situacao.status)) {
+  if (situacao.status === 'I') {
+    throw new AppError(`A solicitação ${situacao.numsolicitacao} já foi integrada com o cliente e não pode mais ser alterada ou excluída.`, 409);
+  }
+
+  if (situacao.status === 'F' && acao !== 'conformidade') {
     throw new AppError(`A solicitação ${situacao.numsolicitacao} já foi enviada pelo financeiro/integrada com o cliente e não pode mais ser alterada ou excluída.`, 409);
   }
 
@@ -124,7 +128,11 @@ function validarSituacoesLoteParaAcao(solicitacoes = [], acao, statusesPermitido
     status: normalizarStatusSolicitacao(item?.STATUS || item?.status)
   }));
 
-  if (situacoes.some((item) => ['F', 'I'].includes(item.status))) {
+  if (situacoes.some((item) => item.status === 'I')) {
+    throw new AppError('Este lote já foi integrado com o cliente e não pode mais ser alterado ou excluído.', 409);
+  }
+
+  if (acao !== 'conformidade' && situacoes.some((item) => item.status === 'F')) {
     throw new AppError('Este lote já foi enviado pelo financeiro/integrado com o cliente e não pode mais ser alterado ou excluído.', 409);
   }
 
@@ -3215,8 +3223,8 @@ export async function recalcularRaterioModel(dto){
   await validarSolicitacaoParaAcao(
     dto.numsolicitacao,
     'recalcular rateio',
-    ['A', 'P', 'L'],
-    'O rateio só pode ser alterado enquanto a solicitação estiver pendente do solicitante ou da controladoria.'
+    ['A', 'P', 'L', 'F'],
+    'O rateio só pode ser alterado enquanto a solicitação estiver pendente do solicitante, da controladoria ou do financeiro.'
   );
 
   const ssqlRecalcular = `
@@ -3614,7 +3622,7 @@ export async function conformidadeSolicitacoesLoteModel(jsonReq) {
       { outFormat: OracleDB.OUT_FORMAT_OBJECT }
     );
 
-    validarSituacoesLoteParaAcao(solicitacoesResult.rows || [], 'conformidade', ['L']);
+    validarSituacoesLoteParaAcao(solicitacoesResult.rows || [], 'conformidade', ['L', 'F']);
 
     const numerosSolicitacao = (solicitacoesResult.rows || [])
       .map((item) => Number(item.NUMSOLICITACAO || item.numsolicitacao || 0))
@@ -3624,13 +3632,16 @@ export async function conformidadeSolicitacoesLoteModel(jsonReq) {
       throw new AppError('Nenhuma solicitação gerada foi encontrada para este lote.', 404);
     }
 
+    const resultadosConformidade = [];
+
     for (const numeroSolicitacao of numerosSolicitacao) {
-      await conformidadeSolicitacaoModel({
+      const resultadoConformidade = await conformidadeSolicitacaoModel({
         ...jsonReq,
         numsolicitacao: numeroSolicitacao,
         valesSelecionados: Array.isArray(jsonReq.valesSelecionados) ? jsonReq.valesSelecionados : [],
         suprimirNotificacaoLote: true
       });
+      resultadosConformidade.push(resultadoConformidade);
     }
 
     await notificarSolicitacaoLote(idleitura);
@@ -3639,6 +3650,7 @@ export async function conformidadeSolicitacoesLoteModel(jsonReq) {
       idleitura,
       quantidadeAtualizada: numerosSolicitacao.length,
       numsolicitacoes: numerosSolicitacao,
+      resultadosConformidade,
       message: `Dados financeiros aplicados em ${numerosSolicitacao.length} solicitação(ões) do lote.`
     };
 
@@ -3652,12 +3664,14 @@ export async function conformidadeSolicitacoesLoteModel(jsonReq) {
 export async function conformidadeSolicitacaoModel(jsonReq) {
     
     try {
-      await validarSolicitacaoParaAcao(
+      const situacaoAtual = await validarSolicitacaoParaAcao(
         jsonReq.numsolicitacao,
         'conformidade',
-        ['L'],
-        'A conformidade financeira só pode ser realizada para solicitações pendentes do financeiro.'
+        ['L', 'F'],
+        'A conformidade financeira só pode ser realizada para solicitações pendentes do financeiro ou já finalizadas.'
       );
+
+      let statusFinal = normalizarStatusSolicitacao(jsonReq.status || 'F');
 
       // orderna solicitação
       const ssqlUpdate = `
@@ -3829,6 +3843,7 @@ export async function conformidadeSolicitacaoModel(jsonReq) {
 
           // Rejeicao financeira deve retornar para o ordenador revisar novamente.
           await executeQuery(ssqlEnviarOrdenador, {numsolicitacao: jsonReq.numsolicitacao}, true);
+            statusFinal = 'EA';
 
       } else {
 
@@ -3838,11 +3853,13 @@ export async function conformidadeSolicitacaoModel(jsonReq) {
 
             if (respose.status == 200 ){
               await executeQuery(ssqlSicronizaERP, {numsolicitacao: jsonReq.numsolicitacao}, true);
+              statusFinal = 'I';
             }
 
           } catch (error) {
 
             await executeQuery(ssqlPendenteIntegracao, {numsolicitacao: jsonReq.numsolicitacao}, true);
+            statusFinal = 'F';
 
             console.log(error.error)
             console.log('Erro ao integrar despesa com Winhor: '+error.error)
@@ -3854,7 +3871,11 @@ export async function conformidadeSolicitacaoModel(jsonReq) {
         await notificarSolicitacaoDepesa(jsonReq.numsolicitacao);
       }
 
-      return {numsolicitacao: jsonReq.numsolicitacao};      
+      return {
+        numsolicitacao: jsonReq.numsolicitacao,
+        status_antes: situacaoAtual.status || null,
+        status_final: statusFinal || null
+      };      
 
     } catch (error) {
       throw new Error(error); 
@@ -4077,15 +4098,7 @@ export async function armazenarDespesas(dataDespesas) {
  */
 export async function inserirHistoricoSolicitacaoModel(dto) {
 
-  // Resolver ID_USUARIO_ERP → ID_USUARIO (chave primária)
-  let idUsuario = dto.id_usuario;
-  try {
-    const usr = await executeQuery(
-      `SELECT ID_USUARIO FROM BSTAB_USUSARIOS WHERE ID_USUARIO_ERP = :erp`,
-      { erp: dto.id_usuario }
-    );
-    if (usr && usr.length > 0) idUsuario = usr[0].id_usuario;
-  } catch (_) {}
+  const idUsuario = dto.id_usuario;
 
   const ssql = `
     INSERT INTO BSTAB_SOLICITADESPESA_HISTORICO (

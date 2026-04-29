@@ -324,8 +324,8 @@ export async function conformidadeSolicitacaoService(dto) {
     numsolicitacao:   dto.numsolicitacao,
     id_grupo_empresa: dto.id_grupo_empresa || 0,
     etapa:            'FINANCEIRO',
-    status_antes:     'P',
-    status_depois:    dto.status || 'F',
+    status_antes:     dados?.status_antes || 'P',
+    status_depois:    dados?.status_final || dto.status || 'F',
     id_usuario:       obterIdUsuarioHistorico(dto, ['id_user_financeiro']),
     nome_usuario:     null,
     observacao:       dto.obs_financeiro || null,
@@ -342,14 +342,18 @@ export async function conformidadeSolicitacoesLoteService(dto) {
     throw new AppError('Erro ao realizar a conformidade financeira do lote', 500);
   }
 
+  const historicoPorSolicitacao = Array.isArray(dados.resultadosConformidade)
+    ? dados.resultadosConformidade
+    : [];
+
   const numSolicitacoes = Array.isArray(dados.numsolicitacoes) ? dados.numsolicitacoes : [];
   await Promise.allSettled(
-    numSolicitacoes.map((numsolicitacao) => inserirHistoricoSolicitacaoModel({
-      numsolicitacao,
+    (historicoPorSolicitacao.length > 0 ? historicoPorSolicitacao : numSolicitacoes.map((numsolicitacao) => ({ numsolicitacao }))).map((item) => inserirHistoricoSolicitacaoModel({
+      numsolicitacao: item.numsolicitacao,
       id_grupo_empresa: dto.id_grupo_empresa || 0,
       etapa: 'FINANCEIRO',
-      status_antes: null,
-      status_depois: dto.status || 'F',
+      status_antes: item.status_antes || null,
+      status_depois: item.status_final || dto.status || 'F',
       id_usuario: obterIdUsuarioHistorico(dto, ['id_user_financeiro']),
       nome_usuario: null,
       observacao: dto.obs_financeiro || null,

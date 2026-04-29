@@ -328,7 +328,7 @@ function SolicitacaoDeDespesaConsultar(){
 
         const mensagemBloqueio = getMensagemBloqueioRegistro(registro, tela);
         const registroIntegrado = isRegistroIntegrado(registro);
-        const abrirSomenteLeitura = (tela === 'Conformidade' && getStatusSolicitacao(registro) !== 'L')
+        const abrirSomenteLeitura = (tela === 'Conformidade' && !['L', 'F'].includes(getStatusSolicitacao(registro)))
             || (tela !== 'Conformidade' && !!mensagemBloqueio);
 
         if (mensagemBloqueio && tela !== 'Conformidade' && !registroIntegrado) {

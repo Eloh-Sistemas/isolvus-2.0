@@ -897,11 +897,12 @@ function SolicitacaoDeDespesaModal(props){
 
                 api.get('/v1/solicitacaoDespesa/proximoidsolicitadespesa')
                 .then((retorno) =>{
-                    setproximoid(retorno.data.proxnum);
+                    const proxnum = retorno.data.proxnum;
+                    setproximoid(proxnum);
 
                     console.log(dataEstimada);
 
-                    const dados = {numsolicitacao: retorno.data.proxnum, 
+                    const dados = {numsolicitacao: proxnum, 
                                    tipodespesa,
                                    id_EmpresaFunc, 
                                    id_Filialdespesa, 
@@ -940,7 +941,7 @@ function SolicitacaoDeDespesaModal(props){
                             onclose : FechaModal(1000),
                             onClose: props.onRequestClose2} );                    
                             
-                            uploadRef.current?.handleUpload();
+                            uploadRef.current?.handleUpload(proxnum);
                     
                     })
                     .catch((err) =>{       
@@ -1329,7 +1330,7 @@ function SolicitacaoDeDespesaModal(props){
             ? statusAtual
             : String(statusCarregadoBanco || statusAtual).trim().toUpperCase();
 
-        if (props.somenteLeitura === true || ["F", "I"].includes(statusReferencia)) {
+        if (props.somenteLeitura === true || (["F", "I"].includes(statusReferencia) && props.tipoTela !== "Conformidade")) {
             return;
         }
                      
@@ -1443,7 +1444,7 @@ function SolicitacaoDeDespesaModal(props){
 
              
 
-            if (["L"].includes(statusReferencia)) {
+            if (["L", "F"].includes(statusReferencia)) {
 
                 setdisabledIntegrarCom(false);
                 setDisabledParecerFinanceiro(false);        
@@ -2176,7 +2177,10 @@ function SolicitacaoDeDespesaModal(props){
                                                             {listaVala1.map((vale) => {
                                                                 const selecionado = valesSelecionados.some((v) => v.id_vale === vale.id_vale);
                                                                 const jaBaixado = vale.flegar === "B";
-                                                                const disabled = props.somenteLeitura === true || jaBaixado || ["I"].includes(status);
+                                                                const disabled = props.somenteLeitura === true
+                                                                    || props.tipoTela !== "Conformidade"
+                                                                    || jaBaixado
+                                                                    || ["I"].includes(status);
                                                                 return (
                                                                     <tr key={vale.id_vale} className={`vale-row${selecionado ? " vale-row-selected" : ""}${jaBaixado ? " vale-row-baixado" : ""}`}>
                                                                         <td className="vale-col-check">
@@ -2322,14 +2326,14 @@ function SolicitacaoDeDespesaModal(props){
                                                     FINANCEIRO:    { label: 'Financeiro',                  icon: 'bi-bank2',          dotClass: 'historico-dot-financeiro' },
                                                 };
                                                 const statusMap = {
-                                                    A:  { label: 'Aguardando',           bg: '#fff8e1', color: '#f57f17', border: '#ffe082' },
-                                                    EA: { label: 'Em Análise',           bg: '#e3f2fd', color: '#1565c0', border: '#90caf9' },
+                                                    A:  { label: 'Enviado para Controladoria', bg: '#fff8e1', color: '#f57f17', border: '#ffe082' },
+                                                    EA: { label: 'Enviado para Ordenador', bg: '#e3f2fd', color: '#1565c0', border: '#90caf9' },
                                                     P:  { label: 'Pendente',             bg: '#fce4ec', color: '#c62828', border: '#ef9a9a' },
-                                                    L:  { label: 'Liberado',             bg: '#e8f5e9', color: '#2e7d32', border: '#a5d6a7' },
-                                                    F:  { label: 'Finalizado',           bg: '#e8f5e9', color: '#2e7d32', border: '#a5d6a7' },
+                                                    L:  { label: 'Enviado para o Financeiro', bg: '#e8f5e9', color: '#2e7d32', border: '#a5d6a7' },
+                                                    F:  { label: 'Pendente de Integracao', bg: '#e8f5e9', color: '#2e7d32', border: '#a5d6a7' },
                                                     N:  { label: 'Não Autorizado',       bg: '#fbe9e7', color: '#bf360c', border: '#ffab91' },
                                                     AJ: { label: 'Ajuste Solicitado',    bg: '#fff3e0', color: '#e65100', border: '#ffcc80' },
-                                                    I:  { label: 'Inativo',              bg: '#f5f5f5', color: '#616161', border: '#e0e0e0' },
+                                                    I:  { label: 'Enviado para pagamento', bg: '#f5f5f5', color: '#616161', border: '#e0e0e0' },
                                                 };
                                                 const etapa = (item.etapa || '').toUpperCase();
                                                 const meta = etapaMap[etapa] || { label: item.etapa, icon: 'bi-clock-history', dotClass: 'historico-dot-pendente' };

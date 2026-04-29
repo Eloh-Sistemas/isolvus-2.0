@@ -5,9 +5,12 @@
     "main": "index.js",
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
-        "start": "npm run dev",
-        "dev": "fuser -k 3011/tcp 2>/dev/null || true && nodemon ./src/index.js",
-        "dev:clean": "fuser -k 3011/tcp 2>/dev/null || true && nodemon ./src/index.js"
+        "start": "node ./src/bootstrap.js",
+        "dev": "fuser -k 3011/tcp 2>/dev/null || true && nodemon ./src/bootstrap.js",
+        "dev:clean": "fuser -k 3011/tcp 2>/dev/null || true && nodemon ./src/bootstrap.js",
+        "migrate": "node ./src/flywayCli.js",
+        "migrate:info": "npm run migrate -- info",
+        "migrate:validate": "npm run migrate -- validate"
     },
     "keywords": [],
     "author": "",
