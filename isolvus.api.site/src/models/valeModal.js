@@ -209,12 +209,13 @@ export async function armazenarVale(dataVale) {
 }
 
 
-export async function baixaValeModel(dataVale, id_func_baixa, id_grupo_empresa){
+export async function baixaValeModel(dataVale, id_func_baixa, id_grupo_empresa, numsolicitacao){
     
     const ssqlBaixaVale = `
     UPDATE BSTAB_VALE SET 
     DATA_BAIXA = TRUNC(SYSDATE),
-    ID_FUNC_BAIXA = :ID_FUNC_BAIXA
+    ID_FUNC_BAIXA = :ID_FUNC_BAIXA,
+    ID_VICULOSOLCTDESPESA = :ID_VICULOSOLCTDESPESA
     WHERE ID_LANCAMENTO_ERP = :id_lancamento_erp
       AND ID_VALE = :ID_VALE
     `;
@@ -248,12 +249,13 @@ export async function baixaValeModel(dataVale, id_func_baixa, id_grupo_empresa){
             id_func_baixa: id_usuario_erp[0].id_usuario_erp
         }, authApiClient);
 
-        // baixa vale local
+        // baixa vale local e vincula à solicitação
         for (const vale of dataVale) {            
             const result = await connection.execute(ssqlBaixaVale, {
                 id_func_baixa: id_func_baixa,
                 id_lancamento_erp: vale.id_lancamento_erp,
-                id_vale: vale.id_vale 
+                id_vale: vale.id_vale,
+                ID_VICULOSOLCTDESPESA: numsolicitacao || null
             });
 
             if (!result.rowsAffected) {

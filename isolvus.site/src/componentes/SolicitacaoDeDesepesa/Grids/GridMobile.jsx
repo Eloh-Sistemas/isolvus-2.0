@@ -22,6 +22,10 @@ function GridMobile(props) {
    }
 
    function SelecinarItem(ItemSelecionado, index) {
+      if (ItemSelecionado?._somenteVisual) {
+         return;
+      }
+
       props.setIndex(index);
       props.SeItemSelecionado(ItemSelecionado);
       props.openModalItem();
@@ -57,7 +61,7 @@ function GridMobile(props) {
                   <article key={index} className="grid-mobile-card-item">
                      <div className="grid-mobile-card-top">
                         <span className="grid-mobile-badge">Cod. {i.coditem}</span>
-                        {props.tabhabilitada ? (
+                        {props.tabhabilitada && !i?._somenteVisual ? (
                            <button
                               className="grid-mobile-btn-edit"
                               onClick={() => SelecinarItem(i, index)}

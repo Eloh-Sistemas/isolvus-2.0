@@ -318,7 +318,8 @@ export async function conformidadeSolicitacaoService(dto) {
       await baixaValeModel(
         dto.valesSelecionados,
         dto.id_user_financeiro,
-        dto.id_grupo_empresa
+        dto.id_grupo_empresa,
+        dto.numsolicitacao
       );
     } catch (error) {
       forcarPendenteIntegracao = true;

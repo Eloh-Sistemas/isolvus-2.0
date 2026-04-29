@@ -23,6 +23,10 @@ function GridDesktop(props) {
   }
 
   function SelecinarItem(ItemSelecionado, index) {
+    if (ItemSelecionado?._somenteVisual) {
+      return;
+    }
+
     if (props.tabhabilitada) {
       props.setIndex(index);
       props.SeItemSelecionado(ItemSelecionado);
@@ -77,6 +81,7 @@ function GridDesktop(props) {
                 </tr>
               ) : (
                 props.dados.map((i, index) => (
+                  
                   <tr
                     key={index}
                     onClick={() => SelecinarItem(i, index)}
@@ -92,7 +97,7 @@ function GridDesktop(props) {
                       {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(i.quantidade * i.vlunit)}
                     </td>
                     <td className="text-center">
-                      {props.tabhabilitada && (
+                      {props.tabhabilitada && !i?._somenteVisual && (
                         <i className="bi bi-pencil grid-item-edit-icon"></i>
                       )}
                     </td>

@@ -1,7 +1,7 @@
 import Modal from "react-modal/lib/components/Modal";
 import "./SolicitacaoDeDespesa.css";
 import ModalSolicitacaoDeDespesaItem from "../../componentes/SolicitacaoDeDesepesa/Modal/ModalSolicitacaoDeDespesaItem"
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import GridMobile from "../../componentes/SolicitacaoDeDesepesa/Grids/GridMobile";
 import GridDesktop from "../../componentes/SolicitacaoDeDesepesa/Grids/GridDesktop";
 import EditComplete from "../../componentes/EditComplete/EditComplete";
@@ -360,6 +360,29 @@ function SolicitacaoDeDespesaModal(props){
 
     const totalValeAplicadoNosItens = props.origemLote ? 0 : totalSelecionado;
 
+    const itensComValeVisual = useMemo(() => {
+        const itensBase = [...listaDeGasto];
+
+        if (valesSelecionados && valesSelecionados.length > 0) {
+            valesSelecionados.forEach((vale) => {
+                const idVale = vale?.id_vale;
+                const valorVale = Number(vale?.valor || 0);
+
+                if (idVale && valorVale > 0) {
+                    itensBase.push({
+                        coditem: `VALE-${idVale}`,
+                        descricao: `DESCONTO REFERENTE AO VALE: ${idVale}`,
+                        quantidade: 1,
+                        vlunit: -valorVale,
+                        _somenteVisual: true
+                    });
+                }
+            });
+        }
+
+        return itensBase;
+    }, [listaDeGasto, valesSelecionados]);
+
     
 
     // INICIAR TELA
@@ -468,7 +491,7 @@ function SolicitacaoDeDespesaModal(props){
         SetObs_ordenador("");
         SetObs_financeiro("");
         SetListaDeGasto([]);        
-        setproximoid(-1);
+        setproximoid(props.id_solicitacao || -1);
         setCondConta(0);
         SetDescricaoConta("");
         setCentroDeCusto(0);
@@ -500,7 +523,7 @@ function SolicitacaoDeDespesaModal(props){
                 SetNomeFunc(retorno.data[0].nome);
                 Set_Id_Filialdespesa(retorno.data[0].id_filialdespesa);
                 SetFilialDespesa(retorno.data[0].empresadespesa);
-                settipofornecedor(retorno.data[0].tipofornecedor);
+                settipofornecedor(String(retorno.data[0].tipofornecedor || "fo").toLowerCase());
 
                 sethistorico1(retorno.data[0].historico1|| "");
                 sethistorico2(retorno.data[0].historico2|| "");
@@ -720,9 +743,11 @@ function SolicitacaoDeDespesaModal(props){
     useEffect(()=>{
 
 
-       if (id_Fornecedor > 0 && formadePagamento > 0 && tipotitularidade > 0) {
+      if (id_Fornecedor > 0 && formadePagamento > 0 && tipotitularidade > 0) {
 
-            switch (tipofornecedor){
+          const tipoParceiro = String(tipofornecedor || "").toLowerCase();
+
+          switch (tipoParceiro){
                 case 'fo': consultarContaFornecedor();
                 break;
                 case 'us': consultarContaFuncionario();
@@ -733,16 +758,18 @@ function SolicitacaoDeDespesaModal(props){
             consultarContaFornecedor();
        }
         
-    },[id_Fornecedor, formadePagamento, tipotitularidade, props.isItemOpen]); 
+    },[id_Fornecedor, formadePagamento, tipotitularidade, tipofornecedor, props.isItemOpen]); 
 
 
     //CONSULTAR VALE FUNCIONARIO
     useEffect(()=>{        
 
 
-       if (id_Fornecedor > 0 ) {
+      if (id_Fornecedor > 0 ) {
 
-            switch (tipofornecedor){
+          const tipoParceiro = String(tipofornecedor || "").toLowerCase();
+
+          switch (tipoParceiro){
                 case 'us': consultarValeFuncionario();
                 break;   
                 
@@ -752,34 +779,42 @@ function SolicitacaoDeDespesaModal(props){
            setListaVala1([]);
        }
         
-    },[id_Fornecedor]); 
+    },[id_Fornecedor, tipofornecedor, props.id_solicitacao, status, statusCarregadoBanco]); 
     
 
     function consultarValeFuncionario() {
-    api.post('/v1/consultarVale', {
-        id_func: id_Fornecedor,
-        id_viculosoctdespesa: props.id_solicitacao
-    })
-    .then((response) => { 
-                 
+        api.post('/v1/consultarVale', {
+            id_func: id_Fornecedor,
+            id_viculosoctdespesa: props.id_solicitacao
+        })
+        .then((response) => { 
+            const listaVales = Array.isArray(response.data) ? response.data : [];
+            const statusReferencia = String(statusCarregadoBanco || status || "").trim().toUpperCase();
+            const apenasBaixadosVinculados = statusReferencia === "I";
 
-        if (response.data.length > 0) {
-            setListaVala1(response.data);
+            // Regra de exibicao:
+            // - Status I: somente vales baixados vinculados (B)
+            // - Outros status: somente vales em aberto (N)
+            const listaFiltrada = listaVales.filter((v) => {
+                const flegar = String(v.flegar || "").trim().toUpperCase();
+                return apenasBaixadosVinculados ? flegar === "B" : flegar === "N";
+            });
 
-            // 🔥 AUTO-SELECIONAR flegar = S ou B (com garantia)
-            const selecionados = response.data.filter(v => 
+            setListaVala1(listaFiltrada);
+
+            const selecionados = listaFiltrada.filter(v => 
                 (v.flegar || "").toUpperCase() === "S" || 
                 (v.flegar || "").toUpperCase() === "B"
             );
 
             setValesSelecionados(selecionados);
-        }
-
-    })
-    .catch((erro) => {
-        console.log("Erro ao consultar vale");
-    });
-}
+        })
+        .catch((erro) => {
+            console.log("Erro ao consultar vale");
+            setListaVala1([]);
+            setValesSelecionados([]);
+        });
+    }
 
 
     
@@ -1037,7 +1072,7 @@ function SolicitacaoDeDespesaModal(props){
                     onClose: props.onRequestClose2
                 });
             
-                uploadRef.current?.handleUpload();
+                uploadRef.current?.handleUpload(props.id_solicitacao || proximoid);
 
             })
             .catch((err) =>{       
@@ -1160,6 +1195,11 @@ function SolicitacaoDeDespesaModal(props){
 
         }else if (props.tipoTela == "Conformidade"){
             
+            if (!integracao || integracao === 0) {
+                toast.error("Selecione a rotina de integração", { position: "top-center" });
+                return;
+            }
+
             const id1 = toast.loading("autorizando solicitação de Despesa...", {position : "top-center"});
 
             const dados = {numsolicitacao: props.id_solicitacao,  
@@ -1831,7 +1871,7 @@ function SolicitacaoDeDespesaModal(props){
                                                 <UploadArquivos
                                                     ref={uploadRef}
                                                     idRotina={"1030.1"}
-                                                    idRelacional={proximoid}
+                                                    idRelacional={props.id_solicitacao || proximoid}
                                                     disabled={disableAnexo}
                                                     //acceptTypes="image/*,application/pdf"
                                                     capture={true}
@@ -1852,23 +1892,23 @@ function SolicitacaoDeDespesaModal(props){
                                         <div className="row g-3">
                                             <div className="col-12">
                                             { tipoGrid == "M" ? <GridMobile openModalItem={openModalItem}
-                                                                        dados={listaDeGasto}
+                                                                        dados={itensComValeVisual}
                                                                         tipoModal={setTipoModal}
                                                                         SeItemSelecionado={SeItemSelecionado}
                                                                         onClikSalvar={onClikSalvar}
                                                                         setIndex = {setIndex}
                                                                         tabhabilitada={tabhabilitada}
-                                                                        totalvale={totalValeAplicadoNosItens}
+                                                                        totalvale={0}
                                                                         habilitarbtnSalvar={habilitarbtnSalvar}/>
 
                                                             : <GridDesktop openModalItem={openModalItem}
-                                                                        dados={listaDeGasto}
+                                                                        dados={itensComValeVisual}
                                                                         tipoModal={setTipoModal}
                                                                         SeItemSelecionado={SeItemSelecionado}
                                                                         onClikSalvar={onClikSalvar}
                                                                         setIndex = {setIndex}
                                                                         tabhabilitada={tabhabilitada}
-                                                                        totalvale={totalValeAplicadoNosItens}
+                                                                        totalvale={0}
                                                                         habilitarbtnSalvar={habilitarbtnSalvar}
                                                                         />
                                                                                         }
@@ -2146,14 +2186,14 @@ function SolicitacaoDeDespesaModal(props){
                                         }
 
                                         {/* PAINEL DE VALES */}
-                                        {(listaVala1 && listaVala1.length > 0 && ["Conformidade", "Ordenar"].includes(props.tipoTela)) && (
+                                        {(listaVala1 && listaVala1.length > 0 && (["Conformidade", "Ordenar"].includes(props.tipoTela) || String(status || "").trim().toUpperCase() === "I")) && (
                                         <div className="col-12">
                                             <div className="vale-panel">
 
                                                 {/* Cabeçalho */}
                                                 <div className="vale-panel-header">
                                                     <i className="bi bi-cash-coin vale-panel-header-icon"></i>
-                                                    <span className="vale-panel-header-title">Vales em Aberto</span>
+                                                    <span className="vale-panel-header-title">Vales</span>
                                                     <span className="vale-panel-header-badge">{listaVala1.length}</span>
                                                 </div>
 
@@ -2176,7 +2216,7 @@ function SolicitacaoDeDespesaModal(props){
                                                                 const disabled = props.somenteLeitura === true
                                                                     || props.tipoTela !== "Conformidade"
                                                                     || jaBaixado
-                                                                    || ["I"].includes(status);
+                                                                    || ["I"].includes(String(status || "").trim().toUpperCase());
                                                                 return (
                                                                     <tr key={vale.id_vale} className={`vale-row${selecionado ? " vale-row-selected" : ""}${jaBaixado ? " vale-row-baixado" : ""}`}>
                                                                         <td className="vale-col-check">
