@@ -88,7 +88,7 @@ function AcompanhamentoDespesa1() {
           });
         });
 
-        const deveForcar = permitirVisualizarTodas === "N";
+        const deveForcar = permitirVisualizarTodas !== "S";
         setForcarOrdenadorLogado(deveForcar);
 
         if (deveForcar) {
