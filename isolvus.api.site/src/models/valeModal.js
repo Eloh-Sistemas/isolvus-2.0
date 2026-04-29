@@ -274,3 +274,14 @@ export async function baixaValeModel(dataVale, id_func_baixa, id_grupo_empresa, 
     }
 
 }
+
+export async function consultarValesVinculadosSolicitacaoModel(numsolicitacao) {
+    const ssql = `
+        SELECT V.ID_VALE, V.ID_LANCAMENTO_ERP
+          FROM BSTAB_VALE V
+         WHERE V.ID_VICULOSOLCTDESPESA = :numsolicitacao
+           AND V.DATA_BAIXA IS NULL
+           AND V.ID_FUNC_BAIXA IS NULL
+    `;
+    return await executeQuery(ssql, { numsolicitacao });
+}

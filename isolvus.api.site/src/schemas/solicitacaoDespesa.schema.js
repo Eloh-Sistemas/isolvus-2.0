@@ -472,6 +472,14 @@ export const recalcularRaterioSchema = z.object({
   valorDespesa: z.number().min(0, "Valor da despesa não pode ser negativo.")  
 })
 
+export const salvarVinculoValesSchema = z.object({
+  numsolicitacao: z.coerce.number({
+    required_error: "Nº Solicitação é obrigatório",
+    invalid_type_error: "Nº Solicitação deve ser numérico"
+  }),
+  valesSelecionados: z.array(valeConformidadeSchema).optional()
+})
+
 
 export const deleteRateioSchema = z.object({
   numsolicitacao: z.coerce.number({

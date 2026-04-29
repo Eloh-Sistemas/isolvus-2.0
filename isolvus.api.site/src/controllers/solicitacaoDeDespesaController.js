@@ -19,6 +19,7 @@ import { addRateioService, alterarSolicitaDespesaService,
          preAnaliseService, 
          processarDespesasImportacaoService,
          proximoidsolicitadespesaService, 
+         salvarVinculoValesService,
          recalcularRaterioService, 
          validarSolicitacaoOrcamentoService,
          consultarHistoricoSolicitacaoService } from '../services/solicitacaoDespesa.service.js';
@@ -195,6 +196,17 @@ export async function recalcularRaterio(req, res, next){
 
     try {
         const dados = await recalcularRaterioService(req.body);
+        return res.status(200).json(dados);
+    } catch (error) {
+        next(error);
+    }
+
+}
+
+export async function salvarVinculoVales(req, res, next){
+
+    try {
+        const dados = await salvarVinculoValesService(req.body);
         return res.status(200).json(dados);
     } catch (error) {
         next(error);

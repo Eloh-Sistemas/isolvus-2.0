@@ -299,6 +299,7 @@ function SolicitacaoDeDespesaModal(props){
     const [disableParecerFinanceiro, setDisabledParecerFinanceiro] = useState(true);
     const [disableCaixaBanco, setDisableCaixaBanco] = useState(true);
     const [disableAnexo, setDisableAnexo] = useState(true);
+    const isSolicitacaoLote = props.origemLote === true;
 
     // Visibles
     const [visibleContaGerencial, setVisibleContaGerencial] = useState(true);
@@ -826,18 +827,17 @@ function SolicitacaoDeDespesaModal(props){
             const apenasBaixadosVinculados = statusReferencia === "I";
 
             // Regra de exibicao:
-            // - Status I: somente vales baixados vinculados (B)
-            // - Outros status: somente vales em aberto (N)
+            // - Status I: vales baixados vinculados (B) E vales vinculados (S)
+            // - Outros status: vales em aberto (N) e ja vinculados a solicitacao (S)
             const listaFiltrada = listaVales.filter((v) => {
                 const flegar = String(v.flegar || "").trim().toUpperCase();
-                return apenasBaixadosVinculados ? flegar === "B" : flegar === "N";
+                return apenasBaixadosVinculados ? ["B", "S"].includes(flegar) : ["N", "S"].includes(flegar);
             });
 
             setListaVala1(listaFiltrada);
 
-            const selecionados = listaFiltrada.filter(v => 
-                (v.flegar || "").toUpperCase() === "S" || 
-                (v.flegar || "").toUpperCase() === "B"
+            const selecionados = listaVales.filter(v => 
+                ["S", "B"].includes((v.flegar || "").toUpperCase())
             );
 
             setValesSelecionados(selecionados);
@@ -938,6 +938,47 @@ function SolicitacaoDeDespesaModal(props){
 
 
     function onClikSalvar(){
+
+        const statusReferenciaAtual = String(statusCarregadoBanco || status || "").trim().toUpperCase();
+
+        if (isSolicitacaoLote && statusReferenciaAtual === "L") {
+            const id1 = toast.loading("salvando vínculo dos vales...", {position : "top-center"});
+
+            api.post('/v1/solicitacaoDespesa/salvarVinculoVales', {
+                numsolicitacao: props.id_solicitacao,
+                valesSelecionados
+            })
+            .then((retorno) => {
+                const resposta = retorno.data;
+
+                toast.update(id1, {
+                    render: `Vínculo de vales salvo com sucesso (${resposta.quantidadeVales || 0} selecionado(s)).`,
+                    type: "success",
+                    isLoading: false,
+                    closeOnClick: true,
+                    autoClose: 1700,
+                    pauseOnHover: false,
+                    onclose : FechaModal(1000),
+                    onClose: props.onRequestClose2
+                });
+            })
+            .catch((err) => {
+                console.error("[Salvar vínculo vales] erro:", err);
+                const mensagem = err?.response?.data?.detalhes?.[0]?.message
+                    || err?.response?.data?.error
+                    || "Erro inesperado. Tente novamente.";
+
+                toast.update(id1, {
+                    render: mensagem,
+                    type: "error",
+                    isLoading: false,
+                    autoClose: 2000,
+                    pauseOnHover: false
+                });
+            });
+
+            return;
+        }
 
  
         if (props.tipoTela == "Nova"){
@@ -1404,6 +1445,34 @@ function SolicitacaoDeDespesaModal(props){
         if (props.somenteLeitura === true || (["F", "I"].includes(statusReferencia) && props.tipoTela !== "Conformidade")) {
             return;
         }
+
+        if (isSolicitacaoLote) {
+            Settabhabilitada(false);
+            SethabilitarbtnSalvar(statusReferencia === 'L');
+            setdisabledFoto(true);
+            setdisabledFormadePagamento(true);
+            setdisableChavePix(true);
+            setdisabledBanco(true);
+            setdisabledAgencia(true);
+            setdisabledContaBancaria(true);
+            setdisabledOperacao(true);
+            setdisabledtipotitularidade(true);
+            setdisabledFornecedor(true);
+            setdisabledTipoFornecedor(true);
+            setdisabledTipoDespesa(true);
+            setDisabledFilialDespesa(true);
+            setDisabledDataEstimada(true);
+            setDisableContaGerencial(true);
+            setDisableCentroDecusto(true);
+            setDisableObjetivoSolicitante(true);
+            setDisableStatus(true);
+            setDisableParecerOrdenador(true);
+            setdisabledIntegrarCom(true);
+            setDisabledParecerFinanceiro(true);
+            setDisableCaixaBanco(true);
+            setDisableAnexo(true);
+            return;
+        }
                      
 
         // campos na tela editar
@@ -1526,7 +1595,7 @@ function SolicitacaoDeDespesaModal(props){
         }
         
                         
-    },[props.tipoTela, status, statusCarregadoBanco, props.somenteLeitura]);
+    },[props.tipoTela, status, statusCarregadoBanco, props.somenteLeitura, isSolicitacaoLote]);
 
 
     useEffect(()=>{
@@ -2248,10 +2317,12 @@ function SolicitacaoDeDespesaModal(props){
                                                             {listaVala1.map((vale) => {
                                                                 const selecionado = valesSelecionados.some((v) => v.id_vale === vale.id_vale);
                                                                 const jaBaixado = vale.flegar === "B";
+                                                                const statusValeAtual = String(statusCarregadoBanco || status || "").trim().toUpperCase();
+                                                                const podeSelecionarValeEmLote = isSolicitacaoLote && statusValeAtual === "L";
                                                                 const disabled = props.somenteLeitura === true
-                                                                    || props.tipoTela !== "Conformidade"
                                                                     || jaBaixado
-                                                                    || ["I"].includes(String(status || "").trim().toUpperCase());
+                                                                    || ["I"].includes(statusValeAtual)
+                                                                    || (!podeSelecionarValeEmLote && props.tipoTela !== "Conformidade");
                                                                 return (
                                                                     <tr key={vale.id_vale} className={`vale-row${selecionado ? " vale-row-selected" : ""}${jaBaixado ? " vale-row-baixado" : ""}`}>
                                                                         <td className="vale-col-check">

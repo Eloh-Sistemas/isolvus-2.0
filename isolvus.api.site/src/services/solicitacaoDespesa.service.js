@@ -22,12 +22,13 @@ import { addRateioModel, alterarSolicitaDespesaModel,
          preAnaliseModel, 
          processarDespesasImportacaoModel,
          proximoidsolicitadespesaModal, 
+         salvarVinculoValesModel,
          recalcularRaterioModel, 
          validarSolicitacaoOrcamentoModel,
          inserirHistoricoSolicitacaoModel,
          consultarHistoricoSolicitacaoModel } from '../models/solicitacaoDeDespesaModel.js';
 
-import { baixaValeModel } from '../models/valeModal.js';
+import { baixaValeModel, consultarValesVinculadosSolicitacaoModel } from '../models/valeModal.js';
 
 
 function obterIdUsuarioHistorico(dto, camposAlternativos = []) {
@@ -281,6 +282,13 @@ export async function recalcularRaterioService(dto) {
 
 }
 
+export async function salvarVinculoValesService(dto) {
+
+  const dados = await salvarVinculoValesModel(dto);
+  return dados;
+
+}
+
 export async function consultarRateioService(dto) {
   
   const dados = await consultarRateioModel(dto);
@@ -352,6 +360,41 @@ export async function conformidadeSolicitacaoService(dto) {
 }
 
 export async function conformidadeSolicitacoesLoteService(dto) {
+
+  // Para cada solicitação do lote, baixar no cliente os vales vinculados (flegar='S')
+  if (dto.idleitura) {
+    try {
+      const { executeQuery } = await import('../config/database.js');
+      const solicitacoesLote = await executeQuery(
+        `SELECT DISTINCT A.NUMSOLICITACAO
+           FROM BSTAB_ANALISE_IMPORT_DESPESA A
+          WHERE A.IDLEITURA = :idleitura
+            AND A.NUMSOLICITACAO IS NOT NULL`,
+        { idleitura: Number(dto.idleitura) }
+      );
+
+      for (const sol of solicitacoesLote) {
+        const numsolicitacao = Number(sol.numsolicitacao);
+        if (!numsolicitacao) continue;
+
+        const valesVinculados = await consultarValesVinculadosSolicitacaoModel(numsolicitacao);
+        if (valesVinculados.length > 0) {
+          try {
+            await baixaValeModel(
+              valesVinculados,
+              dto.id_user_financeiro,
+              dto.id_grupo_empresa,
+              numsolicitacao
+            );
+          } catch (error) {
+            console.warn(`Erro ao baixar vales da solicitação ${numsolicitacao} no lote:`, error.message);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Erro ao processar baixa de vales em lote:', error.message);
+    }
+  }
 
   const dados = await conformidadeSolicitacoesLoteModel(dto);
 

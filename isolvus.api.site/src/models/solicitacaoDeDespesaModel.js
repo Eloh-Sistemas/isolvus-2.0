@@ -3332,6 +3332,60 @@ async function atualizarRateioPorValorLiquido(numsolicitacao, valorLiquidoDespes
   );
 }
 
+export async function salvarVinculoValesModel(jsonReq) {
+
+  try {
+    await validarSolicitacaoParaAcao(
+      jsonReq.numsolicitacao,
+      'salvar vinculo de vales',
+      ['L'],
+      'Os vales só podem ser vinculados individualmente em solicitações de lote com status pendente do financeiro.'
+    );
+
+    const valesSelecionados = Array.isArray(jsonReq.valesSelecionados)
+      ? jsonReq.valesSelecionados
+      : [];
+
+    const ssqlUpdateVale = `
+      UPDATE BSTAB_VALE A
+         SET A.ID_VICULOSOLCTDESPESA = :ID_VICULOSOLCTDESPESA
+       WHERE A.ID_VALE = :ID_VALE
+    `;
+
+    const ssqlLimpaVinculo = `
+      UPDATE BSTAB_VALE A
+         SET A.ID_VICULOSOLCTDESPESA = NULL
+       WHERE A.ID_VICULOSOLCTDESPESA = :ID_VICULOSOLCTDESPESA
+    `;
+
+    await executeQuery(
+      ssqlLimpaVinculo,
+      { ID_VICULOSOLCTDESPESA: jsonReq.numsolicitacao },
+      true
+    );
+
+    for (const vale of valesSelecionados) {
+      await executeQuery(
+        ssqlUpdateVale,
+        {
+          ID_VICULOSOLCTDESPESA: jsonReq.numsolicitacao,
+          ID_VALE: vale.id_vale
+        },
+        true
+      );
+    }
+
+    return {
+      numsolicitacao: jsonReq.numsolicitacao,
+      quantidadeVales: valesSelecionados.length
+    };
+
+  } catch (error) {
+    console.error(error);
+    throw new Error(error);
+  }
+}
+
 export async function ordenarSolicitacaoModel(jsonReq) {
 
   try {
@@ -3667,7 +3721,7 @@ export async function conformidadeSolicitacoesLoteModel(jsonReq) {
       const resultadoConformidade = await conformidadeSolicitacaoModel({
         ...jsonReq,
         numsolicitacao: numeroSolicitacao,
-        valesSelecionados: Array.isArray(jsonReq.valesSelecionados) ? jsonReq.valesSelecionados : [],
+        valesSelecionados: [],
         suprimirNotificacaoLote: true
       });
       resultadosConformidade.push(resultadoConformidade);
@@ -3763,9 +3817,16 @@ export async function conformidadeSolicitacaoModel(jsonReq) {
             C.STATUS,
             U.NOME NOME_USUARIO,                                                         
             NVL(SUM(I.QUANTIDADE * I.VLUNIT),0)
-            - NVL((SELECT SUM(V.VALOR)
-              FROM BSTAB_VALE V
-             WHERE V.ID_VICULOSOLCTDESPESA = C.NUMSOLICITACAO),0) VALOR_TOTAL                              
+            - CASE
+                WHEN EXISTS (
+                  SELECT 1
+                    FROM BSTAB_ANALISE_IMPORT_DESPESA IMP
+                   WHERE IMP.NUMSOLICITACAO = C.NUMSOLICITACAO
+                ) THEN 0
+                ELSE NVL((SELECT SUM(V.VALOR)
+                            FROM BSTAB_VALE V
+                           WHERE V.ID_VICULOSOLCTDESPESA = C.NUMSOLICITACAO),0)
+              END VALOR_TOTAL                              
             FROM BSTAB_SOLICITADESPESAC C
             LEFT JOIN BSTAB_SOLICITADESPESAI I ON (C.NUMSOLICITACAO = I.NUMSOLICITACAO)
             LEFT JOIN BSTAB_USUSARIOS U  ON (U.ID_USUARIO = C.ID_SOLICITANTE AND U.ID_GRUPO_EMPRESA = C.ID_GRUPO_EMPRESA)

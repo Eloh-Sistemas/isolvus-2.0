@@ -1,6 +1,6 @@
 import express from 'express';
 
-import { addRateio, consultarRateio, deleteRateio, listar, recalcularRaterio } from '../controllers/solicitacaoDeDespesaController.js';
+import { addRateio, consultarRateio, deleteRateio, listar, recalcularRaterio, salvarVinculoVales } from '../controllers/solicitacaoDeDespesaController.js';
 import { validate } from '../middlewares/validate.js';
 
 import { addRateioSchema, conformidadeSolicitacaoSchema, 
@@ -19,6 +19,7 @@ import { addRateioSchema, conformidadeSolicitacaoSchema,
          preAnaliseImportDespesaSchemma, 
          processarDespesasImportacaoSchema,
          recalcularRaterioSchema, 
+         salvarVinculoValesSchema,
          relautorizacaoPagamentoSchema, 
          relcontrolededespesaSchema, 
          solicitaDespesaSchema } from '../schemas/solicitacaoDespesa.schema.js';
@@ -70,6 +71,7 @@ router.post('/solicitacaoDespesa/importa/deletePreAnalise', validate(deletePreAn
 
 router.post('/solicitacaoDespesa/addRaterio', validate(addRateioSchema),  addRateio);
 router.post('/solicitacaoDespesa/recalcularRaterio', validate(recalcularRaterioSchema),  recalcularRaterio);
+router.post('/solicitacaoDespesa/salvarVinculoVales', validate(salvarVinculoValesSchema), salvarVinculoVales);
 
 router.post('/solicitacaoDespesa/consultarRateio', validate(consultarSolicitacaoNumeroSchema),  consultarRateio);
 router.post('/solicitacaoDespesa/deleteRateio', validate(deleteRateioSchema),  deleteRateio);
