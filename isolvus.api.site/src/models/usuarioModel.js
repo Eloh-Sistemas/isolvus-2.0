@@ -59,7 +59,7 @@ export async function buscarUsuario(integracao) {
             ID_SETOR_ERP,                                                              
             ID_GRUPO_EMPRESA )                                                         
             values                                                                     
-            ((SELECT NVL(MAX(ID_USUARIO+1),1) PROXIMONUMUSUARIO FROM BSTAB_USUSARIOS), 
+            (SEQ_BSTAB_USUARIO_ID.NEXTVAL, 
             :nome,                                                                                                                                        
             :id_empresa_erp,                                                          
             :id_usuario_erp,                                                           

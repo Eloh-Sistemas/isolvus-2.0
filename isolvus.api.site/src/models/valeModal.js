@@ -115,12 +115,12 @@ export async function armazenarVale(dataVale) {
                id_filial = (SELECT E.ID_EMPRESA FROM BSTAB_EMPRESAS E WHERE E.ID_ERP = :id_filial),
                data_lancamento = TO_DATE(:data_lancamento, 'DD/MM/YYYY'),
                data_vencimento = TO_DATE(:data_vencimento, 'DD/MM/YYYY'),
-               data_baixa = TO_DATE(:data_baixa, 'DD/MM/YYYY'),
+               data_baixa = CASE WHEN DATA_BAIXA IS NULL THEN TO_DATE(:data_baixa, 'DD/MM/YYYY') ELSE DATA_BAIXA END,
                id_func = (SELECT B.ID_USUARIO FROM BSTAB_USUSARIOS B WHERE B.ID_USUARIO_ERP = :id_func),
                tipolanc = :tipolanc,
                valor = :valor,
                historico = :historico,
-               id_func_baixa = :id_func_baixa,
+               id_func_baixa = CASE WHEN ID_FUNC_BAIXA IS NULL THEN :id_func_baixa ELSE ID_FUNC_BAIXA END,
                id_grupo_empresa = :id_grupo_empresa
          WHERE id_lancamento_erp = :id_lancamento_erp
     `;
@@ -141,7 +141,7 @@ export async function armazenarVale(dataVale) {
             id_lancamento_erp,
             id_grupo_empresa
         ) VALUES (
-            (SELECT NVL(MAX(id_lancamento + 1), 1) FROM bstab_vale),
+            SEQ_BSTAB_VALE_ID.NEXTVAL,
             :id_vale,
             (SELECT E.ID_EMPRESA FROM BSTAB_EMPRESAS E WHERE E.ID_ERP = :id_filial),
             TO_DATE(:data_lancamento, 'DD/MM/YYYY'),

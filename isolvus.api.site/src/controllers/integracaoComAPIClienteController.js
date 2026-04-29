@@ -12,15 +12,21 @@ import { buscarUsuario } from "../models/usuarioModel.js";
 import { buscarVale } from "../models/valeModal.js";
 import { buscarVeiculo } from "../models/veiculoModal.js";
 
-let processando = false; // Variável de controle global
+let processando = false;
+let inicioProcessamento = null;
+const TIMEOUT_INTEGRACAO_MS = 10 * 60 * 1000; // 10 minutos — libera automaticamente se travar
 
 export async function Integrar() {
-    if (processando) {
+    const agora = Date.now();
+
+    // Se já está processando mas passou do timeout, libera (ex: restart no meio da integração)
+    if (processando && inicioProcessamento && (agora - inicioProcessamento) < TIMEOUT_INTEGRACAO_MS) {
         console.log("Já está em processamento.");
         return;
     }
 
-    processando = true; 
+    processando = true;
+    inicioProcessamento = agora;
     const inicio = new Date(); 
     console.log(`Iniciando processamento em: ${inicio.toLocaleString()}`);
 
@@ -66,7 +72,8 @@ export async function Integrar() {
         const fim = new Date(); 
         console.log(`Processamento finalizado em: ${fim.toLocaleString()}`);
         console.log(`Duração: ${(fim - inicio) / 1000} segundos`);
-        processando = false; 
+        processando = false;
+        inicioProcessamento = null;
     }
 }
 

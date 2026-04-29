@@ -15,6 +15,7 @@ export async function ConsultarHosts() {
                FROM BSTAB_INTEGRACAO I, BSTAB_HOSTCLIENTES H
               WHERE I.ID_SERVIDOR = H.ID_GRUPO_EMPRESAS
                 AND I.DATAHORA_PROXIMA_ATUALIZACAO <= SYSDATE
+                AND I.REALIZARINTEGRACAO = 'S'
            ORDER BY I.ID_INTEGRACAO
         `;
 
