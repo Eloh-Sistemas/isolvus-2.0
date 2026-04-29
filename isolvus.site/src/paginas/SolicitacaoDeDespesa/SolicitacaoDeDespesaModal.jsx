@@ -1178,7 +1178,22 @@ function SolicitacaoDeDespesaModal(props){
             .then((retorno) =>{                                                             
 
                 const resposta = retorno.data; 
-                                            
+                const mensagemIntegracao = resposta?.mensagem_integracao;
+
+                if (resposta?.status_final === 'F' && mensagemIntegracao) {
+                    toast.update(id1, {
+                        render: `Solicitação Nº:${resposta.numsolicitacao} pendente de integração. Motivo: ${mensagemIntegracao}`,
+                        type: 'warning',
+                        isLoading: false,
+                        closeOnClick: true,
+                        autoClose: 5000,
+                        pauseOnHover: true,
+                        onclose : FechaModal(1000),
+                        onClose: props.onRequestClose2
+                    });
+                    return;
+                }
+
                 toast.update(id1, {
                     render: "Solicitação Nº:"+ resposta.numsolicitacao +" autorizada com sucesso !", 
                     type: "success", 
@@ -1194,6 +1209,7 @@ function SolicitacaoDeDespesaModal(props){
             .catch((err) =>{  
                 console.error("[Conformidade] erro:", err);
                 const mensagem = err?.response?.data?.detalhes?.[0]?.message
+                    || err?.response?.data?.message
                     || err?.response?.data?.error
                     || "Erro inesperado. Tente novamente.";
 

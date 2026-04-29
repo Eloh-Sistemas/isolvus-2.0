@@ -231,36 +231,42 @@ export async function baixaValeModel(dataVale, id_func_baixa, id_grupo_empresa){
     try {               
         
         // consultar host 
-        const host = await executeQuery(ssqlHost, {id_grupo_empresa: id_grupo_empresa})    
-        const id_usuario_erp = await executeQuery(ssqlConsultaFunc, {id_usuario: id_func_baixa}) 
+        const host = await executeQuery(ssqlHost, {id_grupo_empresa: id_grupo_empresa});
+        const id_usuario_erp = await executeQuery(ssqlConsultaFunc, {id_usuario: id_func_baixa});
+
+        if (!host.length || !host[0].host) {
+            throw new Error('Host do cliente não localizado para a baixa do vale.');
+        }
+
+        if (!id_usuario_erp.length || !id_usuario_erp[0].id_usuario_erp) {
+            throw new Error('Usuário ERP não localizado para a baixa do vale.');
+        }
 
         // enviar baixa do vale no cliente se tive integração ativa
-        axios.post(host[0].host+'/v1/integracao/baixarVale', {
+        await axios.post(host[0].host+'/v1/integracao/baixarVale', {
             vales: dataVale,
             id_func_baixa: id_usuario_erp[0].id_usuario_erp
-        })
-        .then((resposta) =>{
-            console.log(resposta.data);
-        })
-        .catch((err) =>{
-            console.log(err);
-        });
+        }, authApiClient);
 
         // baixa vale local
         for (const vale of dataVale) {            
-            await connection.execute(ssqlBaixaVale, {
+            const result = await connection.execute(ssqlBaixaVale, {
                 id_func_baixa: id_func_baixa,
                 id_lancamento_erp: vale.id_lancamento_erp,
                 id_vale: vale.id_vale 
             });
+
+            if (!result.rowsAffected) {
+                throw new Error(`Vale ${vale.id_vale} não encontrado para baixa local.`);
+            }
         }
 
         await connection.commit();
+        return { mensagem: 'Vale(s) baixado(s) com sucesso.' };
 
     } catch (error) {
-        console.log(error); 
         await connection.rollback(); 
-        throw 'Erro na baixa do vale';                 
+        throw new Error(error?.response?.data?.message || error?.message || 'Erro na baixa do vale');                
     } finally {
         await connection.close();
     }

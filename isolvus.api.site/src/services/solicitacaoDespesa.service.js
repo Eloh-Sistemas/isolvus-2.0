@@ -310,25 +310,41 @@ export async function deletePreAnaliseService(dto) {
 
 export async function conformidadeSolicitacaoService(dto) {  
 
+  let forcarPendenteIntegracao = false;
+  let erroVale = null;
+
   if (dto.valesSelecionados?.length > 0) {
-    await baixaValeModel(
-      dto.valesSelecionados,
-      dto.id_user_financeiro,
-      dto.id_grupo_empresa
-    );
+    try {
+      await baixaValeModel(
+        dto.valesSelecionados,
+        dto.id_user_financeiro,
+        dto.id_grupo_empresa
+      );
+    } catch (error) {
+      forcarPendenteIntegracao = true;
+      erroVale = error?.message || 'Erro ao baixar vale no cliente';
+    }
   }
+
+  const payloadConformidade = {
+    ...dto,
+    status: forcarPendenteIntegracao ? 'F' : dto.status,
+    obs_financeiro: dto.obs_financeiro || null,
+    forcarPendenteIntegracao,
+    mensagem_erro_vale: erroVale,
+  };
   
-  const dados = await conformidadeSolicitacaoModel(dto);
+  const dados = await conformidadeSolicitacaoModel(payloadConformidade);
 
   inserirHistoricoSolicitacaoModel({
-    numsolicitacao:   dto.numsolicitacao,
-    id_grupo_empresa: dto.id_grupo_empresa || 0,
+    numsolicitacao:   payloadConformidade.numsolicitacao,
+    id_grupo_empresa: payloadConformidade.id_grupo_empresa || 0,
     etapa:            'FINANCEIRO',
     status_antes:     dados?.status_antes || 'P',
-    status_depois:    dados?.status_final || dto.status || 'F',
-    id_usuario:       obterIdUsuarioHistorico(dto, ['id_user_financeiro']),
+    status_depois:    dados?.status_final || payloadConformidade.status || 'F',
+    id_usuario:       obterIdUsuarioHistorico(payloadConformidade, ['id_user_financeiro']),
     nome_usuario:     null,
-    observacao:       dto.obs_financeiro || null,
+    observacao:       erroVale || payloadConformidade.obs_financeiro || null,
   }).catch(() => {});
 
   return dados;

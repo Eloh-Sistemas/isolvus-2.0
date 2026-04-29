@@ -3672,6 +3672,7 @@ export async function conformidadeSolicitacaoModel(jsonReq) {
       );
 
       let statusFinal = normalizarStatusSolicitacao(jsonReq.status || 'F');
+  let mensagemIntegracao = null;
 
       // orderna solicitação
       const ssqlUpdate = `
@@ -3830,6 +3831,23 @@ export async function conformidadeSolicitacaoModel(jsonReq) {
           historico2: jsonReq.historico2
         }, true); 
       }
+
+      if (jsonReq.forcarPendenteIntegracao === true) {
+        await executeQuery(ssqlPendenteIntegracao, {numsolicitacao: jsonReq.numsolicitacao}, true);
+
+        mensagemIntegracao = jsonReq.mensagem_erro_vale || 'Falha ao integrar a solicitação com o cliente.';
+
+        if (jsonReq.suprimirNotificacaoLote !== true) {
+          await notificarSolicitacaoDepesa(jsonReq.numsolicitacao);
+        }
+
+        return {
+          numsolicitacao: jsonReq.numsolicitacao,
+          status_antes: situacaoAtual.status || null,
+          status_final: 'F',
+          mensagem_integracao: mensagemIntegracao
+        };
+      }
                      
       const jsonPostClient = await executeQuery(ssqlPost,{numsolicitacao: jsonReq.numsolicitacao});               
       const jsonPostRateio = await executeQuery(ssqlCentroDeCusto, {numsolicitacao: jsonReq.numsolicitacao});      
@@ -3859,6 +3877,10 @@ export async function conformidadeSolicitacaoModel(jsonReq) {
 
             await executeQuery(ssqlPendenteIntegracao, {numsolicitacao: jsonReq.numsolicitacao}, true);
             statusFinal = 'F';
+            mensagemIntegracao = error?.response?.data?.message
+              || error?.response?.data?.error
+              || error?.message
+              || 'Erro ao integrar despesa com o cliente.';
 
             console.log(error.error)
             console.log('Erro ao integrar despesa com Winhor: '+error.error)
@@ -3873,7 +3895,8 @@ export async function conformidadeSolicitacaoModel(jsonReq) {
       return {
         numsolicitacao: jsonReq.numsolicitacao,
         status_antes: situacaoAtual.status || null,
-        status_final: statusFinal || null
+        status_final: statusFinal || null,
+        mensagem_integracao: mensagemIntegracao
       };      
 
     } catch (error) {

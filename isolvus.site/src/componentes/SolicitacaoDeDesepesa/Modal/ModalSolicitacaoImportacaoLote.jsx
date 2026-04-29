@@ -681,14 +681,33 @@ function ModalSolicitacaoImportacaoLote({
 
             await carregarDetalhesImportacao(idleitura);
 
-            toast.update(toastId, {
-                render: data?.message || 'Dados financeiros do lote salvos com sucesso.',
-                type: 'success',
-                isLoading: false,
-                closeOnClick: true,
-                autoClose: 2000,
-                pauseOnHover: false
-            });
+            const resultadosConformidade = Array.isArray(data?.resultadosConformidade)
+                ? data.resultadosConformidade
+                : [];
+            const solicitacoesPendentes = resultadosConformidade.filter((item) => item?.status_final === 'F');
+            const mensagemPendencia = solicitacoesPendentes
+                .map((item) => `Solicitação ${item.numsolicitacao}: ${item.mensagem_integracao || 'pendente de integração.'}`)
+                .join(' | ');
+
+            if (solicitacoesPendentes.length > 0) {
+                toast.update(toastId, {
+                    render: mensagemPendencia || 'Uma ou mais solicitações ficaram pendentes de integração.',
+                    type: 'warning',
+                    isLoading: false,
+                    closeOnClick: true,
+                    autoClose: 6000,
+                    pauseOnHover: true
+                });
+            } else {
+                toast.update(toastId, {
+                    render: data?.message || 'Dados financeiros do lote salvos com sucesso.',
+                    type: 'success',
+                    isLoading: false,
+                    closeOnClick: true,
+                    autoClose: 2000,
+                    pauseOnHover: false
+                });
+            }
 
             if (typeof onAtualizarSolicitacoes === 'function') {
                 onAtualizarSolicitacoes();
@@ -699,7 +718,7 @@ function ModalSolicitacaoImportacaoLote({
             }
         } catch (error) {
             toast.update(toastId, {
-                render: error?.response?.data?.detalhes?.[0]?.message || error?.response?.data?.message || 'Erro ao salvar os dados financeiros do lote.',
+                render: error?.response?.data?.detalhes?.[0]?.message || error?.response?.data?.message || error?.response?.data?.error || 'Erro ao salvar os dados financeiros do lote.',
                 type: 'error',
                 isLoading: false,
                 autoClose: 3000,

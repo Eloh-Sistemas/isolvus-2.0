@@ -42,64 +42,13 @@ export async function setBaixarVale(jsonReq) {
    const connection = await getConnection();
    try {
 
+    if (!Array.isArray(jsonReq?.vales) || jsonReq.vales.length === 0) {
+        throw new Error('Nenhum vale foi informado para baixa.');
+    }
+
     for (const vale of jsonReq.vales){
-            
-        // iniciando baixa
-        const sqlproxnumtransbaixa = `SELECT DFSEQ_PCCORREN_NUMTRANSBAIXA.NEXTVAL FROM DUAL`;   
-
-        // consultando transbaixa
-        const resultproxnumtransbaixa  = await connection.execute(sqlproxnumtransbaixa, [], { outFormat: OracleDB.OUT_FORMAT_OBJECT });
-        const proxnumtransbaixa = resultproxnumtransbaixa.rows[0].NEXTVAL;
-
-        // baixando o vale
-        const ssqlbaixavale = `
-        UPDATE PCCORREN
-            SET DTBAIXAVALE   = SYSDATE,
-            CODFUNBAIXA   = :CODFUNBAIXA,
-            NUMTRANSBAIXA = :NUMTRANSBAIXA 
-            WHERE RECNUM = :RECNUM
-            AND NUMVALE = :NUMVALE
-            AND TIPOFUNC = 'F'
-            AND DTBAIXAVALE IS NULL
-            `;
-        await connection.execute(ssqlbaixavale,{
-           CODFUNBAIXA: jsonReq.id_func_baixa,
-           NUMTRANSBAIXA: proxnumtransbaixa,
-           RECNUM: vale.id_lancamento_erp,
-           NUMVALE: vale.id_vale
-        });
-
-        // consultar proxnumtrans
-        const ssqlproxnumtrans = `SELECT NVL(PROXNUMTRANS,1) PROXNUMTRANS  FROM PCCONSUM`;
-        const resultproxnumtrans = await connection.execute(ssqlproxnumtrans, [], { outFormat: OracleDB.OUT_FORMAT_OBJECT });
-        // variavel com valor
-        const proxnumtrans = resultproxnumtrans.rows[0].PROXNUMTRANS;        
-
-
-        // atualizando a tabela para o proximo codigo
-        const ssqlupdateproxnumtrans = 'UPDATE PCCONSUM SET PROXNUMTRANS = NVL(PROXNUMTRANS,1) + 1'; 
-        await connection.execute(ssqlupdateproxnumtrans, []);
-
-
-        // consultando recnumlivre
-        const ssqlVerificarRecnumLivre = `
-        SELECT PROX_RECNUM_LIVRE
-        FROM (SELECT NVL(((T.RECNUM) + 1), 1) AS PROX_RECNUM_LIVRE
-                FROM PCCORREN T
-                WHERE (T.RECNUM > 0)
-                AND (T.RECNUM < (SELECT MAX(RECNUM) FROM PCCORREN))
-                AND NOT EXISTS
-                (SELECT RECNUM FROM PCCORREN T1 WHERE T1.RECNUM = T.RECNUM + 1)
-                ORDER BY DBMS_RANDOM.RANDOM)
-        WHERE ROWNUM = 1
-        `;        
-
-        // consultando proximo recnum
-        const resultrecnumlivre = await connection.execute(ssqlVerificarRecnumLivre, [], { outFormat: OracleDB.OUT_FORMAT_OBJECT });
-        const recnumlivre = resultrecnumlivre.rows[0].PROX_RECNUM_LIVRE;
-
-        const ssqlConsultaValeBaixado = `
-        SELECT  CODFILIAL,
+        const ssqlConsultaVale = `
+        SELECT CODFILIAL,
           DTLANC,
           CODFUNC,
           HISTORICO,
@@ -128,17 +77,94 @@ export async function setBaixarVale(jsonReq) {
           CONSIDERABASECALCULOIMPOSTO,
           DTDOC,
           VALEEXPORTADO
-    FROM PCCORREN V         
-      WHERE RECNUM = :RECNUM
-        AND NUMVALE = :NUMVALE
-        AND TIPOFUNC = 'F'
-    `;
+        FROM PCCORREN
+        WHERE RECNUM = :RECNUM
+          AND NUMVALE = :NUMVALE
+          AND TIPOFUNC = 'F'
+          AND DTBAIXAVALE IS NULL
+        `;
 
-       //consulta dados do titulo 
-        const resultDataVale = await executeQuery(ssqlConsultaValeBaixado,{
+        const resultDataVale = await connection.execute(
+            ssqlConsultaVale,
+            {
+                RECNUM: vale.id_lancamento_erp,
+                NUMVALE: vale.id_vale
+            },
+            { outFormat: OracleDB.OUT_FORMAT_OBJECT }
+        );
+
+        if (!resultDataVale.rows?.length) {
+            throw new Error(`Vale ${vale.id_vale} não encontrado ou já baixado no cliente.`);
+        }
+
+        const dadosVale = resultDataVale.rows[0];
+
+        // baixando o vale
+        const ssqlbaixavale = `
+        UPDATE PCCORREN
+            SET DTBAIXAVALE   = SYSDATE,
+            CODFUNBAIXA   = :CODFUNBAIXA,
+            NUMTRANSBAIXA = :NUMTRANSBAIXA 
+            WHERE RECNUM = :RECNUM
+            AND NUMVALE = :NUMVALE
+            AND TIPOFUNC = 'F'
+            AND DTBAIXAVALE IS NULL
+            `;
+
+        // consultar proxnumtrans
+        const ssqlproxnumtrans = `SELECT NVL(PROXNUMTRANS,1) PROXNUMTRANS  FROM PCCONSUM`;
+        const resultproxnumtrans = await connection.execute(ssqlproxnumtrans, [], { outFormat: OracleDB.OUT_FORMAT_OBJECT });
+        // variavel com valor
+        const proxnumtrans = Number(resultproxnumtrans.rows[0].PROXNUMTRANS || 1);
+        const proxnumtransbaixa = proxnumtrans;
+
+
+        // atualizando a tabela para o proximo codigo
+        const ssqlupdateproxnumtrans = 'UPDATE PCCONSUM SET PROXNUMTRANS = NVL(PROXNUMTRANS,1) + 1'; 
+        await connection.execute(ssqlupdateproxnumtrans, []);
+
+        const resultBaixaVale = await connection.execute(ssqlbaixavale,{
+           CODFUNBAIXA: jsonReq.id_func_baixa,
+           NUMTRANSBAIXA: proxnumtransbaixa,
            RECNUM: vale.id_lancamento_erp,
            NUMVALE: vale.id_vale
-        });     
+        });
+
+        if (!resultBaixaVale.rowsAffected) {
+            throw new Error(`Não foi possível efetivar a baixa do vale ${vale.id_vale} no cliente.`);
+        }
+
+
+        // consultando recnumlivre
+        const ssqlVerificarRecnumLivre = `
+        SELECT PROX_RECNUM_LIVRE
+        FROM (SELECT NVL(((T.RECNUM) + 1), 1) AS PROX_RECNUM_LIVRE
+                FROM PCCORREN T
+                WHERE (T.RECNUM > 0)
+                AND (T.RECNUM < (SELECT MAX(RECNUM) FROM PCCORREN))
+                AND NOT EXISTS
+                (SELECT RECNUM FROM PCCORREN T1 WHERE T1.RECNUM = T.RECNUM + 1)
+                ORDER BY DBMS_RANDOM.RANDOM)
+        WHERE ROWNUM = 1
+        `;        
+
+        // consultando proximo recnum
+        const resultrecnumlivre = await connection.execute(ssqlVerificarRecnumLivre, [], { outFormat: OracleDB.OUT_FORMAT_OBJECT });
+        const recnumlivre = resultrecnumlivre.rows?.[0]?.PROX_RECNUM_LIVRE;
+
+        if (!recnumlivre) {
+            const resultProximoRecnum = await connection.execute(
+                `SELECT NVL(MAX(RECNUM), 0) + 1 AS PROX_RECNUM_LIVRE FROM PCCORREN`,
+                [],
+                { outFormat: OracleDB.OUT_FORMAT_OBJECT }
+            );
+
+            if (!resultProximoRecnum.rows?.[0]?.PROX_RECNUM_LIVRE) {
+                throw new Error('Não foi possível obter o próximo RECNUM para a baixa do vale.');
+            }
+
+            vale.recnumlivre = resultProximoRecnum.rows[0].PROX_RECNUM_LIVRE;
+        }
                 
 
         // insere o credito do titulo
@@ -188,8 +214,8 @@ export async function setBaixarVale(jsonReq) {
                 :numdoc,
                 :codhist,
                 :historico2,
-                :dtvenc,
-                :dtvencorig,
+                TO_DATE(:dtvenc, 'YYYY-MM-DD'),
+                TO_DATE(:dtvencorig, 'YYYY-MM-DD'),
                 :numvale,
                 :tipofunc,
                 :codemite,
@@ -211,26 +237,33 @@ export async function setBaixarVale(jsonReq) {
             )
         `;
 
+        const toDateStr = (v) => {
+            if (!v) return null;
+            const d = v instanceof Date ? v : new Date(v);
+            if (isNaN(d.getTime())) return null;
+            return d.toISOString().slice(0, 10); // 'YYYY-MM-DD'
+        };
+
         await connection.execute(ssqlInsertPccorren, {
-            recnum:            recnumlivre,
-            codfilial:         resultDataVale[0].codfilial,
-            codfunc:           resultDataVale[0].codfunc,
-            historico:         resultDataVale[0].historico,
+            recnum:            vale.recnumlivre || recnumlivre,
+            codfilial:         dadosVale.CODFILIAL,
+            codfunc:           dadosVale.CODFUNC,
+            historico:         dadosVale.HISTORICO,
             tipolanc:          'C',
-            valor:             resultDataVale[0].valor,
-            numdoc:            resultDataVale[0].numdoc,
-            codhist:           resultDataVale[0].codhist,
-            historico2:        resultDataVale[0].historico2,
-            dtvenc:            resultDataVale[0].dtvenc,
-            dtvencorig:        resultDataVale[0].dtvencorig,
-            numvale:           resultDataVale[0].numvale,
-            tipofunc:          resultDataVale[0].tipofunc,
-            codemite:          resultDataVale[0].codemite,
-            codfuncorig:       resultDataVale[0].codfuncorig,
-            codrotina:         resultDataVale[0].codrotina,
-            codemiteorig:      resultDataVale[0].codemiteorig,
-            cobjuros:          resultDataVale[0].cobjuros,
-            codbanco:          resultDataVale[0].codbanco,
+            valor:             dadosVale.VALOR,
+            numdoc:            dadosVale.NUMDOC,
+            codhist:           dadosVale.CODHIST,
+            historico2:        dadosVale.HISTORICO2,
+            dtvenc:            toDateStr(dadosVale.DTVENC),
+            dtvencorig:        toDateStr(dadosVale.DTVENCORIG),
+            numvale:           dadosVale.NUMVALE,
+            tipofunc:          dadosVale.TIPOFUNC,
+            codemite:          dadosVale.CODEMITE,
+            codfuncorig:       dadosVale.CODFUNCORIG,
+            codrotina:         dadosVale.CODROTINA,
+            codemiteorig:      dadosVale.CODEMITEORIG,
+            cobjuros:          dadosVale.COBJUROS,
+            codbanco:          dadosVale.CODBANCO,
             numtrans:          proxnumtrans,
             codfunbaixa:       jsonReq.id_func_baixa,
             numtransbaixa:     proxnumtransbaixa
@@ -247,9 +280,9 @@ export async function setBaixarVale(jsonReq) {
         `;
        
         await connection.execute(updatepcestcrVale, {
-            valor: resultDataVale[0].valor,
+            valor: dadosVale.VALOR,
             codcob: 'VALE',
-            codbanco: resultDataVale[0].codbanco 
+            codbanco: dadosVale.CODBANCO 
         });
 
         //INSERIR PCMOVCR VALE
@@ -286,7 +319,7 @@ export async function setBaixarVale(jsonReq) {
             'C',             
             :numcarr,          
             Null,           
-            (SELECT C.VALOR FROM PCESTCR C WHERE CODCOB = 'VALE' AND CODBANCO = :codbanco),          
+            NVL((SELECT C.VALOR FROM PCESTCR C WHERE CODCOB = 'VALE' AND CODBANCO = :codbanco), 0),          
             Null,  
             Null,  
             to_char(sysdate, 'HH24'),             
@@ -299,9 +332,9 @@ export async function setBaixarVale(jsonReq) {
 
         await connection.execute(insertpcmovcr, {
             numtrans: proxnumtrans,
-            codbanco: resultDataVale[0].codbanco,
-            valor: resultDataVale[0].valor,
-            numcarr: resultDataVale[0].numvale,
+            codbanco: dadosVale.CODBANCO,
+            valor: dadosVale.VALOR,
+            numcarr: dadosVale.NUMVALE,
             codfunc: jsonReq.id_func_baixa
         });
 
@@ -317,9 +350,9 @@ export async function setBaixarVale(jsonReq) {
         `;
 
         await connection.execute(updatepcestcrD, {
-            valor: resultDataVale[0].valor,
+            valor: dadosVale.VALOR,
             codcob: 'D',
-            codbanco: resultDataVale[0].codbanco 
+            codbanco: dadosVale.CODBANCO 
         });
 
         //insert pcmovcr codcob D
@@ -357,7 +390,7 @@ export async function setBaixarVale(jsonReq) {
             'D',             
             :numcarr,          
             Null,           
-            (SELECT C.VALOR FROM PCESTCR C WHERE CODCOB = 'D' AND CODBANCO = :codbanco),          
+            NVL((SELECT C.VALOR FROM PCESTCR C WHERE CODCOB = 'D' AND CODBANCO = :codbanco), 0),          
             Null,  
             Null,  
             to_char(sysdate, 'HH24'),             
@@ -370,24 +403,23 @@ export async function setBaixarVale(jsonReq) {
 
         await connection.execute(insertpcmovcrD, {
             numtrans: proxnumtrans,
-            codbanco: resultDataVale[0].codbanco,
-            valor: resultDataVale[0].valor,
-            numcarr: resultDataVale[0].numvale,
+                        codbanco: dadosVale.CODBANCO,
+                        valor: dadosVale.VALOR,
+                        numcarr: dadosVale.NUMVALE,
             codfunc: jsonReq.id_func_baixa
         });
 
     }
 
     await connection.commit();
+        return {mensagem: 'Vale(s) baixado com sucesso.'};
 
    } catch (error) {
      await connection.rollback();
-     console.log(error);
+         throw error;
    }finally{
      await connection.close();
    }                                     
-
-    return {mensagem: 'Vale(s) baixado com sucesso.'};
 
 }
 
