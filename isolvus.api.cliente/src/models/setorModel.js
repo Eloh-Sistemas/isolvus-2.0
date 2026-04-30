@@ -8,6 +8,7 @@ export async function getConsultaSetor() {
         S.CODSETOR AS ID_SETOR_ERP, 
         '1' AS ID_GRUPO_EMPRESA  
     FROM PCSETOR S  
+    WHERE TRUNC(S.DTULTALTER) = TRUNC(SYSDATE)
     ORDER BY S.CODSETOR
     `;
 

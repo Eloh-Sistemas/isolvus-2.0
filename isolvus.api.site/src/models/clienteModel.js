@@ -3,6 +3,7 @@ import { executeQuery, getConnection } from "../config/database.js";
 import { authApiClient } from "../config/authApiClient.js";
 import axios from "axios";
 import { atualizaDataProximaAtualizcao } from "./integracaoComClienteModel.js";
+import { gravarLogIntegracao, gravarLogDetalhe } from "./logIntegracaoModel.js";
 
 
 
@@ -74,34 +75,61 @@ export async function GetConsultarClienteID(filtros) {
 }
 
 export async function buscarCliente(integracao) {
-
+    const inicio = new Date();
     try {
-                                            
-        // consultar na api do cliente
-  
-        const respose = await axios.get(integracao.host+`/v1/Cliente`, authApiClient);  
-        
-        if (respose.status == 200){  
-            
-            //console.log(respose.data)
-            // Atualiza na base do intranet
-            await armazenarCliente(respose.data);                                            
-            await atualizaDataProximaAtualizcao(integracao.id_servidor, integracao.id_integracao);  
+        const respose = await axios.get(integracao.host + `/v1/Cliente`, authApiClient);
+
+        if (respose.status == 200) {
+            const { recebidos, inseridos, atualizados, erros, sucessos } = await armazenarCliente(respose.data);
+            await atualizaDataProximaAtualizcao(integracao.id_servidor, integracao.id_integracao);
+
+            const id_log = await gravarLogIntegracao({
+                id_servidor: integracao.id_servidor,
+                id_integracao: integracao.id_integracao,
+                integracao: integracao.integracao,
+                host: integracao.host,
+                data_hora_inicio: inicio,
+                data_hora_fim: new Date(),
+                status: erros.length > 0 ? 'P' : 'S',
+                qtd_recebidos: recebidos,
+                qtd_inseridos: inseridos,
+                qtd_atualizados: atualizados,
+                qtd_erros: erros.length
+            });
+
+            for (const s of sucessos) {
+                await gravarLogDetalhe({ id_log, ...s });
+            }
+            for (const erro of erros) {
+                await gravarLogDetalhe({ id_log, operacao: 'E', ...erro });
+            }
         }
-  
     } catch (error) {
-        console.log("Erro ao integrar cliente id host: "+integracao.host)        
-        console.log(error)        
+        console.log("Erro ao integrar cliente id host: " + integracao.host, error);
+        await gravarLogIntegracao({
+            id_servidor: integracao.id_servidor,
+            id_integracao: integracao.id_integracao,
+            integracao: integracao.integracao,
+            host: integracao.host,
+            data_hora_inicio: inicio,
+            data_hora_fim: new Date(),
+            status: 'E',
+            mensagem_erro: (() => {
+                const body = error?.response?.data;
+                const detail = body
+                    ? (typeof body === 'object' ? JSON.stringify(body) : String(body))
+                    : null;
+                return [error?.message || String(error), detail].filter(Boolean).join(' | ').substring(0, 4000);
+            })()
+        });
     }
-  
-  }
+}
 
 
   export async function armazenarCliente(dataCliente) {
-    // mudar o for para esta função para trabalhar melhor as transações  do banco
-
-
-    console.log(dataCliente);
+    const erros = [];
+    const sucessos = [];
+    let inseridos = 0, atualizados = 0;
 
     const ssqlValidar = `
            SELECT * 
@@ -200,6 +228,8 @@ export async function buscarCliente(integracao) {
                         idclientevenda: validar.rows[0].IDCLIENTEVENDA,
                         idgrupoempresa: cliente.id_grupo_empresa
                     });
+                    atualizados++;
+                    sucessos.push({ operacao: 'U', id_registro_erp: String(cliente.codigo ?? ''), descricao_registro: cliente.cliente ?? '' });
                                         
                 }else{
             
@@ -218,7 +248,9 @@ export async function buscarCliente(integracao) {
                         estado: cliente.estado,
                         idclientevendaerp: cliente.codigo,
                         idgrupoempresa: cliente.id_grupo_empresa
-                    })
+                    });
+                    inseridos++;
+                    sucessos.push({ operacao: 'I', id_registro_erp: String(cliente.codigo ?? ''), descricao_registro: cliente.cliente ?? '' });
                 
                 } 
 
@@ -228,9 +260,11 @@ export async function buscarCliente(integracao) {
         
         } catch (error) {
             await connection.rollback();
+            erros.push({ id_registro_erp: null, descricao_registro: null, mensagem_erro: String(error?.message || error).substring(0, 4000) });
             console.log(error)
         } finally {
             await connection.close();
         }
 
+        return { recebidos: dataCliente.length, inseridos, atualizados, erros, sucessos };
 }

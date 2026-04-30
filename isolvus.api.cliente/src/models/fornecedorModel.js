@@ -12,6 +12,8 @@ export async function getConsultaFornecedor() {
     WHERE f.codfornec NOT IN (999999, 99999) 
       AND f.dtexclusao IS NULL 
       AND f.revenda <> 'S' 
+      AND trunc(f.DTCADASTRO) = trunc(sysdate)
+      AND trunc(f.DTULTALTER ) = trunc(sysdate)
     ORDER BY f.codfornec
     `;
 
