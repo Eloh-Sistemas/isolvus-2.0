@@ -1152,6 +1152,7 @@ function AbaAnalise({ resumo }) {
                                 <thead>
                                     <tr>
                                         <th>Integração</th>
+                                        <th className="text-center">Execuções</th>
                                         <th className="text-center">Recebidos</th>
                                         <th className="text-center">Processados</th>
                                         <th className="text-center">Eficiência</th>
@@ -1159,10 +1160,11 @@ function AbaAnalise({ resumo }) {
                                 </thead>
                                 <tbody>
                                     {analise.topVolume.length === 0 ? (
-                                        <tr><td colSpan={4} className="text-center text-muted py-4">Sem dados no período selecionado.</td></tr>
+                                        <tr><td colSpan={5} className="text-center text-muted py-4">Sem dados no período selecionado.</td></tr>
                                     ) : analise.topVolume.map((item) => (
                                         <tr key={item.integracao}>
                                             <td>{item.integracao}</td>
+                                            <td className="text-center integ-num">{fmt(item.execucoes)}</td>
                                             <td className="text-center integ-num">{fmt(item.recebidos)}</td>
                                             <td className="text-center integ-num text-success">{fmt(item.processados)}</td>
                                             <td className="text-center">{item.eficiencia}%</td>

@@ -20,10 +20,10 @@ export async function getintegracaoVale() {
     WHERE 1=1
     AND A.CODFUNC = R.MATRICULA
     AND (
-        -- vales em aberto nos últimos 90 dias (garante sync mesmo se o sistema ficou fora)
-        (A.DTBAIXAVALE IS NULL AND A.DTLANC >= TRUNC(SYSDATE) - 90)
-        -- vales baixados nos últimos 7 dias (propaga a baixa para o isolvus)
-        OR A.DTBAIXAVALE >= TRUNC(SYSDATE) - 7
+        -- vales em aberto nos últimos 2 dias (garante sync mesmo se o sistema ficou fora)
+        (A.DTBAIXAVALE IS NULL AND A.DTLANC >= TRUNC(SYSDATE) - 2)
+        -- vales baixados nos últimos 2 dias (propaga a baixa para o isolvus)
+        OR A.DTBAIXAVALE >= TRUNC(SYSDATE) - 2
     )
     `;
 
