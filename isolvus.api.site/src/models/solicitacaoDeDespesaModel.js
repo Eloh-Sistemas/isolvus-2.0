@@ -206,6 +206,8 @@ function parseRemessaPagamentoBb(conteudo = '') {
   let cnpjEmpresa = '';
   let nomeEmpresa = '';
   let linhaCnpjEmpresa = null;
+  let codigoFormaPagamentoLote = null;
+  let linhaFormaPagamentoLote = null;
   let segmentoAAtual = null;
   const pagamentos = [];
 
@@ -226,6 +228,14 @@ function parseRemessaPagamentoBb(conteudo = '') {
       continue;
     }
 
+    if (tipoRegistro === '1') {
+      // CNAB240 BB: forma de lancamento do lote fica no cabecalho do lote (posicoes 12-13).
+      const formaPagamento = normalizarNumeroBancario(linha.substring(11, 13));
+      codigoFormaPagamentoLote = formaPagamento || null;
+      linhaFormaPagamentoLote = numeroLinha;
+      continue;
+    }
+
     if (tipoRegistro === '3' && segmento === 'A') {
       const codigoBancoFavorecido = normalizarCodigoBanco(linha.substring(20, 23));
       const agenciaFavorecido = normalizarNumeroBancario(linha.substring(23, 28));
@@ -233,6 +243,7 @@ function parseRemessaPagamentoBb(conteudo = '') {
       const contaFavorecido = normalizarNumeroBancario(linha.substring(29, 41));
       const contaDvFavorecido = somenteDigitos(linha.substring(41, 42));
       const operacaoFavorecido = normalizarNumeroBancario(linha.substring(17, 20));
+      const codigoFormaPagamentoBb = codigoFormaPagamentoLote || normalizarNumeroBancario(linha.substring(17, 20));
 
       segmentoAAtual = {
         valorCentavos: Number(somenteDigitos(linha.substring(119, 134)) || 0),
@@ -244,6 +255,7 @@ function parseRemessaPagamentoBb(conteudo = '') {
         conta: contaFavorecido,
         contaDigito: contaDvFavorecido,
         operacao: operacaoFavorecido && operacaoFavorecido !== '000' ? operacaoFavorecido : null,
+        idBancoDoBrasilFormaPagamento: codigoFormaPagamentoBb || null,
         agenciaFormatada: formatarNumeroComDigito(agenciaFavorecido, agenciaDvFavorecido),
         contaFormatada: formatarNumeroComDigito(contaFavorecido, contaDvFavorecido)
       };
@@ -277,9 +289,11 @@ function parseRemessaPagamentoBb(conteudo = '') {
           contaDigito: segmentoAAtual.contaDigito ?? null,
           contaFormatada: segmentoAAtual.contaFormatada ?? null,
           operacao: segmentoAAtual.operacao ?? null,
+          idBancoDoBrasilFormaPagamento: segmentoAAtual.idBancoDoBrasilFormaPagamento ?? null,
           linhaCnpj: linhaCnpjEmpresa,
           linhaCpf: numeroLinha,
           linhaValor: segmentoAAtual.linhaValor ?? null,
+          linhaFormaPagamento: linhaFormaPagamentoLote ?? segmentoAAtual.linhaValor ?? null,
           linhaBanco: segmentoAAtual.linhaValor ?? null,
           linhaAgencia: segmentoAAtual.linhaValor ?? null,
           linhaConta: segmentoAAtual.linhaValor ?? null,
@@ -334,7 +348,60 @@ async function obterDadosRemessaPorLeitura(connection, idleitura) {
   }
 }
 
-function aplicarValidacaoRemessa(registros = [], remessa = null) {
+async function obterMapaFormaPagamentoPorCodigoBancoBrasil(connection, remessa = null) {
+  const pagamentos = Array.isArray(remessa?.pagamentos) ? remessa.pagamentos : [];
+  const codigos = [...new Set(
+    pagamentos
+      .map((pagamento) => normalizarNumeroBancario(pagamento?.idBancoDoBrasilFormaPagamento ?? pagamento?.operacao))
+      .filter(Boolean)
+  )];
+
+  if (codigos.length === 0) {
+    return new Map();
+  }
+
+  const binds = {};
+  const placeholders = codigos.map((codigo, index) => {
+    const chave = `codigo${index}`;
+    binds[chave] = codigo;
+    return `:${chave}`;
+  }).join(', ');
+
+  const query = `
+    SELECT
+      ID_FORMADEPAGAMENTO,
+      FORMADEPAGAMENTO,
+      ID_BANCODOBRASIL
+    FROM BSTAB_FORMADEPAGAMENTO
+    WHERE NVL(
+      NULLIF(
+        LTRIM(REGEXP_REPLACE(TRIM(TO_CHAR(ID_BANCODOBRASIL)), '[^0-9]', ''), '0'),
+        ''
+      ),
+      '0'
+    ) IN (${placeholders})
+  `;
+
+  const result = await connection.execute(query, binds, { outFormat: OracleDB.OUT_FORMAT_OBJECT });
+  const mapa = new Map();
+
+  for (const row of result.rows || []) {
+    const codigo = normalizarNumeroBancario(row.ID_BANCODOBRASIL);
+    const idFormaPagamento = Number(row.ID_FORMADEPAGAMENTO || 0);
+    const descricaoFormaPagamento = String(row.FORMADEPAGAMENTO || '').trim() || null;
+
+    if (codigo && idFormaPagamento > 0) {
+      mapa.set(codigo, {
+        idFormaPagamento,
+        descricaoFormaPagamento
+      });
+    }
+  }
+
+  return mapa;
+}
+
+function aplicarValidacaoRemessa(registros = [], remessa = null, formaPagamentoPorCodigoBb = new Map()) {
   const cnpjEmpresa = normalizarDocumento(remessa?.cnpjEmpresa, 14);
   const nomeEmpresaRemessa = String(remessa?.nomeEmpresa || '').trim();
   const linhaCnpjEmpresa = Number(remessa?.linhaCnpjEmpresa || 0) || null;
@@ -348,18 +415,45 @@ function aplicarValidacaoRemessa(registros = [], remessa = null) {
     cnpj: Number(pagamento?.linhaCnpj || 0) || linhaCnpjEmpresa,
     cpf: Number(pagamento?.linhaCpf || 0) || null,
     valor: Number(pagamento?.linhaValor || 0) || null,
+    forma_pagamento: Number(pagamento?.linhaFormaPagamento || 0) || Number(pagamento?.linhaValor || 0) || null,
     banco: Number(pagamento?.linhaBanco || 0) || Number(pagamento?.linhaValor || 0) || null,
     agencia: Number(pagamento?.linhaAgencia || 0) || Number(pagamento?.linhaValor || 0) || null,
     conta: Number(pagamento?.linhaConta || 0) || Number(pagamento?.linhaValor || 0) || null,
     operacao: Number(pagamento?.linhaOperacao || 0) || Number(pagamento?.linhaValor || 0) || null
   });
 
+  const obterFormaPagamentoRemessa = (pagamento = null) => {
+    const codigoBancoDoBrasil = normalizarNumeroBancario(pagamento?.idBancoDoBrasilFormaPagamento ?? pagamento?.operacao);
+
+    if (!codigoBancoDoBrasil) {
+      return {
+        codigoBancoDoBrasil: null,
+        idFormaPagamento: null,
+        encontrada: false
+      };
+    }
+
+    const mapeamento = formaPagamentoPorCodigoBb.get(codigoBancoDoBrasil) || null;
+    const idFormaPagamento = Number(mapeamento?.idFormaPagamento || 0);
+    const descricaoFormaPagamento = mapeamento?.descricaoFormaPagamento || null;
+
+    return {
+      codigoBancoDoBrasil,
+      idFormaPagamento: idFormaPagamento > 0 ? idFormaPagamento : null,
+      descricaoFormaPagamento,
+      encontrada: idFormaPagamento > 0
+    };
+  };
+
   const criarResultadoRemessa = (registro, status, ok, erro = null, divergencias = {}, linhas = {}, pagamento = null) => {
     const divergenciasBancarias = obterDivergenciasDadosBancarios(registro, pagamento);
     const possuiAtualizacaoDadosBancarios = Object.values(divergenciasBancarias).some(Boolean);
+    const formaPagamentoRemessa = obterFormaPagamentoRemessa(pagamento);
 
     return {
       ...registro,
+      ID_FORMADEPAGAMENTO: formaPagamentoRemessa.idFormaPagamento ?? registro.ID_FORMADEPAGAMENTO ?? null,
+      FORMADEPAGAMENTO: formaPagamentoRemessa.descricaoFormaPagamento ?? registro.FORMADEPAGAMENTO ?? null,
       REMESSA_STATUS: status,
       REMESSA_OK: ok,
       REMESSA_ERRO: erro,
@@ -367,13 +461,16 @@ function aplicarValidacaoRemessa(registros = [], remessa = null) {
       REMESSA_ERRO_CNPJ: divergencias.cnpj ? 'S' : 'N',
       REMESSA_ERRO_CPF: divergencias.cpf ? 'S' : 'N',
       REMESSA_ERRO_VALOR: divergencias.valor ? 'S' : 'N',
+      REMESSA_ERRO_FORMADEPAGAMENTO: divergencias.formadepagamento ? 'S' : 'N',
       REMESSA_LINHA_CNPJ: linhas.cnpj ?? linhaCnpjEmpresa,
       REMESSA_LINHA_CPF: linhas.cpf ?? null,
       REMESSA_LINHA_VALOR: linhas.valor ?? null,
+      REMESSA_LINHA_FORMADEPAGAMENTO: linhas.forma_pagamento ?? null,
       REMESSA_LINHA_BANCO: linhas.banco ?? null,
       REMESSA_LINHA_AGENCIA: linhas.agencia ?? null,
       REMESSA_LINHA_CONTA: linhas.conta ?? null,
       REMESSA_LINHA_OPERACAO: linhas.operacao ?? null,
+      REMESSA_FORMADEPAGAMENTO_BB: formaPagamentoRemessa.codigoBancoDoBrasil,
       REMESSA_ID_BANCO: pagamento?.idBanco ?? null,
       REMESSA_AGENCIA: pagamento?.agenciaFormatada ?? formatarNumeroComDigito(pagamento?.agencia, pagamento?.agenciaDigito),
       REMESSA_CONTABANCARIA: pagamento?.contaFormatada ?? formatarNumeroComDigito(pagamento?.conta, pagamento?.contaDigito),
@@ -449,7 +546,28 @@ function aplicarValidacaoRemessa(registros = [], remessa = null) {
   const indicesProcessados = new Set();
 
   const marcarComoOk = (item, pagamentoRelacionado = null) => {
-    resultados[item.index] = criarResultadoRemessa(item.registro, 'OK', 'S', null, {}, obterLinhasPagamento(pagamentoRelacionado), pagamentoRelacionado);
+    const formaPagamentoRemessa = obterFormaPagamentoRemessa(pagamentoRelacionado);
+    const linhasRelacionadas = obterLinhasPagamento(pagamentoRelacionado);
+
+    if (!formaPagamentoRemessa.encontrada) {
+      const mensagemErroFormaPagamento = formaPagamentoRemessa.codigoBancoDoBrasil
+        ? `Forma de pagamento da remessa (${formaPagamentoRemessa.codigoBancoDoBrasil}) não está cadastrada em BSTAB_FORMADEPAGAMENTO.ID_BANCODOBRASIL.`
+        : 'Forma de pagamento não identificada no arquivo de remessa.';
+
+      resultados[item.index] = criarResultadoRemessa(
+        item.registro,
+        'NÃO CONFERE',
+        'N',
+        mensagemErroFormaPagamento,
+        { formadepagamento: true },
+        linhasRelacionadas,
+        pagamentoRelacionado
+      );
+      indicesProcessados.add(item.index);
+      return;
+    }
+
+    resultados[item.index] = criarResultadoRemessa(item.registro, 'OK', 'S', null, {}, linhasRelacionadas, pagamentoRelacionado);
     indicesProcessados.add(item.index);
   };
 
@@ -495,11 +613,13 @@ function aplicarValidacaoRemessa(registros = [], remessa = null) {
     const chaveDocumento = `${cnpjEmpresa}|${item.cpfDespesa}`;
     const pagamentosDoDocumento = pagamentosPorDocumento.get(chaveDocumento) || [];
     const pagamentoRelacionado = pagamentosDoDocumento[0] || null;
+    const formaPagamentoRemessa = obterFormaPagamentoRemessa(pagamentoRelacionado);
     const encontrouCpfNaRemessa = !!(item.cpfDespesa && pagamentosDoDocumento.length > 0);
     const divergencias = {
       cnpj: !cnpjConfere,
       cpf: false,
-      valor: false
+      valor: false,
+      formadepagamento: pagamentoRelacionado ? !formaPagamentoRemessa.encontrada : false
     };
 
     if (!divergencias.cnpj) {
@@ -512,6 +632,7 @@ function aplicarValidacaoRemessa(registros = [], remessa = null) {
     if (!encontrouCpfNaRemessa) {
       linhasRelacionadas.cpf = null;
       linhasRelacionadas.valor = null;
+      linhasRelacionadas.forma_pagamento = null;
     }
 
     let erroRemessa = 'CPF, CNPJ ou valor não localizado no arquivo de remessa.';
@@ -522,6 +643,10 @@ function aplicarValidacaoRemessa(registros = [], remessa = null) {
       erroRemessa = 'CPF do funcionário não foi encontrado no arquivo de remessa para este CNPJ.';
     } else if (divergencias.valor) {
       erroRemessa = 'Valor do item/solicitação difere do valor pago no arquivo de remessa.';
+    } else if (divergencias.formadepagamento) {
+      erroRemessa = formaPagamentoRemessa.codigoBancoDoBrasil
+        ? `Forma de pagamento da remessa (${formaPagamentoRemessa.codigoBancoDoBrasil}) não está cadastrada em BSTAB_FORMADEPAGAMENTO.ID_BANCODOBRASIL.`
+        : 'Forma de pagamento não identificada no arquivo de remessa.';
     }
 
     resultados[item.index] = criarResultadoRemessa(item.registro, 'NÃO CONFERE', 'N', erroRemessa, divergencias, linhasRelacionadas, pagamentoRelacionado);
@@ -600,6 +725,12 @@ function registroPossuiErroPreAnalise(row = {}) {
     || campoObrigatorioInvalidoPreAnalise(row.HISTORICO)
   );
 
+  const remessaStatus = String(row.REMESSA_STATUS || '').toUpperCase();
+  const exigeFormaPagamentoPorRemessa = remessaStatus !== '' && remessaStatus !== 'SEM REMESSA';
+  const possuiFormaPagamentoInvalida = exigeFormaPagamentoPorRemessa
+    ? campoObrigatorioInvalidoPreAnalise(row.ID_FORMADEPAGAMENTO, { numero: true })
+    : false;
+
   const possuiRateioInvalido = Object.prototype.hasOwnProperty.call(row, 'PERRATEIO')
     ? Number(row.PERRATEIO || 0) !== 100
     : false;
@@ -607,8 +738,10 @@ function registroPossuiErroPreAnalise(row = {}) {
   return possuiDadosBasicosInvalidos
     || possuiCadastroBancarioInvalido
     || possuiDadosDespesaInvalidos
+    || possuiFormaPagamentoInvalida
     || possuiRateioInvalido
-    || row.REMESSA_OK === 'N';
+    || row.REMESSA_OK === 'N'
+    || row.REMESSA_ERRO_FORMADEPAGAMENTO === 'S';
 }
 
 function resumirValidacaoPreAnalise(registros = [], alertasRemessa = []) {
@@ -1372,7 +1505,8 @@ export async function preAnaliseModel(jsonReq) {
 
       const result = await connection.execute(selectSql, { idleitura }, { outFormat: OracleDB.OUT_FORMAT_OBJECT });
       const remessa = await obterDadosRemessaPorLeitura(connection, idleitura);
-      const { registros: dadosValidados, alertas: alertasRemessa } = aplicarValidacaoRemessa(result.rows || [], remessa);
+      const mapaFormaPagamentoBb = await obterMapaFormaPagamentoPorCodigoBancoBrasil(connection, remessa);
+      const { registros: dadosValidados, alertas: alertasRemessa } = aplicarValidacaoRemessa(result.rows || [], remessa, mapaFormaPagamentoBb);
       const { totalErros } = resumirValidacaoPreAnalise(dadosValidados, alertasRemessa);
 
       return {
@@ -1789,7 +1923,8 @@ ORDER BY A.DATAENV DESC, A.DESCRICAOENV
       );
 
       const remessa = await obterDadosRemessaPorLeitura(connection, registro.IDLEITURA);
-      const { registros: itensValidados, alertas: alertasRemessa } = aplicarValidacaoRemessa(itensResult.rows || [], remessa);
+      const mapaFormaPagamentoBb = await obterMapaFormaPagamentoPorCodigoBancoBrasil(connection, remessa);
+      const { registros: itensValidados, alertas: alertasRemessa } = aplicarValidacaoRemessa(itensResult.rows || [], remessa, mapaFormaPagamentoBb);
       const { totalErros, percentualErro } = resumirValidacaoPreAnalise(itensValidados, alertasRemessa);
 
       const statusesSolicitacao = [...new Set(
@@ -1998,7 +2133,8 @@ export async function consultarDespesasVinculadasLeituraModel(jsonReq) {
     });
 
     const remessa = await obterDadosRemessaPorLeitura(connection, idleitura);
-    const { registros: despesasValidadas, alertas: alertasRemessa } = aplicarValidacaoRemessa(despesasComCentrosCusto, remessa);
+    const mapaFormaPagamentoBb = await obterMapaFormaPagamentoPorCodigoBancoBrasil(connection, remessa);
+    const { registros: despesasValidadas, alertas: alertasRemessa } = aplicarValidacaoRemessa(despesasComCentrosCusto, remessa, mapaFormaPagamentoBb);
     const { totalErros, percentualErro } = resumirValidacaoPreAnalise(despesasValidadas, alertasRemessa);
     const despesasGeradas = despesasValidadas.filter((item) => Number(item?.NUMSOLICITACAO || 0) > 0);
     const registrosPendentes = despesasValidadas.filter((item) => Number(item?.NUMSOLICITACAO || 0) <= 0);
@@ -2167,21 +2303,31 @@ export async function processarDespesasImportacaoModel(jsonReq) {
       throw new AppError('Nenhum item válido foi encontrado para processamento.', 404);
     }
 
+    const remessa = await obterDadosRemessaPorLeitura(connection, idleitura);
+
+    if (!remessa?.encontrada) {
+      throw new AppError('O processamento só pode ser realizado quando existir arquivo de remessa de pagamento vinculado a esta leitura.', 400);
+    }
+
     const totalErrosPreAnalise = registros.filter((registro) => registroPossuiErroPreAnalise(registro)).length;
 
     if (totalErrosPreAnalise > 0) {
       throw new AppError('Existem inconsistências na pré-análise. Corrija os registros antes de processar as despesas.', 400);
     }
 
-    const remessa = await obterDadosRemessaPorLeitura(connection, idleitura);
+    const mapaFormaPagamentoBb = await obterMapaFormaPagamentoPorCodigoBancoBrasil(connection, remessa);
 
-    if (remessa?.encontrada) {
-      const { registros: registrosValidados, alertas: alertasRemessa } = aplicarValidacaoRemessa(registros, remessa);
-      registros = registrosValidados;
+    const { registros: registrosValidados, alertas: alertasRemessa } = aplicarValidacaoRemessa(registros, remessa, mapaFormaPagamentoBb);
+    registros = registrosValidados;
 
-      if (alertasRemessa.length > 0 || registros.some((registro) => registro.REMESSA_OK === 'N')) {
-        throw new AppError('Existem divergências entre o arquivo de despesa e o arquivo de remessa. Corrija os itens sinalizados antes de processar as despesas.', 400);
-      }
+    if (alertasRemessa.length > 0 || registros.some((registro) => registro.REMESSA_OK === 'N')) {
+      throw new AppError('Existem divergências entre o arquivo de despesa e o arquivo de remessa. Corrija os itens sinalizados antes de processar as despesas.', 400);
+    }
+
+    const totalErrosPosRemessa = registros.filter((registro) => registroPossuiErroPreAnalise(registro)).length;
+
+    if (totalErrosPosRemessa > 0) {
+      throw new AppError('Existem inconsistências na pré-análise. Verifique principalmente o vínculo da forma de pagamento da remessa com BSTAB_FORMADEPAGAMENTO.', 400);
     }
 
     const ssqlInsertCab = `
@@ -2218,7 +2364,7 @@ export async function processarDespesasImportacaoModel(jsonReq) {
         :id_grupo_empresa,
         :id_fornecedor,
         'us',
-        3,
+        :id_formadepagamento,
         :id_banco,
         :agencia,
         :contabancaria,
@@ -2299,6 +2445,7 @@ export async function processarDespesasImportacaoModel(jsonReq) {
         codcontagerencial: registro.CONTA,
         id_grupo_empresa: Number(registro.ID_GRUPO_EMPRESA || 1),
         id_fornecedor: Number(registro.ID_FORNECEDOR),
+        id_formadepagamento: Number(registro.ID_FORMADEPAGAMENTO || 3),
         id_banco: Number(registro.ID_BANCO),
         agencia: registro.AGENCIA,
         contabancaria: registro.CONTABANCARIA,

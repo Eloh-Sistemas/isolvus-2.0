@@ -366,6 +366,12 @@ function ImportacaoDespesa(){
                 return Number(valor || 0) <= 0;
             }
 
+            if (campo === 'ID_FORMADEPAGAMENTO') {
+                const remessaStatus = String(item?.REMESSA_STATUS || '').toUpperCase();
+                const exigeFormaPagamento = remessaStatus !== '' && remessaStatus !== 'SEM REMESSA';
+                return exigeFormaPagamento && Number(valor || 0) <= 0;
+            }
+
             if (valor === null || valor === undefined) return true;
             if (typeof valor === 'string' && valor.trim() === '') return true;
             return false;
@@ -493,6 +499,11 @@ function ImportacaoDespesa(){
 
             if (possuiCampoObrigatorioInvalido(item, ['CONTABANCARIA', 'OPERACAO'])) {
                 errosCampos.push(`Cadastro bancário: ${identificador || 'Registro sem identificação'} - Conta bancária/operação não encontrada no cadastro do funcionário.`);
+            }
+
+            if (possuiCampoObrigatorioInvalido(item, 'ID_FORMADEPAGAMENTO')) {
+                const codigoRemessa = item?.REMESSA_FORMADEPAGAMENTO_BB ? ` (${item.REMESSA_FORMADEPAGAMENTO_BB})` : '';
+                errosCampos.push(`Forma de pagamento: ${identificador || 'Registro sem identificação'} - Código da remessa${codigoRemessa} não vinculado em BSTAB_FORMADEPAGAMENTO.ID_BANCODOBRASIL.`);
             }
 
             if (possuiAtualizacaoBancariaPorRemessa(item)) {
@@ -834,20 +845,34 @@ function ImportacaoDespesa(){
 
     const mensagemBloqueioPreAnaliseAtual = getMensagemBloqueioImportacao({ IDLEITURA: idImportacaoPreAnalise, itens: dados });
     const mensagemBloqueioDetalheAtual = getMensagemBloqueioImportacao(registroSelecionado);
+    const possuiArquivoRemessaPreAnalise = arquivoRemessaSalvo;
+    const possuiArquivoRemessaDetalhe = arquivosRemessaDetalhe.length > 0;
+    const mensagemBloqueioRemessaPreAnalise = !possuiArquivoRemessaPreAnalise
+        ? 'O processamento só será liberado após o envio do arquivo de remessa de pagamento.'
+        : '';
+    const mensagemBloqueioRemessaDetalhe = !registroSelecionado
+        ? ''
+        : arquivoRemessaLoading
+            ? 'Aguardando carregamento do arquivo de remessa de pagamento.'
+            : !possuiArquivoRemessaDetalhe
+                ? 'O processamento só será liberado quando existir arquivo de remessa de pagamento vinculado a esta leitura.'
+                : '';
+    const mensagemBloqueioProcessamentoPreAnalise = mensagemBloqueioPreAnaliseAtual || mensagemBloqueioRemessaPreAnalise;
+    const mensagemBloqueioProcessamentoDetalhe = mensagemBloqueioDetalheAtual || mensagemBloqueioRemessaDetalhe;
 
     const podeProcessarImportacao = !!arquivo
         && dados.length > 0
         && totalErrosPreAnalise === 0
         && !preAnaliseLoading
         && !uploadRemessaLoading
-        && !mensagemBloqueioPreAnaliseAtual;
+        && !mensagemBloqueioProcessamentoPreAnalise;
     const podeExcluirImportacaoPreAnalise = idImportacaoPreAnalise !== '-' && !preAnaliseLoading && !mensagemBloqueioPreAnaliseAtual;
     const statusProcessamentoSelecionado = String(registroSelecionado?.STATUS_PROCESSAMENTO || '').toUpperCase();
     const podeProcessarDetalhamento = !!registroSelecionado
         && Number(registroSelecionado?.QTD_REGISTROS || 0) > 0
         && Number(registroSelecionado?.TOTAL_ERROS || 0) === 0
         && statusProcessamentoSelecionado !== 'PROCESSADO'
-        && !mensagemBloqueioDetalheAtual;
+        && !mensagemBloqueioProcessamentoDetalhe;
     const podeExcluirImportacaoDetalhe = !!registroSelecionado && !mensagemBloqueioDetalheAtual;
     const totalDetalhesLeitura = detalhesLeitura.reduce((total, item) => {
         const valor = parseFloat((item?.VALOR ?? 0).toString().replace(',', '.'));
@@ -1230,9 +1255,17 @@ function ImportacaoDespesa(){
 
     const processarDespesas = async (idleituraParam) => {
         const idleitura = idleituraParam || registroSelecionado?.IDLEITURA || dados[0]?.IDLEITURA;
+        const mensagemBloqueioProcessamento = modalTipo === 'detalhe'
+            ? mensagemBloqueioProcessamentoDetalhe
+            : mensagemBloqueioProcessamentoPreAnalise;
 
         if (!idleitura) {
             toast.warning('Nenhum ID de leitura selecionado para processar.');
+            return;
+        }
+
+        if (mensagemBloqueioProcessamento) {
+            toast.warning(mensagemBloqueioProcessamento);
             return;
         }
 
@@ -1645,11 +1678,12 @@ function ImportacaoDespesa(){
                                                                 </div>
                                                             </td>
                                                             <td
-                                                                className={getClasseCampoCadastro(detalhe, ['ID_BANCO', 'BANCO', 'AGENCIA', 'CONTABANCARIA', 'OPERACAO'], possuiAtualizacaoBancariaPorRemessa(detalhe) ? 'remessa-campo-divergente' : '')}
+                                                                className={getClasseCampoCadastro(detalhe, ['ID_BANCO', 'BANCO', 'AGENCIA', 'CONTABANCARIA', 'OPERACAO', 'ID_FORMADEPAGAMENTO'], possuiAtualizacaoBancariaPorRemessa(detalhe) ? 'remessa-campo-divergente' : '')}
                                                                 title={[
                                                                     getTooltipCampoCadastro(detalhe, ['ID_BANCO', 'BANCO'], 'Banco não encontrado no cadastro do funcionário.'),
                                                                     getTooltipCampoCadastro(detalhe, 'AGENCIA', 'Agência não encontrada no cadastro do funcionário.'),
                                                                     getTooltipCampoCadastro(detalhe, ['CONTABANCARIA', 'OPERACAO'], 'Conta bancária ou operação não encontrada no cadastro do funcionário.'),
+                                                                    getTooltipCampoCadastro(detalhe, 'ID_FORMADEPAGAMENTO', 'Forma de pagamento da remessa não vinculada em BSTAB_FORMADEPAGAMENTO.'),
                                                                     possuiAtualizacaoBancariaPorRemessa(detalhe) ? `Remessa: ${formatarDadosBancariosRemessa(detalhe)}` : ''
                                                                 ].filter(Boolean).join(' ')}
                                                             >
@@ -1668,6 +1702,15 @@ function ImportacaoDespesa(){
                                                                         <strong>Conta:</strong>
                                                                         <span>{detalhe.CONTABANCARIA ? `${detalhe.CONTABANCARIA}${detalhe.OPERACAO ? ` / Op. ${detalhe.OPERACAO}` : ''}` : 'Não encontrada'}</span>
                                                                         {renderIndicadorCampoCadastro(detalhe, ['CONTABANCARIA', 'OPERACAO'], 'Conta bancária ou operação não encontrada no cadastro do funcionário.')}
+                                                                    </span>
+                                                                    <span className="item-dado-secundario d-inline-flex align-items-center gap-1">
+                                                                        <strong>Forma Pgto:</strong>
+                                                                        <span>
+                                                                            {detalhe.ID_FORMADEPAGAMENTO
+                                                                                ? `${detalhe.ID_FORMADEPAGAMENTO}${detalhe.FORMADEPAGAMENTO ? ` - ${detalhe.FORMADEPAGAMENTO}` : ''}${detalhe.REMESSA_FORMADEPAGAMENTO_BB ? ` (BB ${detalhe.REMESSA_FORMADEPAGAMENTO_BB})` : ''}`
+                                                                                : 'Não vinculada'}
+                                                                        </span>
+                                                                        {renderIndicadorCampoCadastro(detalhe, 'ID_FORMADEPAGAMENTO', 'Forma de pagamento da remessa não vinculada em BSTAB_FORMADEPAGAMENTO.')}
                                                                     </span>
                                                                     {possuiAtualizacaoBancariaPorRemessa(detalhe) && (
                                                                         <>
@@ -1969,11 +2012,12 @@ function ImportacaoDespesa(){
                                                         </div>
                                                     </td>
                                                     <td
-                                                        className={getClasseCampoCadastro(item, ['ID_BANCO', 'BANCO', 'AGENCIA', 'CONTABANCARIA', 'OPERACAO'], possuiAtualizacaoBancariaPorRemessa(item) ? 'remessa-campo-divergente' : '')}
+                                                        className={getClasseCampoCadastro(item, ['ID_BANCO', 'BANCO', 'AGENCIA', 'CONTABANCARIA', 'OPERACAO', 'ID_FORMADEPAGAMENTO'], possuiAtualizacaoBancariaPorRemessa(item) ? 'remessa-campo-divergente' : '')}
                                                         title={[
                                                             getTooltipCampoCadastro(item, ['ID_BANCO', 'BANCO'], 'Banco não encontrado no cadastro do funcionário.'),
                                                             getTooltipCampoCadastro(item, 'AGENCIA', 'Agência não encontrada no cadastro do funcionário.'),
                                                             getTooltipCampoCadastro(item, ['CONTABANCARIA', 'OPERACAO'], 'Conta bancária ou operação não encontrada no cadastro do funcionário.'),
+                                                            getTooltipCampoCadastro(item, 'ID_FORMADEPAGAMENTO', 'Forma de pagamento da remessa não vinculada em BSTAB_FORMADEPAGAMENTO.'),
                                                             possuiAtualizacaoBancariaPorRemessa(item) ? `Remessa: ${formatarDadosBancariosRemessa(item)}` : ''
                                                         ].filter(Boolean).join(' ')}
                                                     >
@@ -1992,6 +2036,15 @@ function ImportacaoDespesa(){
                                                                 <strong>Conta:</strong>
                                                                 <span>{item.CONTABANCARIA ? `${item.CONTABANCARIA}${item.OPERACAO ? ` / Op. ${item.OPERACAO}` : ''}` : 'Não encontrada'}</span>
                                                                 {renderIndicadorCampoCadastro(item, ['CONTABANCARIA', 'OPERACAO'], 'Conta bancária ou operação não encontrada no cadastro do funcionário.')}
+                                                            </span>
+                                                            <span className="item-dado-secundario d-inline-flex align-items-center gap-1">
+                                                                <strong>Forma Pgto:</strong>
+                                                                <span>
+                                                                    {item.ID_FORMADEPAGAMENTO
+                                                                        ? `${item.ID_FORMADEPAGAMENTO}${item.FORMADEPAGAMENTO ? ` - ${item.FORMADEPAGAMENTO}` : ''}${item.REMESSA_FORMADEPAGAMENTO_BB ? ` (BB ${item.REMESSA_FORMADEPAGAMENTO_BB})` : ''}`
+                                                                        : 'Não vinculada'}
+                                                                </span>
+                                                                {renderIndicadorCampoCadastro(item, 'ID_FORMADEPAGAMENTO', 'Forma de pagamento da remessa não vinculada em BSTAB_FORMADEPAGAMENTO.')}
                                                             </span>
                                                             {possuiAtualizacaoBancariaPorRemessa(item) && (
                                                                 <>
@@ -2073,10 +2126,10 @@ function ImportacaoDespesa(){
 
                     <div className="importacao-modal-footer">
                         <div className="importacao-modal-footer-start">
-                            <small className={modalTipo === 'detalhe' && mensagemBloqueioDetalheAtual ? 'text-warning' : modalTipo !== 'detalhe' && mensagemBloqueioPreAnaliseAtual ? 'text-warning' : 'text-muted'}>
+                            <small className={modalTipo === 'detalhe' && mensagemBloqueioProcessamentoDetalhe ? 'text-warning' : modalTipo !== 'detalhe' && mensagemBloqueioProcessamentoPreAnalise ? 'text-warning' : 'text-muted'}>
                                 {modalTipo === 'detalhe'
-                                    ? (mensagemBloqueioDetalheAtual || `Status atual: ${String(registroSelecionado?.STATUS_PROCESSAMENTO || 'PENDENTE').toUpperCase()}. O processamento final desta leitura será liberado somente quando não houver erros.`)
-                                    : (mensagemBloqueioPreAnaliseAtual || 'O processamento final será liberado somente quando a pré-análise estiver concluída sem erros.')}
+                                    ? (mensagemBloqueioProcessamentoDetalhe || `Status atual: ${String(registroSelecionado?.STATUS_PROCESSAMENTO || 'PENDENTE').toUpperCase()}. O processamento final desta leitura será liberado somente quando não houver erros e houver remessa vinculada.`)
+                                    : (mensagemBloqueioProcessamentoPreAnalise || 'O processamento final será liberado somente quando a pré-análise estiver concluída sem erros e a remessa estiver enviada.')}
                             </small>
                         </div>
                         <div className="importacao-modal-footer-actions">
