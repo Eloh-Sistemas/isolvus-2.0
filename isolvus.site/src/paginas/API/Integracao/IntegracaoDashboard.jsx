@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
 import Menu from "../../../componentes/Menu/Menu";
 import api from "../../../servidor/api";
 import moment from "moment";
@@ -126,8 +127,8 @@ function CardResumo({ icone, titulo, valor, cor }) {
 // ─── Modal de detalhes do log ────────────────────────────────────────────────
 function ModalDetalhes({ log, detalhes, onClose }) {
     if (!log) return null;
-    return (
-        <div className="modal fade show d-block" tabIndex="-1" style={{ background: "rgba(0,0,0,.45)" }}>
+    return createPortal(
+        <div className="modal fade show d-block" tabIndex="-1" style={{ background: "rgba(0,0,0,.45)", zIndex: 100000 }}>
             <div className="modal-dialog modal-xl modal-dialog-scrollable">
                 <div className="modal-content">
                     <div className="modal-header py-2">
@@ -230,7 +231,8 @@ function ModalDetalhes({ log, detalhes, onClose }) {
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
 
@@ -1221,18 +1223,11 @@ function IntegracaoDashboard() {
     return (
         <>
             <Menu />
-            <div className="container-fluid Containe-Tela integ-page">
-
-                {/* Cabeçalho */}
-                <div className="row mb-1">
-                    <div className="col-12">
-                        <h1 className="titulo-da-pagina mb-1">Dashboard de Integrações</h1>
-                        <p className="text-muted" style={{ fontSize: "0.875rem" }}>Monitore, configure e reprocesse as integrações com o ERP.</p>
-                    </div>
-                </div>
-
+            <div className="integ-scroll-wrap">
+            <div className="container-fluid integ-page">                
+                
                 {/* Tabs */}
-                <div className="integ-tabs mt-2">
+                <div className="integ-tabs mt-0">
                     <button
                         className={`integ-tab-btn ${aba === "integracoes" ? "active" : ""}`}
                         onClick={() => setAba("integracoes")}
@@ -1259,6 +1254,7 @@ function IntegracaoDashboard() {
                     {aba === "analise"     && <AbaAnalise resumo={resumo} />}
                 </div>
 
+            </div>
             </div>
         </>
     );

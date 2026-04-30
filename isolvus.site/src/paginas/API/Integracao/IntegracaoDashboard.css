@@ -1,6 +1,18 @@
+.integ-scroll-wrap {
+    position: fixed;
+    top: 60px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow-y: auto;
+    background: #f8fafd;
+}
+
 .integ-page {
     padding-top: 0.75rem;
     padding-bottom: 1.5rem;
+    width: 98%;
+    margin: 0 auto;
 }
 
 /* ── Ordenação de colunas ───────────────────────────── */
