@@ -3,31 +3,64 @@ import { executeQuery, getConnection } from "../config/database.js";
 import { authApiClient } from "../config/authApiClient.js";
 import axios from "axios";
 import { atualizaDataProximaAtualizcao } from "./integracaoComClienteModel.js";
+import { gravarLogIntegracao, gravarLogDetalhe } from "./logIntegracaoModel.js";
 
 export async function buscarFornecedor(integracao) {
-
+    const inicio = new Date();
     try {
-                                            
-        // consultar na api do cliente
-  
-        const respose = await axios.get(integracao.host+`/v1/fornecedor`, authApiClient);  
-        
-        if (respose.status == 200){            
-            // Atualiza na base do intranet
-            await armazenarFornecedor(respose.data);                                            
-            await atualizaDataProximaAtualizcao(integracao.id_servidor, integracao.id_integracao);  
+        const respose = await axios.get(integracao.host + `/v1/fornecedor`, authApiClient);
+
+        if (respose.status === 200) {
+            const { recebidos, inseridos, atualizados, erros, sucessos } = await armazenarFornecedor(respose.data);
+            await atualizaDataProximaAtualizcao(integracao.id_servidor, integracao.id_integracao);
+
+            const id_log = await gravarLogIntegracao({
+                id_servidor: integracao.id_servidor,
+                id_integracao: integracao.id_integracao,
+                integracao: integracao.integracao,
+                host: integracao.host,
+                data_hora_inicio: inicio,
+                data_hora_fim: new Date(),
+                status: erros.length > 0 ? 'P' : 'S',
+                qtd_recebidos: recebidos,
+                qtd_inseridos: inseridos,
+                qtd_atualizados: atualizados,
+                qtd_erros: erros.length
+            });
+
+            for (const s of sucessos) {
+                await gravarLogDetalhe({ id_log, ...s });
+            }
+            for (const erro of erros) {
+                await gravarLogDetalhe({ id_log, operacao: 'E', ...erro });
+            }
         }
-  
     } catch (error) {
-        console.log("Erro ao integrar fornecedor id host: "+integracao.host)        
-        console.log(error)        
+        console.log("Erro ao integrar fornecedor id host: " + integracao.host, error);
+        await gravarLogIntegracao({
+            id_servidor: integracao.id_servidor,
+            id_integracao: integracao.id_integracao,
+            integracao: integracao.integracao,
+            host: integracao.host,
+            data_hora_inicio: inicio,
+            data_hora_fim: new Date(),
+            status: 'E',
+            mensagem_erro: (() => {
+                const body = error?.response?.data;
+                const detail = body
+                    ? (typeof body === 'object' ? JSON.stringify(body) : String(body))
+                    : null;
+                return [error?.message || String(error), detail].filter(Boolean).join(' | ').substring(0, 4000);
+            })()
+        });
     }
-  
-  }
+}
 
 
 export async function armazenarFornecedor(dataFornecedor) {
-    // mudar o for para esta função para trabalhar melhor as transações  do banco
+    const erros = [];
+    const sucessos = [];
+    let inseridos = 0, atualizados = 0;
 
     const ssqlValidar = `
            select id_fornec, fornecedor, id_fornec_erp, id_grupo_empresa, cnpj_cpf 
@@ -72,8 +105,7 @@ export async function armazenarFornecedor(dataFornecedor) {
                     id_grupo_empresa: fornecedor.id_grupo_empresa
                   }, { outFormat: OracleDB.OUT_FORMAT_OBJECT });
 
-                if (validar.rows.length > 0){                                         
-            
+                if (validar.rows.length > 0){
                     await connection.execute(update, {
                         fornecedor: fornecedor.fornecedor, 
                         id_fornec_erp: fornecedor.codfornec, 
@@ -81,17 +113,18 @@ export async function armazenarFornecedor(dataFornecedor) {
                         cnpj_cpf: fornecedor.cgc,
                         id_fornec: validar.rows[0].ID_FORNEC 
                     });
-                                        
-                }else{
-            
+                    atualizados++;
+                    sucessos.push({ operacao: 'U', id_registro_erp: String(fornecedor.codfornec ?? ''), descricao_registro: fornecedor.fornecedor ?? '' });
+                } else {
                     await connection.execute(insert,{
                         fornecedor: fornecedor.fornecedor , 
                         id_fornec_erp: fornecedor.codfornec, 
                         cnpj_cpf: fornecedor.cgc, 
                         id_grupo_empresa: fornecedor.id_grupo_empresa
-                    })
-                
-                } 
+                    });
+                    inseridos++;
+                    sucessos.push({ operacao: 'I', id_registro_erp: String(fornecedor.codfornec ?? ''), descricao_registro: fornecedor.fornecedor ?? '' });
+                }
 
             }
 
@@ -99,11 +132,12 @@ export async function armazenarFornecedor(dataFornecedor) {
         
         } catch (error) {
             await connection.rollback();
-            console.log(error)
+            console.log(error);
         } finally {
             await connection.close();
         }
 
+        return { recebidos: dataFornecedor.length, inseridos, atualizados, erros, sucessos };
 }
 
 

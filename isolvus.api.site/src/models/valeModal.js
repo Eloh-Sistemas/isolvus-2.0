@@ -1,6 +1,7 @@
 import { authApiClient } from "../config/authApiClient.js";
 import axios from "axios";
 import { atualizaDataProximaAtualizcao } from "./integracaoComClienteModel.js";
+import { gravarLogIntegracao, gravarLogDetalhe } from "./logIntegracaoModel.js";
 import { executeQuery, getConnection } from "../config/database.js";
 import OracleDB from "oracledb";
 import moment from "moment";
@@ -81,28 +82,62 @@ export async function getconsultarVale (jsonReq) {
 }
 
 export async function buscarVale(integracao) {
+    const inicio = new Date();
+    try {
+        const respose = await axios.get(integracao.host + `/v1/integracao/vale`, authApiClient);
 
-    try {                            
+        if (respose.status === 200) {
+            const { recebidos, inseridos, atualizados, erros, sucessos } = await armazenarVale(respose.data);
+            await atualizaDataProximaAtualizcao(integracao.id_servidor, integracao.id_integracao);
 
-        
-        // consultar na api do caixa banco  
-        const respose = await axios.get(integracao.host+`/v1/integracao/vale`, authApiClient);
-        
-        if (respose.status == 200){            
-            // Atualiza na base do intranet
-            await armazenarVale(respose.data);                                            
-            await atualizaDataProximaAtualizcao(integracao.id_servidor, integracao.id_integracao);  
+            const status = erros.length > 0 ? 'P' : 'S';
+            const id_log = await gravarLogIntegracao({
+                id_servidor: integracao.id_servidor,
+                id_integracao: integracao.id_integracao,
+                integracao: integracao.integracao,
+                host: integracao.host,
+                data_hora_inicio: inicio,
+                data_hora_fim: new Date(),
+                status,
+                qtd_recebidos: recebidos,
+                qtd_inseridos: inseridos,
+                qtd_atualizados: atualizados,
+                qtd_erros: erros.length
+            });
+
+            for (const s of sucessos) {
+                await gravarLogDetalhe({ id_log, ...s });
+            }
+            for (const erro of erros) {
+                await gravarLogDetalhe({ id_log, operacao: 'E', ...erro });
+            }
         }
-  
     } catch (error) {
-        console.log("Erro ao integrar vale id host: "+integracao.host)        
-        console.log(error)        
+        console.log("Erro ao integrar vale id host: " + integracao.host, error);
+        await gravarLogIntegracao({
+            id_servidor: integracao.id_servidor,
+            id_integracao: integracao.id_integracao,
+            integracao: integracao.integracao,
+            host: integracao.host,
+            data_hora_inicio: inicio,
+            data_hora_fim: new Date(),
+            status: 'E',
+            mensagem_erro: (() => {
+                const body = error?.response?.data;
+                const detail = body
+                    ? (typeof body === 'object' ? JSON.stringify(body) : String(body))
+                    : null;
+                return [error?.message || String(error), detail].filter(Boolean).join(' | ').substring(0, 4000);
+            })()
+        });
     }
-  
 }
 
 
 export async function armazenarVale(dataVale) {
+    const erros = [];
+    const sucessos = [];
+    let inseridos = 0, atualizados = 0;
     const ssqlValidar = `
         SELECT id_lancamento
         FROM bstab_vale 
@@ -189,12 +224,22 @@ export async function armazenarVale(dataVale) {
                 { outFormat: OracleDB.OUT_FORMAT_OBJECT }
             );
 
-            if (validar.rows.length > 0) {
-                // Faz UPDATE se já existir
-                await connection.execute(sqlUpdate, params);
-            } else {
-                // Faz INSERT se não existir
-                await connection.execute(sqlInsert, params);
+            try {
+                if (validar.rows.length > 0) {
+                    await connection.execute(sqlUpdate, params);
+                    atualizados++;
+                    sucessos.push({ operacao: 'U', id_registro_erp: String(vale.id_lancamento_erp ?? ''), descricao_registro: vale.historico ?? '' });
+                } else {
+                    await connection.execute(sqlInsert, params);
+                    inseridos++;
+                    sucessos.push({ operacao: 'I', id_registro_erp: String(vale.id_lancamento_erp ?? ''), descricao_registro: vale.historico ?? '' });
+                }
+            } catch (erroRegistro) {
+                erros.push({
+                    id_registro_erp: String(vale.id_lancamento_erp ?? ''),
+                    descricao_registro: `Vale ${vale.id_vale} - Func ${vale.id_func}`,
+                    mensagem_erro: erroRegistro?.message || String(erroRegistro)
+                });
             }
         }
 
@@ -206,6 +251,8 @@ export async function armazenarVale(dataVale) {
     } finally {
         await connection.close();
     }
+
+    return { recebidos: dataVale.length, inseridos, atualizados, erros, sucessos };
 }
 
 

@@ -4,6 +4,7 @@ import Home from "./paginas/Home/Home";
 import SolicitacaoDeDespesa from "./paginas/SolicitacaoDeDespesa/SolicitacaoDeDespesa.jsx";
 import SolicitacaoDeDespesaConsultar from "./paginas/SolicitacaoDeDespesa/SolicitacaoDeDespesaConsultar.jsx";
 import EndPointConsulta from "./paginas/API/End-Point/EndPointConsulta.jsx";
+import IntegracaoDashboard from "./paginas/API/Integracao/IntegracaoDashboard.jsx";
 import OrcamentoMensal from "./paginas/OracamentoMensal/OrcamentoMensal.jsx";
 import PermissaoDeRotina from "./paginas/PermissaoDeRotina/PermissaoDeRotina.jsx";
 import CadastroDeUsuario from "./paginas/CadastroDeUsuario/CadastroDeUsuario.jsx";
@@ -47,6 +48,7 @@ function Rotas () {
 
                 {/*Rotas telas da API*/}                 
                 <Route path="/Api/EndPoint" element={<EndPointConsulta />}  /> 
+                <Route path="/Api/Integracao/Dashboard" element={<IntegracaoDashboard />}  /> 
 
                 {/*Rtoas Cadastro de Filial*/}
                 <Route path="/Configuracao/CadastroDeFilial" element={<CadastroDeFilial />}  /> 

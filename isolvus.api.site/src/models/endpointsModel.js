@@ -9,7 +9,8 @@ export async function GetListar(jsonReq) {
                    integracao, 
                    datahora_proxima_atualizacao, 
                    intervalominutos, 
-                   realizarintegracao 
+                   realizarintegracao,
+                   metodo
             FROM bstab_integracao 
             WHERE upper(integracao) LIKE upper(:filtro)
         `;
@@ -22,6 +23,22 @@ export async function GetListar(jsonReq) {
         return result;
     } catch (error) {
         console.error('Erro ao executar consulta:', error);
+        throw error;
+    }
+}
+
+export async function AtualizarIntegracao({ id_servidor, id_integracao, intervalominutos, realizarintegracao }) {
+    const ssql = `
+        UPDATE BSTAB_INTEGRACAO
+           SET INTERVALOMINUTOS    = :intervalominutos,
+               REALIZARINTEGRACAO  = :realizarintegracao
+         WHERE ID_SERVIDOR   = :id_servidor
+           AND ID_INTEGRACAO = :id_integracao
+    `;
+    try {
+        await executeQuery(ssql, { id_servidor, id_integracao, intervalominutos, realizarintegracao }, true);
+    } catch (error) {
+        console.error('Erro ao atualizar integração:', error);
         throw error;
     }
 }

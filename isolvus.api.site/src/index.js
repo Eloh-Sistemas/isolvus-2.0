@@ -38,6 +38,7 @@ import enqueteRoutes from "./routes/enqueteRoutes.js";
 import reacaoRoutes from "./routes/reacaoRoutes.js";
 import comentarioRoutes from "./routes/comentarioRoutes.js";
 import swaggerRoutes from './routes/swaggerRoutes.js';
+import logIntegracaoRoutes from './routes/logIntegracaoRoutes.js';
 
 import { errorHandler } from './middlewares/errorHandler.js';
 
@@ -97,13 +98,14 @@ const rotas = [
   reacaoRoutes,
   comentarioRoutes,
   swaggerRoutes,
-  notificacaoRoutes
+  notificacaoRoutes,
+  logIntegracaoRoutes
 ];
 
 
 //buscando atualização nos cliente
 //Integrar();
-setInterval(Integrar, 10000)
+setInterval(Integrar, 10000);
 
 // Aplica todas as rotas dinamicamente
 rotas.forEach(route => app.use(apiVersion, route));
