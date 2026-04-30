@@ -1707,7 +1707,7 @@ function ImportacaoDespesa(){
                                                                         <strong>Forma Pgto:</strong>
                                                                         <span>
                                                                             {detalhe.ID_FORMADEPAGAMENTO
-                                                                                ? `${detalhe.ID_FORMADEPAGAMENTO}${detalhe.FORMADEPAGAMENTO ? ` - ${detalhe.FORMADEPAGAMENTO}` : ''}${detalhe.REMESSA_FORMADEPAGAMENTO_BB ? ` (BB ${detalhe.REMESSA_FORMADEPAGAMENTO_BB})` : ''}`
+                                                                                ? `${detalhe.ID_FORMADEPAGAMENTO}${detalhe.FORMADEPAGAMENTO ? ` - ${detalhe.FORMADEPAGAMENTO}` : ''}`
                                                                                 : 'Não vinculada'}
                                                                         </span>
                                                                         {renderIndicadorCampoCadastro(detalhe, 'ID_FORMADEPAGAMENTO', 'Forma de pagamento da remessa não vinculada em BSTAB_FORMADEPAGAMENTO.')}
@@ -2041,7 +2041,7 @@ function ImportacaoDespesa(){
                                                                 <strong>Forma Pgto:</strong>
                                                                 <span>
                                                                     {item.ID_FORMADEPAGAMENTO
-                                                                        ? `${item.ID_FORMADEPAGAMENTO}${item.FORMADEPAGAMENTO ? ` - ${item.FORMADEPAGAMENTO}` : ''}${item.REMESSA_FORMADEPAGAMENTO_BB ? ` (BB ${item.REMESSA_FORMADEPAGAMENTO_BB})` : ''}`
+                                                                        ? `${item.ID_FORMADEPAGAMENTO}${item.FORMADEPAGAMENTO ? ` - ${item.FORMADEPAGAMENTO}` : ''}`
                                                                         : 'Não vinculada'}
                                                                 </span>
                                                                 {renderIndicadorCampoCadastro(item, 'ID_FORMADEPAGAMENTO', 'Forma de pagamento da remessa não vinculada em BSTAB_FORMADEPAGAMENTO.')}
