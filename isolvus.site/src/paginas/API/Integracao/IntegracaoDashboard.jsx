@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import Menu from "../../../componentes/Menu/Menu";
 import api from "../../../servidor/api";
 import moment from "moment";
+import ReactApexChart from "react-apexcharts";
 import "./IntegracaoDashboard.css";
 
 // ─── Badge de status ────────────────────────────────────────────────────────
@@ -110,15 +111,13 @@ function ThSort({ coluna, atual, direcao, onSort, children, className, style }) 
 // ─── Card de resumo ──────────────────────────────────────────────────────────
 function CardResumo({ icone, titulo, valor, cor }) {
     return (
-        <div className="col-6 col-lg-3 mb-3">
-            <div className="integ-resumo-card">
-                <div className={`integ-resumo-icon ${cor}`}>
-                    <i className={`bi ${icone}`}></i>
-                </div>
-                <div>
-                    <div className="integ-resumo-label">{titulo}</div>
-                    <div className="integ-resumo-valor">{valor ?? "—"}</div>
-                </div>
+        <div className="integ-resumo-card">
+            <div className={`integ-resumo-icon ${cor}`}>
+                <i className={`bi ${icone}`}></i>
+            </div>
+            <div>
+                <div className="integ-resumo-label">{titulo}</div>
+                <div className="integ-resumo-valor">{valor ?? "—"}</div>
             </div>
         </div>
     );
@@ -714,15 +713,27 @@ function AbaAnalise({ resumo }) {
     const [dias, setDias] = useState(7);
     const [logs, setLogs] = useState([]);
     const [carregando, setCarregando] = useState(false);
+    const [resumoAtual, setResumoAtual] = useState(resumo ?? {});
+    const [autoRefresh, setAutoRefresh] = useState(false);
+    const [intervaloSeg, setIntervaloSeg] = useState(60);
+    const [proximaAtualizacao, setProximaAtualizacao] = useState(null);
     const fmt = (v) => (Number(v ?? 0) || 0).toLocaleString("pt-BR");
+
+    useEffect(() => {
+        setResumoAtual(resumo ?? {});
+    }, [resumo]);
 
     const carregarAnalise = useCallback(async () => {
         setCarregando(true);
         try {
             const data_inicio = moment().subtract(dias - 1, "days").format("DD/MM/YYYY");
             const data_fim = moment().format("DD/MM/YYYY");
-            const res = await api.get(`/v1/Integracao/Logs?data_inicio=${data_inicio}&data_fim=${data_fim}`);
-            setLogs(res.data ?? []);
+            const [resLogs, resResumo] = await Promise.all([
+                api.get(`/v1/Integracao/Logs?data_inicio=${data_inicio}&data_fim=${data_fim}`),
+                api.get("/v1/Integracao/Resumo"),
+            ]);
+            setLogs(resLogs.data ?? []);
+            setResumoAtual(resResumo.data ?? {});
         } catch (err) {
             console.error(err);
             setLogs([]);
@@ -734,6 +745,20 @@ function AbaAnalise({ resumo }) {
     useEffect(() => {
         carregarAnalise();
     }, [carregarAnalise]);
+
+    useEffect(() => {
+        if (!autoRefresh) {
+            setProximaAtualizacao(null);
+            return;
+        }
+        const seg = Math.max(10, Number(intervaloSeg) || 60);
+        setProximaAtualizacao(moment().add(seg, 'seconds').format('HH:mm:ss'));
+        const timer = setInterval(() => {
+            carregarAnalise();
+            setProximaAtualizacao(moment().add(seg, 'seconds').format('HH:mm:ss'));
+        }, seg * 1000);
+        return () => clearInterval(timer);
+    }, [autoRefresh, intervaloSeg, carregarAnalise]);
 
     const analise = useMemo(() => {
         const n = (v) => Number(v ?? 0) || 0;
@@ -892,179 +917,177 @@ function AbaAnalise({ resumo }) {
 
     return (
         <>
+            {/* ── Filtro de período ────────────────────────────────────────── */}
             <p className="integ-section-title">Período</p>
-            <div className="integ-filtros">
+            <div className="integ-filtros mb-2">
                 <div className="row g-2 align-items-end">
                     <div className="col-md-2">
                         <label className="form-label">Janela de análise</label>
-                        <select
-                            className="form-select"
-                            value={dias}
-                            onChange={(e) => setDias(Number(e.target.value))}
-                        >
+                        <select className="form-select" value={dias} onChange={(e) => setDias(Number(e.target.value))}>
                             <option value={7}>Últimos 7 dias</option>
                             <option value={15}>Últimos 15 dias</option>
                             <option value={30}>Últimos 30 dias</option>
                         </select>
                     </div>
-                    <div className="col-md-2">
+                    <div className="col-md-auto">
                         <button className="btn btn-primary" onClick={carregarAnalise} disabled={carregando}>
                             {carregando ? <span className="spinner-border spinner-border-sm me-1"></span> : <i className="bi bi-arrow-repeat me-1"></i>}
                             Atualizar
                         </button>
                     </div>
-                    <div className="col-md-2 ms-auto">
+                    <div className="col-md-2">
+                        <label className="form-label">Intervalo (segundos)</label>
+                        <input
+                            type="number"
+                            className="form-control"
+                            min={10}
+                            value={intervaloSeg}
+                            onChange={(e) => setIntervaloSeg(Number(e.target.value))}
+                            disabled={!autoRefresh}
+                        />
+                    </div>
+                    <div className="col-md-2">
+                        <label className="form-label">Atualização automática</label>
+                        <div className="integ-auto-switch form-control">
+                            <div className="form-check form-switch m-0">
+                                <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    role="switch"
+                                    id="chkAutoRefresh"
+                                    checked={autoRefresh}
+                                    onChange={(e) => setAutoRefresh(e.target.checked)}
+                                />
+                            </div>
+                            <label className="integ-auto-switch-status" htmlFor="chkAutoRefresh">
+                                {autoRefresh ? "Ligada" : "Desligada"}
+                            </label>
+                        </div>
+                    </div>
+                    <div className="col-md-2">
+                        <label className="form-label">Próxima atualização</label>
+                        <input
+                            type="text"
+                            className="form-control text-center text-success fw-semibold"
+                            value={proximaAtualizacao ?? "—"}
+                            readOnly
+                            disabled
+                        />
+                    </div>
+                    <div className="col-md-2">
                         <label className="form-label">Logs no período</label>
                         <input type="text" className="form-control text-center" value={analise.total} readOnly disabled />
                     </div>
                 </div>
             </div>
 
-            <p className="integ-section-title">Resumo do dia</p>
-            <div className="row mb-1">
-                <CardResumo icone="bi-arrow-repeat" titulo="Execuções hoje" valor={resumo?.total_execucoes} cor="bg-secondary" />
-                <CardResumo icone="bi-check-circle-fill" titulo="Com sucesso" valor={resumo?.total_sucesso} cor="bg-success" />
-                <CardResumo icone="bi-exclamation-triangle-fill" titulo="Parciais" valor={resumo?.total_parcial} cor="bg-warning" />
-                <CardResumo icone="bi-x-circle-fill" titulo="Com erro" valor={resumo?.total_erro} cor="bg-danger" />
+            {/* ── KPIs: hoje + período (1 fileira de 8) ────────────────────── */}
+            <p className="integ-section-title">Resumo do dia &amp; Indicadores — últimos {dias} dias</p>
+            <div className="row g-2 mb-2 row-cols-2 row-cols-md-4 row-cols-xl-8">
+                <div className="col"><CardResumo icone="bi-arrow-repeat"              titulo="Execuções hoje"  valor={resumoAtual?.total_execucoes} cor="bg-secondary" /></div>
+                <div className="col"><CardResumo icone="bi-check-circle-fill"         titulo="Sucesso hoje"    valor={resumoAtual?.total_sucesso}  cor="bg-success"   /></div>
+                <div className="col"><CardResumo icone="bi-exclamation-triangle-fill" titulo="Parciais hoje"   valor={resumoAtual?.total_parcial}  cor="bg-warning"   /></div>
+                <div className="col"><CardResumo icone="bi-x-circle-fill"             titulo="Erros hoje"      valor={resumoAtual?.total_erro}     cor="bg-danger"    /></div>
+                <div className="col"><CardResumo icone="bi-check2-all"                titulo="Taxa sucesso"    valor={`${analise.taxaSucesso}%`}   cor="bg-success"   /></div>
+                <div className="col"><CardResumo icone="bi-bug-fill"                  titulo="Exec. com erro"  valor={analise.erro}                cor="bg-danger"    /></div>
+                <div className="col"><CardResumo icone="bi-stopwatch"                 titulo="Dur. média"      valor={`${analise.duracaoMedia}s`}  cor="bg-info"      /></div>
+                <div className="col"><CardResumo icone="bi-diagram-3-fill"            titulo="Integrações"     valor={analise.totalIntegracoes}    cor="bg-secondary" /></div>
             </div>
 
-            <p className="integ-section-title">Indicadores</p>
-            <div className="row mb-1">
-                <CardResumo icone="bi-check2-all" titulo="Taxa de sucesso" valor={`${analise.taxaSucesso}%`} cor="bg-success" />
-                <CardResumo icone="bi-calendar3" titulo="Média execuções/dia" valor={analise.mediaExecucoesDia} cor="bg-dark" />
-                <CardResumo icone="bi-stopwatch" titulo="Duração média" valor={`${analise.duracaoMedia}s`} cor="bg-info" />
-                <CardResumo icone="bi-diagram-3-fill" titulo="Integrações ativas" valor={analise.totalIntegracoes} cor="bg-secondary" />
-                <CardResumo icone="bi-bug-fill" titulo="Execuções com erro" valor={analise.erro} cor="bg-danger" />
-            </div>
-
-            <p className="integ-section-title">Performance operacional</p>
-            <div className="row mb-1">
-                <CardResumo icone="bi-activity" titulo="Taxa de falha" valor={`${analise.taxaFalhaExecucao}%`} cor="bg-danger" />
-                <CardResumo icone="bi-lightning-charge" titulo="Eficiência processamento" valor={`${analise.eficienciaProcessamento}%`} cor="bg-warning" />
-                <CardResumo icone="bi-cloud-download" titulo="Recebidos" valor={fmt(analise.totalRecebidos)} cor="bg-primary" />
-                <CardResumo icone="bi-check2-square" titulo="Processados" valor={fmt(analise.totalProcessados)} cor="bg-success" />
-            </div>
-
-            <p className="integ-section-title">Qualidade dos dados</p>
-            <div className="integ-card">
-                <div className="row g-2">
-                    <div className="col-md-3">
-                        <div className="integ-qual-item">
-                            <small>Inseridos</small>
-                            <strong className="text-success">{fmt(analise.totalInseridos)}</strong>
-                        </div>
-                    </div>
-                    <div className="col-md-3">
-                        <div className="integ-qual-item">
-                            <small>Atualizados</small>
-                            <strong className="text-primary">{fmt(analise.totalAtualizados)}</strong>
-                        </div>
-                    </div>
-                    <div className="col-md-3">
-                        <div className="integ-qual-item">
-                            <small>Erros de registro</small>
-                            <strong className="text-danger">{fmt(analise.totalErrosItens)}</strong>
-                        </div>
-                    </div>
-                    <div className="col-md-3">
-                        <div className="integ-qual-item">
-                            <small>Tempo total</small>
-                            <strong>{fmt(analise.duracaoTotal)}s</strong>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <p className="integ-section-title">Integração que mais trouxe dados</p>
-            <div className="integ-card integ-campea-card">
-                {analise.integracaoCampeaVolume ? (
-                    <>
-                        <div className="integ-campea-topline">
-                            <span className="badge bg-primary">Líder de volumetria</span>
-                            <strong>{analise.integracaoCampeaVolume.integracao}</strong>
-                        </div>
-                        <div className="row g-2 mt-1">
-                            <div className="col-md-3">
-                                <div className="integ-campea-kpi">
-                                    <small>Recebidos</small>
-                                    <strong>{fmt(analise.integracaoCampeaVolume.recebidos)}</strong>
-                                </div>
-                            </div>
-                            <div className="col-md-3">
-                                <div className="integ-campea-kpi">
-                                    <small>Processados</small>
-                                    <strong className="text-success">{fmt(analise.integracaoCampeaVolume.processados)}</strong>
-                                </div>
-                            </div>
-                            <div className="col-md-3">
-                                <div className="integ-campea-kpi">
-                                    <small>Execuções</small>
-                                    <strong>{fmt(analise.integracaoCampeaVolume.execucoes)}</strong>
-                                </div>
-                            </div>
-                            <div className="col-md-3">
-                                <div className="integ-campea-kpi">
-                                    <small>Eficiência</small>
-                                    <strong>{analise.integracaoCampeaVolume.eficiencia}%</strong>
-                                </div>
-                            </div>
-                        </div>
-                    </>
-                ) : (
-                    <p className="text-muted mb-0">Sem dados suficientes para calcular a integração líder no período.</p>
-                )}
-            </div>
-
-            <p className="integ-section-title">Distribuição por status</p>
-            <div className="integ-card">
-                <div className="integ-status-bars">
-                    {[
-                        { label: "Sucesso", val: analise.sucesso, cls: "ok" },
-                        { label: "Parcial", val: analise.parcial, cls: "warn" },
-                        { label: "Erro", val: analise.erro, cls: "err" },
-                    ].map((s) => {
-                        const pct = analise.total > 0 ? (s.val / analise.total) * 100 : 0;
-                        return (
-                            <div className="integ-status-row" key={s.label}>
-                                <div className="integ-status-meta">
-                                    <span>{s.label}</span>
-                                    <strong>{s.val}</strong>
-                                </div>
-                                <div className="integ-status-track">
-                                    <div className={`integ-status-fill ${s.cls}`} style={{ width: `${pct}%` }}></div>
-                                </div>
-                                <span className="integ-status-pct">{pct.toFixed(1)}%</span>
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
-
-            <div className="row mt-2">
-                <div className="col-lg-7 mb-2">
+            {/* ── Linha 2: Tendência diária | Distribuição + Qualidade ─────── */}
+            <div className="row mb-2">
+                <div className="col-lg-6 mb-2 d-flex flex-column">
                     <p className="integ-section-title">Tendência diária</p>
-                    <div className="integ-card">
-                        <div className="integ-trend-grid">
-                            {analise.serieDias.map((d) => (
-                                <div className="integ-trend-item" key={d.chave}>
-                                    <div className="integ-trend-label">{d.label}</div>
-                                    <div className="integ-trend-track">
-                                        <div
-                                            className="integ-trend-bar"
-                                            style={{ height: `${(d.total / analise.maxExecucoesDia) * 100}%` }}
-                                            title={`${d.total} execuções`}
-                                        ></div>
+                    <div className="integ-card flex-grow-1 d-flex flex-column" style={{ minHeight: 220 }}>
+                        <ReactApexChart
+                            type="line"
+                            height="100%"
+                            series={[
+                                { name: "Execuções", data: analise.serieDias.map((d) => d.total) },
+                                { name: "Erros",     data: analise.serieDias.map((d) => d.erros) },
+                            ]}
+                            options={{
+                                chart: { toolbar: { show: false }, zoom: { enabled: false }, animations: { enabled: true } },
+                                stroke: { curve: "smooth", width: [3, 2] },
+                                colors: ["#3b82f6", "#ef4444"],
+                                markers: { size: 4 },
+                                xaxis: {
+                                    categories: analise.serieDias.map((d) => d.label),
+                                    labels: { style: { fontSize: "0.72rem", colors: "#64748b" } },
+                                    axisBorder: { show: false },
+                                    axisTicks: { show: false },
+                                },
+                                yaxis: {
+                                    labels: { style: { fontSize: "0.72rem", colors: "#64748b" } },
+                                    min: 0,
+                                },
+                                grid: { borderColor: "#f1f5f9", strokeDashArray: 4 },
+                                legend: { position: "top", fontSize: "0.78rem", labels: { colors: "#334155" } },
+                                tooltip: { y: { formatter: (v) => `${v}` } },
+                                dataLabels: { enabled: false },
+                            }}
+                        />
+                    </div>
+                </div>
+                <div className="col-lg-6 mb-2 d-flex flex-column">
+                    <p className="integ-section-title">Distribuição por status</p>
+                    <div className="integ-card flex-grow-1">
+                        <div className="integ-status-bars">
+                            {[
+                                { label: "Sucesso", val: analise.sucesso, cls: "ok"   },
+                                { label: "Parcial", val: analise.parcial, cls: "warn" },
+                                { label: "Erro",    val: analise.erro,    cls: "err"  },
+                            ].map((s) => {
+                                const pct = analise.total > 0 ? (s.val / analise.total) * 100 : 0;
+                                return (
+                                    <div className="integ-status-row" key={s.label}>
+                                        <div className="integ-status-meta">
+                                            <span>{s.label}</span>
+                                            <strong>{s.val}</strong>
+                                        </div>
+                                        <div className="integ-status-track">
+                                            <div className={`integ-status-fill ${s.cls}`} style={{ width: `${pct}%` }}></div>
+                                        </div>
+                                        <span className="integ-status-pct">{pct.toFixed(1)}%</span>
                                     </div>
-                                    <div className="integ-trend-value">{d.total}</div>
-                                </div>
-                            ))}
+                                );
+                            })}
+                        </div>
+                        <hr className="my-2" />
+                        <div className="row g-2">
+                            <div className="col-4"><div className="integ-mini-kpi"><small>Recebidos</small><strong className="text-secondary">{fmt(analise.totalRecebidos)}</strong></div></div>
+                            <div className="col-4"><div className="integ-mini-kpi"><small>Processados</small><strong className="text-success">{fmt(analise.totalProcessados)}</strong></div></div>
+                            <div className="col-4"><div className="integ-mini-kpi"><small>Inseridos</small><strong className="text-success">{fmt(analise.totalInseridos)}</strong></div></div>
+                            <div className="col-4"><div className="integ-mini-kpi"><small>Atualizados</small><strong className="text-primary">{fmt(analise.totalAtualizados)}</strong></div></div>
+                            <div className="col-4"><div className="integ-mini-kpi"><small>Erros regist.</small><strong className="text-danger">{fmt(analise.totalErrosItens)}</strong></div></div>
+                            <div className="col-4"><div className="integ-mini-kpi"><small>Tempo total</small><strong>{fmt(analise.duracaoTotal)}s</strong></div></div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <div className="col-lg-5 mb-2">
+            {/* ── Linha 3: Top erros | Últimas falhas ──────────────────────── */}
+            <div className="row mb-2">
+                <div className="col-lg-6 mb-2 d-flex flex-column">
+                    {analise.integracaoCampeaVolume && (
+                        <>
+                            <p className="integ-section-title">Líder de volumetria</p>
+                            <div className="integ-card integ-campea-card mb-2">
+                                <div className="integ-campea-topline">
+                                    <span className="badge bg-primary">Líder</span>
+                                    <strong>{analise.integracaoCampeaVolume.integracao}</strong>
+                                </div>
+                                <div className="row g-2 mt-1">
+                                    <div className="col-3"><div className="integ-mini-kpi"><small>Recebidos</small><strong>{fmt(analise.integracaoCampeaVolume.recebidos)}</strong></div></div>
+                                    <div className="col-3"><div className="integ-mini-kpi"><small>Processados</small><strong className="text-success">{fmt(analise.integracaoCampeaVolume.processados)}</strong></div></div>
+                                    <div className="col-3"><div className="integ-mini-kpi"><small>Execuções</small><strong>{fmt(analise.integracaoCampeaVolume.execucoes)}</strong></div></div>
+                                    <div className="col-3"><div className="integ-mini-kpi"><small>Eficiência</small><strong>{analise.integracaoCampeaVolume.eficiencia}%</strong></div></div>
+                                </div>
+                            </div>
+                        </>
+                    )}
                     <p className="integ-section-title">Top integrações com erro</p>
-                    <div className="integ-card integ-table-card">
+                    <div className="integ-card integ-table-card flex-grow-1">
                         <div className="table-responsive">
                             <table className="table tablefont mb-0 integ-table">
                                 <thead>
@@ -1077,9 +1100,7 @@ function AbaAnalise({ resumo }) {
                                 </thead>
                                 <tbody>
                                     {analise.topErros.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={4} className="text-center text-muted py-4">Sem dados para o período selecionado.</td>
-                                        </tr>
+                                        <tr><td colSpan={4} className="text-center text-muted py-4">Sem dados para o período selecionado.</td></tr>
                                     ) : analise.topErros.map((item) => (
                                         <tr key={item.integracao}>
                                             <td>{item.integracao}</td>
@@ -1093,78 +1114,9 @@ function AbaAnalise({ resumo }) {
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <div className="row mt-1">
-                <div className="col-lg-7 mb-2">
-                    <p className="integ-section-title">Ranking por dados trazidos</p>
-                    <div className="integ-card integ-table-card mb-2">
-                        <div className="table-responsive">
-                            <table className="table tablefont mb-0 integ-table">
-                                <thead>
-                                    <tr>
-                                        <th>Integração</th>
-                                        <th className="text-center">Recebidos</th>
-                                        <th className="text-center">Processados</th>
-                                        <th className="text-center">Média exec/dia</th>
-                                        <th className="text-center">Eficiência</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {analise.topVolume.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={5} className="text-center text-muted py-4">Sem dados no período selecionado.</td>
-                                        </tr>
-                                    ) : analise.topVolume.map((item) => (
-                                        <tr key={item.integracao}>
-                                            <td>{item.integracao}</td>
-                                            <td className="text-center integ-num">{fmt(item.recebidos)}</td>
-                                            <td className="text-center integ-num text-success">{fmt(item.processados)}</td>
-                                            <td className="text-center">{item.media_execucoes_dia}</td>
-                                            <td className="text-center">{item.eficiencia}%</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <p className="integ-section-title">Integrações críticas</p>
-                    <div className="integ-card integ-table-card">
-                        <div className="table-responsive">
-                            <table className="table tablefont mb-0 integ-table">
-                                <thead>
-                                    <tr>
-                                        <th>Integração</th>
-                                        <th className="text-center">Falhas</th>
-                                        <th className="text-center">Taxa falha</th>
-                                        <th className="text-center">Eficiência</th>
-                                        <th className="text-center">Última execução</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {analise.integracoesCriticas.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={5} className="text-center text-muted py-4">Sem integrações críticas no período.</td>
-                                        </tr>
-                                    ) : analise.integracoesCriticas.map((item) => (
-                                        <tr key={item.integracao}>
-                                            <td>{item.integracao}</td>
-                                            <td className="text-center integ-num text-danger">{item.falhas}</td>
-                                            <td className="text-center">{item.taxa_falha}%</td>
-                                            <td className="text-center">{item.eficiencia}%</td>
-                                            <td className="text-center">{item.ultima_execucao_fmt}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="col-lg-5 mb-2">
+                <div className="col-lg-6 mb-2 d-flex flex-column">
                     <p className="integ-section-title">Últimas falhas</p>
-                    <div className="integ-card">
+                    <div className="integ-card flex-grow-1">
                         <div className="integ-falhas-lista">
                             {analise.ultimasFalhas.length === 0 ? (
                                 <p className="text-muted mb-0">Nenhuma falha no período selecionado.</p>
@@ -1183,6 +1135,70 @@ function AbaAnalise({ resumo }) {
                                     </div>
                                 </div>
                             ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* ── Linha 4: Ranking | Integrações críticas ──────────────────── */}
+            <div className="row mb-2">
+                <div className="col-lg-6 mb-2 d-flex flex-column">
+                    <p className="integ-section-title">Ranking por dados trazidos</p>
+                    <div className="integ-card integ-table-card flex-grow-1">
+                        <div className="table-responsive">
+                            <table className="table tablefont mb-0 integ-table">
+                                <thead>
+                                    <tr>
+                                        <th>Integração</th>
+                                        <th className="text-center">Recebidos</th>
+                                        <th className="text-center">Processados</th>
+                                        <th className="text-center">Eficiência</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {analise.topVolume.length === 0 ? (
+                                        <tr><td colSpan={4} className="text-center text-muted py-4">Sem dados no período selecionado.</td></tr>
+                                    ) : analise.topVolume.map((item) => (
+                                        <tr key={item.integracao}>
+                                            <td>{item.integracao}</td>
+                                            <td className="text-center integ-num">{fmt(item.recebidos)}</td>
+                                            <td className="text-center integ-num text-success">{fmt(item.processados)}</td>
+                                            <td className="text-center">{item.eficiencia}%</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div className="col-lg-6 mb-2 d-flex flex-column">
+                    <p className="integ-section-title">Integrações críticas</p>
+                    <div className="integ-card integ-table-card flex-grow-1">
+                        <div className="table-responsive">
+                            <table className="table tablefont mb-0 integ-table">
+                                <thead>
+                                    <tr>
+                                        <th>Integração</th>
+                                        <th className="text-center">Falhas</th>
+                                        <th className="text-center">Taxa falha</th>
+                                        <th className="text-center">Eficiência</th>
+                                        <th className="text-center">Última execução</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {analise.integracoesCriticas.length === 0 ? (
+                                        <tr><td colSpan={5} className="text-center text-muted py-4">Sem integrações críticas no período.</td></tr>
+                                    ) : analise.integracoesCriticas.map((item) => (
+                                        <tr key={item.integracao}>
+                                            <td>{item.integracao}</td>
+                                            <td className="text-center integ-num text-danger">{item.falhas}</td>
+                                            <td className="text-center">{item.taxa_falha}%</td>
+                                            <td className="text-center">{item.eficiencia}%</td>
+                                            <td className="text-center">{item.ultima_execucao_fmt}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>

@@ -13,6 +13,7 @@ export async function getConsultaUsuario() {
     FROM PCEMPR U                 
     WHERE U.SITUACAO = 'A'      
       AND U.CODFILIAL IS NOT NULL
+      AND TRUNC(U.DTULTALTER) = TRUNC(SYSDATE)
     `;
 
     
