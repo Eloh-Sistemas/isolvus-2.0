@@ -165,16 +165,11 @@ const UploadArquivos = forwardRef((props, ref) => {
     }
   };
 
- const openModal = (clickedIndex) => {
-  // Todas imagens, tanto salvas quanto previews
-  const todasImagens = [
-    ...arquivosSalvos.filter((a) => isImageFile(a.url)),
-    ...previews.filter((p) => p.isImage)
-  ];
+ const openModal = (clickedUrl) => {
+  const todasImagens = getAllImageUrls();
+  const clickedIndex = todasImagens.findIndex((url) => url === clickedUrl);
 
-  // Determina a imagem clicada com base no índice real passado (já filtrado por imagens)
-  const imagemClicada = todasImagens[clickedIndex];
-  if (!imagemClicada) return;
+  if (clickedIndex < 0) return;
 
   setCurrentImageIndex(clickedIndex);
   setIsModalOpen(true);
@@ -191,8 +186,8 @@ const UploadArquivos = forwardRef((props, ref) => {
   };
 
   const showNextImage = () => {
-    const totalImagens = arquivosSalvos.length + previews.length;
-    if (currentImageIndex < totalImagens - 1) {
+    const total = totalImagens();
+    if (currentImageIndex < total - 1) {
       setCurrentImageIndex(currentImageIndex + 1);
     }
   };
@@ -319,7 +314,7 @@ const totalImagens = () => getAllImageUrls().length;
               <div
                 key={`salvo-${index}`}
                 className={`file-card ${isImage ? 'is-image' : ''}`}
-                onClick={() => isImage && openModal(index)}
+                onClick={() => isImage && openModal(arquivo.url)}
               >
                 <div className="file-card-thumb">
                   {isImage ? (
@@ -369,7 +364,7 @@ const totalImagens = () => getAllImageUrls().length;
               <div
                 key={`preview-${index}`}
                 className={`file-card ${preview.isImage ? 'is-image' : ''}`}
-                onClick={() => preview.isImage && openModal(index + arquivosSalvos.filter(a => isImageFile(a.url)).length)}
+                onClick={() => preview.isImage && openModal(preview.url)}
               >
                 <div className="file-card-thumb">
                   {preview.isImage ? (

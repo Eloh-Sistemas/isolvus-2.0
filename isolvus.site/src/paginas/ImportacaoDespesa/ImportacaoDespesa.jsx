@@ -2,9 +2,11 @@ import React, { useState, useEffect, useRef } from "react";
 import Swal from 'sweetalert2';
 import { toast } from 'react-toastify';
 import Menu from "../../componentes/Menu/Menu";
+import UploadArquivos from "../../componentes/UploadArquivos/UploadArquivos";
 import api from "../../servidor/api";
 import './ImportacaoDespesa.css';
 
+const ID_ROTINA_IMPORTACAO_ANEXOS = '1030.3';
 const ID_ROTINA_IMPORTACAO_REMESSA = '1030.2';
 
 function ImportacaoDespesa(){
@@ -45,6 +47,7 @@ function ImportacaoDespesa(){
     const [rateioPorSolicitacao, setRateioPorSolicitacao] = useState({});
     const [rateioCarregandoPorSolicitacao, setRateioCarregandoPorSolicitacao] = useState({});
     const modalContentRef = useRef(null);
+    const uploadAnexosRef = useRef(null);
 
     useEffect(() => {
         if (!dataInicial || !dataFinal) {
@@ -557,7 +560,7 @@ function ImportacaoDespesa(){
         return `${baseUrl}/${String(url).replace(/^\/+/, '')}`;
     };
 
-    const baixarArquivoRemessa = async (arquivoOuUrl) => {
+    const baixarArquivo = async (arquivoOuUrl) => {
         const url = normalizarUrlArquivo(typeof arquivoOuUrl === 'string' ? arquivoOuUrl : arquivoOuUrl?.url);
 
         if (!url) {
@@ -586,7 +589,7 @@ function ImportacaoDespesa(){
                 document.body.removeChild(link);
             }, 100);
         } catch (error) {
-            toast.error('Erro ao baixar o arquivo de remessa.');
+            toast.error('Erro ao baixar o arquivo.');
         }
     };
 
@@ -762,7 +765,8 @@ function ImportacaoDespesa(){
         return total + (isNaN(valor) ? 0 : valor);
     }, 0);
     const idImportacaoPreAnalise = dados[0]?.IDLEITURA || '-';
-    const totalErrosPreAnalise = Number(totalErrosRetorno || erros.length || 0);
+    const idLeituraAtual = Number(registroSelecionado?.IDLEITURA || dados[0]?.IDLEITURA || 0);
+    const totalErrosPreAnalise = Number(totalErrosRetorno ?? erros.length ?? 0);
     const statusPreAnalise = preAnaliseLoading
         ? 'PRÉ-ANALISANDO'
         : totalErrosPreAnalise > 0
@@ -1242,6 +1246,10 @@ function ImportacaoDespesa(){
                 if (arquivoRemessa && idleituraGerada) {
                     await uploadArquivoRemessa(arquivoRemessa, idleituraGerada);
                 }
+
+                if (idleituraGerada && uploadAnexosRef.current?.handleUpload) {
+                    await uploadAnexosRef.current.handleUpload(Number(idleituraGerada));
+                }
             } catch (error) {
                 setErros([`Erro na pré-análise: ${error.message}`]);
                 setTotalErrosRetorno(1);
@@ -1267,6 +1275,10 @@ function ImportacaoDespesa(){
         if (mensagemBloqueioProcessamento) {
             toast.warning(mensagemBloqueioProcessamento);
             return;
+        }
+
+        if (uploadAnexosRef.current?.handleUpload) {
+            await uploadAnexosRef.current.handleUpload(Number(idleitura));
         }
 
         const confirmacao = await Swal.fire({
@@ -1612,7 +1624,7 @@ function ImportacaoDespesa(){
                                                             <button
                                                                 type="button"
                                                                 className="btn btn-sm btn-outline-success"
-                                                                onClick={() => baixarArquivoRemessa(arquivoItem)}
+                                                                onClick={() => baixarArquivo(arquivoItem)}
                                                             >
                                                                 Baixar
                                                             </button>
@@ -1624,6 +1636,19 @@ function ImportacaoDespesa(){
                                             <strong>Nenhum arquivo de remessa salvo para esta importação.</strong>
                                         )}
                                     </div>
+                                </div>
+                            </div>
+
+                            <div className="row g-3 mb-3">
+                                <div className="col-12">
+                                    <h5 className="mb-2">Anexos</h5>
+                                    <UploadArquivos
+                                        ref={uploadAnexosRef}
+                                        idRotina={ID_ROTINA_IMPORTACAO_ANEXOS}
+                                        idRelacional={idLeituraAtual}
+                                        disabled={!registroSelecionado?.IDLEITURA}
+                                        capture={false}
+                                    />
                                 </div>
                             </div>
 
@@ -1930,6 +1955,19 @@ function ImportacaoDespesa(){
                                 onChange={handleArquivoRemessaChange}
                             />
                             <small className="form-text text-muted">Selecione o arquivo de remessa nos formatos .txt, .rem ou .ret.</small>
+                        </div>
+                    </div>
+
+                    <div className="row mb-3">
+                        <div className="col-md-12">
+                            <h5 className="mb-2">Anexos</h5>
+                            <UploadArquivos
+                                ref={uploadAnexosRef}
+                                idRotina={ID_ROTINA_IMPORTACAO_ANEXOS}
+                                idRelacional={idLeituraAtual}
+                                disabled={!descricao.trim() || descricao.trim().length < 10}
+                                capture={false}
+                            />
                         </div>
                     </div>
 

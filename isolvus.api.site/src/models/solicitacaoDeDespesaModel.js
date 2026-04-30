@@ -11,6 +11,7 @@ import { parseDateBR } from '../utils/date.js';
 import { notificacaoEnviarModel } from "./notificacaoModel.js";
 import { excluirArquivosPorIdRelacional } from "./uploadArquivosModal.js";
 
+const ID_ROTINA_IMPORTACAO_ANEXOS = '1030.3';
 const ID_ROTINA_IMPORTACAO_REMESSA = '1030.2';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1609,6 +1610,12 @@ export async function deletePreAnaliseModel(jsonReq) {
       console.warn(`Não foi possível excluir os arquivos de remessa da leitura ${idleitura}:`, fileError?.message || fileError);
     }
 
+    try {
+      await excluirArquivosPorIdRelacional(idleitura, ID_ROTINA_IMPORTACAO_ANEXOS);
+    } catch (fileError) {
+      console.warn(`Não foi possível excluir os anexos da leitura ${idleitura}:`, fileError?.message || fileError);
+    }
+
     return {
       idleitura,
       registrosExcluidos: result.rowsAffected,
@@ -2158,6 +2165,33 @@ export async function consultarDespesasVinculadasLeituraModel(jsonReq) {
   }
 }
 
+function montarObservacaoHistoricoImportacao(registro = {}, idleitura) {
+  const partes = [`Solicitacao gerada automaticamente pela importacao de despesa (leitura ${idleitura}).`];
+
+  const idUsuarioEnvio = Number(registro.ID_USUARIOENV || 0);
+  const nomeUsuarioEnvio = String(registro.USUARIOENV || '').trim();
+  const descricaoEnvio = String(registro.DESCRICAOENV || '').trim();
+  const dataEnvio = registro.DATAENV
+    ? moment(registro.DATAENV).isValid()
+      ? moment(registro.DATAENV).format('DD/MM/YYYY HH:mm')
+      : String(registro.DATAENV)
+    : '';
+
+  if (idUsuarioEnvio > 0 || nomeUsuarioEnvio) {
+    partes.push(`Usuario de envio: ${idUsuarioEnvio > 0 ? `${idUsuarioEnvio}${nomeUsuarioEnvio ? ` - ${nomeUsuarioEnvio}` : ''}` : nomeUsuarioEnvio}.`);
+  }
+
+  if (dataEnvio) {
+    partes.push(`Data do envio: ${dataEnvio}.`);
+  }
+
+  if (descricaoEnvio) {
+    partes.push(`Descricao do envio: ${descricaoEnvio.slice(0, 500)}.`);
+  }
+
+  return partes.join(' ');
+}
+
 export async function processarDespesasImportacaoModel(jsonReq) {
 
   const connection = await getConnection();
@@ -2222,6 +2256,8 @@ export async function processarDespesasImportacaoModel(jsonReq) {
         CG.DESCRICAO AS DESCRICAO,
         A.DATAPAGAMENTO,
         A.HISTORICO,
+        A.DESCRICAOENV,
+        A.DATAENV,
         A.ID_ITEM,
         BI.DESCRICAO AS DESCRICAO_ITEM,
         A.ID_USUARIOENV,
@@ -2413,6 +2449,32 @@ export async function processarDespesasImportacaoModel(jsonReq) {
        WHERE ROWID = :row_id
     `;
 
+    const ssqlInsertHistorico = `
+      INSERT INTO BSTAB_SOLICITADESPESA_HISTORICO (
+        ID_HISTORICO,
+        NUMSOLICITACAO,
+        ID_GRUPO_EMPRESA,
+        ETAPA,
+        STATUS_ANTES,
+        STATUS_DEPOIS,
+        ID_USUARIO,
+        NOME_USUARIO,
+        OBSERVACAO,
+        DATAHORA
+      ) VALUES (
+        SEQ_SOLICITADESPESA_HISTORICO.NEXTVAL,
+        :numsolicitacao,
+        :id_grupo_empresa,
+        :etapa,
+        :status_antes,
+        :status_depois,
+        :id_usuario,
+        :nome_usuario,
+        :observacao,
+        SYSDATE
+      )
+    `;
+
     const numsolicitacoes = [];
     const vinculosGerados = [];
     let totalRateiosInseridos = 0;
@@ -2483,6 +2545,21 @@ export async function processarDespesasImportacaoModel(jsonReq) {
 
       if (!updateImportacaoResult.rowsAffected) {
         throw new AppError(`Não foi possível vincular a solicitação ${numsolicitacao} ao item importado ${registro.ID_ITEM}.`, 500);
+      }
+
+      const historicoResult = await connection.execute(ssqlInsertHistorico, {
+        numsolicitacao,
+        id_grupo_empresa: Number(registro.ID_GRUPO_EMPRESA || 1),
+        etapa: 'SOLICITACAO',
+        status_antes: null,
+        status_depois: 'EA',
+        id_usuario: Number(registro.ID_USUARIOENV || 0) || null,
+        nome_usuario: null,
+        observacao: montarObservacaoHistoricoImportacao(registro, idleitura)
+      });
+
+      if (!historicoResult.rowsAffected) {
+        throw new AppError(`Não foi possível gerar o histórico da solicitação ${numsolicitacao}.`, 500);
       }
 
       totalRateiosInseridos += Number(rateioResult.rowsAffected || 0);

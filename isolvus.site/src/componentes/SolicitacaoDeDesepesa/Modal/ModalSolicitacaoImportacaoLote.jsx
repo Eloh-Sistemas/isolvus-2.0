@@ -4,8 +4,10 @@ import Swal from 'sweetalert2';
 import { toast } from 'react-toastify';
 import api from "../../../servidor/api";
 import EditComplete from "../../EditComplete/EditComplete";
+import UploadArquivos from "../../UploadArquivos/UploadArquivos";
 import "../../../paginas/ImportacaoDespesa/ImportacaoDespesa.css";
 
+const ID_ROTINA_IMPORTACAO_ANEXOS = '1030.3';
 const ID_ROTINA_IMPORTACAO_REMESSA = '1030.2';
 
 function ModalSolicitacaoImportacaoLote({
@@ -1845,6 +1847,18 @@ function ModalSolicitacaoImportacaoLote({
                                 <strong>Nenhum arquivo de remessa salvo para esta importação.</strong>
                             )}
                         </div>
+                    </div>
+                </div>
+
+                <div className="row g-3 mb-3">
+                    <div className="col-12">
+                        <h5 className="mb-2">Anexos</h5>
+                        <UploadArquivos
+                            idRotina={ID_ROTINA_IMPORTACAO_ANEXOS}
+                            idRelacional={Number(idleitura || 0)}
+                            disabled={true}
+                            capture={false}
+                        />
                     </div>
                 </div>
 
