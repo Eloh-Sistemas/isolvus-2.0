@@ -4,6 +4,7 @@ import { View, StyleSheet } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import LoginScreen from "./src/screens/LoginScreen";
 import HomeScreen from "./src/screens/HomeScreen";
+import { AlertProvider } from "./src/components/CustomAlert/AlertProvider";
 
 export default function App() {
   const [usuarioLogado, setUsuarioLogado] = useState(null);
@@ -18,17 +19,19 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <View style={[styles.container, { backgroundColor: usuarioLogado ? "#0c1526" : "#050d1a" }]}>
-        <StatusBar
-          style="light"
-          backgroundColor={usuarioLogado ? "#0c1526" : "#050d1a"}
-        />
-        {usuarioLogado ? (
-          <HomeScreen user={usuarioLogado} onLogout={handleLogout} />
-        ) : (
-          <LoginScreen onLoginSuccess={handleLoginSuccess} />
-        )}
-      </View>
+      <AlertProvider>
+        <View style={[styles.container, { backgroundColor: usuarioLogado ? "#0c1526" : "#050d1a" }]}>
+          <StatusBar
+            style="light"
+            backgroundColor={usuarioLogado ? "#0c1526" : "#050d1a"}
+          />
+          {usuarioLogado ? (
+            <HomeScreen user={usuarioLogado} onLogout={handleLogout} />
+          ) : (
+            <LoginScreen onLoginSuccess={handleLoginSuccess} />
+          )}
+        </View>
+      </AlertProvider>
     </SafeAreaProvider>
   );
 }

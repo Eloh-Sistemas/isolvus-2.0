@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   Dimensions,
   KeyboardAvoidingView,
@@ -18,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import api from "../services/api";
 import { colors } from "../theme/colors";
+import { useShowAlert } from "../components/CustomAlert/AlertProvider";
 
 const { height: SCREEN_H } = Dimensions.get("window");
 
@@ -30,6 +30,7 @@ const FRASES = [
 ];
 
 export default function LoginScreen({ onLoginSuccess }) {
+  const showAlert = useShowAlert();
   const [user, setUser] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -90,7 +91,7 @@ export default function LoginScreen({ onLoginSuccess }) {
   async function acessar() {
     const credenciais = { user, password };
     if (!user.trim() || !password.trim()) {
-      Alert.alert("Campos obrigatórios", "Informe usuário e senha para continuar.");
+      showAlert({ type: "warning", title: "Campos obrigatórios", message: "Informe usuário e senha para continuar." });
       return;
     }
     setErroCredencial(false);
@@ -113,7 +114,7 @@ export default function LoginScreen({ onLoginSuccess }) {
       if (typeof onLoginSuccess === "function") {
         onLoginSuccess(usuario);
       } else {
-        Alert.alert("Login efetuado", `Bem-vindo, ${usuario.nome ?? usuario.usuario ?? "usuário"}.`);
+        showAlert({ type: "success", title: "Login efetuado", message: `Bem-vindo, ${usuario.nome ?? usuario.usuario ?? "usuário"}.` });
       }
     } catch (error) {
       setErroCredencial(true);

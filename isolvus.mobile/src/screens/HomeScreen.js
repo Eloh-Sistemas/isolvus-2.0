@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   Image,
   Linking,
@@ -28,6 +27,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as Sharing from "expo-sharing";
 import api from "../services/api";
 import { colors } from "../theme/colors";
+import { useShowAlert } from "../components/CustomAlert/AlertProvider";
 import MuralCard from "../components/MuralCard";
 import VisitaClienteScreen from "./VisitaClienteScreen";
 import Logo from "../../assets/SGS.png";
@@ -217,6 +217,7 @@ function iconePorNome(nome) {
 }
 
 export default function HomeScreen({ user, onLogout }) {
+  const showAlert = useShowAlert();
   const [showModulos, setShowModulos] = useState(false);
   const [showNotificacoes, setShowNotificacoes] = useState(false);
   const [filtroMenu, setFiltroMenu] = useState("");
@@ -517,7 +518,7 @@ export default function HomeScreen({ user, onLogout }) {
 
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert("Permissao necessaria", "Permita acesso a galeria para alterar sua foto.");
+      showAlert({ type: "warning", title: "Permissão necessária", message: "Permita acesso a galeria para alterar sua foto." });
       return;
     }
 
@@ -553,7 +554,7 @@ export default function HomeScreen({ user, onLogout }) {
       setFotoUsuario(urlFinal);
       await AsyncStorage.setItem("foto_usuario", urlFinal);
     } catch {
-      Alert.alert("Erro", "Nao foi possivel salvar a foto.");
+      showAlert({ type: "error", title: "Erro", message: "Nao foi possivel salvar a foto." });
     } finally {
       setSalvandoFoto(false);
     }
@@ -574,7 +575,7 @@ export default function HomeScreen({ user, onLogout }) {
       setFotoUsuario("");
       await AsyncStorage.removeItem("foto_usuario");
     } catch {
-      Alert.alert("Erro", "Nao foi possivel remover a foto.");
+      showAlert({ type: "error", title: "Erro", message: "Nao foi possivel remover a foto." });
     } finally {
       setSalvandoFoto(false);
     }
@@ -596,7 +597,7 @@ export default function HomeScreen({ user, onLogout }) {
     try {
       const dados = notificacao?.dadosTabela ? JSON.parse(notificacao.dadosTabela) : null;
       if (!Array.isArray(dados) || dados.length === 0 || typeof dados[0] !== "object") {
-        Alert.alert("Anexo", "Este anexo nao possui tabela exportavel.");
+        showAlert({ type: "warning", title: "Anexo", message: "Este anexo nao possui tabela exportavel." });
         return;
       }
 
@@ -627,10 +628,10 @@ export default function HomeScreen({ user, onLogout }) {
           UTI: "public.comma-separated-values-text",
         });
       } else {
-        Alert.alert("Arquivo gerado", `CSV salvo em: ${path}`);
+        showAlert({ type: "success", title: "Arquivo gerado", message: `CSV salvo em: ${path}` });
       }
     } catch {
-      Alert.alert("Erro", "Nao foi possivel exportar o anexo.");
+      showAlert({ type: "error", title: "Erro", message: "Nao foi possivel exportar o anexo." });
     }
   }
 
