@@ -42,3 +42,15 @@ export const notificacaoEnviarSchema = z.object({
   dados_tabela: z.string().nullable().optional()
 });
 
+export const notificacaoPushTokenSchema = z.object({
+  id_usuario: z.number({
+    required_error: 'Usuário é obrigatório',
+    invalid_type_error: 'Usuário deve ser um número'
+  }).positive('ID do usuário deve ser maior que zero'),
+  token: z.string({
+    required_error: 'Token do dispositivo é obrigatório',
+    invalid_type_error: 'Token do dispositivo deve ser uma string'
+  }).min(10, 'Token inválido').max(300, 'Token inválido'),
+  plataforma: z.string().optional().default('mobile')
+});
+

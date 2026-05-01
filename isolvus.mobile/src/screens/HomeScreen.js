@@ -6,6 +6,7 @@ import {
   Image,
   Linking,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,8 +18,10 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Device from "expo-device";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Notifications from "expo-notifications";
 import * as FileSystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import * as Sharing from "expo-sharing";
@@ -35,6 +38,39 @@ const ROTA_MURAL = {
   screen: "mural",
   modulo: "Comunicacao",
 };
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
+async function registrarPushNoDispositivo() {
+  if (!Device.isDevice) return "";
+
+  if (Platform.OS === "android") {
+    await Notifications.setNotificationChannelAsync("default", {
+      name: "default",
+      importance: Notifications.AndroidImportance.DEFAULT,
+    });
+  }
+
+  const { status: statusAtual } = await Notifications.getPermissionsAsync();
+  let statusFinal = statusAtual;
+
+  if (statusAtual !== "granted") {
+    const permissao = await Notifications.requestPermissionsAsync();
+    statusFinal = permissao.status;
+  }
+
+  if (statusFinal !== "granted") return "";
+
+  const token = await Notifications.getExpoPushTokenAsync();
+  return token?.data || "";
+}
 
 function iniciais(nome) {
   const partes = String(nome || "U")
@@ -190,6 +226,8 @@ export default function HomeScreen({ user, onLogout }) {
   const [fotoUsuario, setFotoUsuario] = useState("");
   const [menuFotoAberto, setMenuFotoAberto] = useState(false);
   const [salvandoFoto, setSalvandoFoto] = useState(false);
+  const notificacoesInicializadasRef = useRef(false);
+  const idsNotificacoesRef = useRef(new Set());
 
   const insets = useSafeAreaInsets();
   const { width: larguraTela } = useWindowDimensions();
@@ -289,13 +327,64 @@ export default function HomeScreen({ user, onLogout }) {
     try {
       const resposta = await api.post("/v1/notificacoes", { id_usuario: idUsuario });
       const lista = Array.isArray(resposta?.data) ? resposta.data : [];
-      setNotificacoes(lista.map(normalizarNotificacao));
+      const notificacoesNormalizadas = lista.map(normalizarNotificacao);
+      const idsAtuais = new Set(notificacoesNormalizadas.map((n) => String(n.id)));
+
+      if (!notificacoesInicializadasRef.current) {
+        idsNotificacoesRef.current = idsAtuais;
+        notificacoesInicializadasRef.current = true;
+      } else {
+        for (const n of notificacoesNormalizadas) {
+          const idNotif = String(n.id);
+          if (!idsNotificacoesRef.current.has(idNotif) && !n.lida) {
+            await Notifications.scheduleNotificationAsync({
+              content: {
+                title: n.titulo || "Nova notificacao",
+                body: n.mensagem || `${n.remetente || "Sistema"} enviou uma notificacao.`,
+                sound: true,
+              },
+              trigger: null,
+            });
+          }
+        }
+        idsNotificacoesRef.current = idsAtuais;
+      }
+
+      setNotificacoes(notificacoesNormalizadas);
     } catch (error) {
       setErroNotificacoes("Nao foi possivel carregar as notificacoes.");
       setNotificacoes([]);
     } finally {
       setLoadingNotificacoes(false);
     }
+  }, [idUsuario]);
+
+  useEffect(() => {
+    let ativo = true;
+
+    async function registrarPush() {
+      try {
+        const token = await registrarPushNoDispositivo();
+        if (!token || !ativo || !idUsuario) return;
+
+        await AsyncStorage.setItem("expo_push_token", token);
+
+        // Endpoint opcional: se nao existir ainda na API, apenas ignora e segue o app.
+        await api.post("/v1/notificacoes/registrarToken", {
+          id_usuario: idUsuario,
+          token,
+          plataforma: Platform.OS,
+        });
+      } catch {
+        // notificacao push e complementar ao fluxo atual
+      }
+    }
+
+    registrarPush();
+
+    return () => {
+      ativo = false;
+    };
   }, [idUsuario]);
 
   useEffect(() => {
@@ -527,44 +616,46 @@ export default function HomeScreen({ user, onLogout }) {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+    <SafeAreaView style={styles.safeArea} edges={[]}>
       <StatusBar
         style={drawerAberto ? "dark" : "light"}
-        backgroundColor={drawerAberto ? "#f8fafc" : "#0c1526"}
-        translucent={false}
+        backgroundColor={drawerAberto ? "#f8fafc" : "transparent"}
+        translucent={!drawerAberto}
       />
       <View style={styles.container}>
         <LinearGradient
           colors={["#0c1526", "#0f2060"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.navbar}
+          style={[styles.topGradient, { paddingTop: insets.top }]}
         >
-          <Pressable style={styles.brandWrap} onPress={() => setRotaAtiva(ROTA_MURAL)}>
-            <Image source={Logo} style={styles.brandLogo} resizeMode="contain" />
-            <View>
-              <Text style={styles.brandName}>ISOLVUS</Text>
-              <Text style={styles.brandSub}>ERP</Text>
-            </View>
-          </Pressable>
-
-          <View style={styles.navRight}>
-            <Pressable style={styles.iconButton} onPress={() => setShowNotificacoes(true)}>
-              <Ionicons name="notifications-outline" size={20} color="rgba(255,255,255,0.9)" />
-              {notificacoesNaoLidas > 0 ? (
-                <View style={styles.badgeNotif}>
-                  <Text style={styles.badgeNotifText}>{notificacoesNaoLidas}</Text>
-                </View>
-              ) : null}
-            </Pressable>
-
-            <Pressable style={styles.userButton} onPress={() => setShowModulos(true)}>
-              <View style={styles.userAvatar}>
-                {avatarUsuario
-                  ? <Image source={{ uri: avatarUsuario }} style={styles.userAvatarImg} />
-                  : <Text style={styles.userAvatarText}>{iniciais(nomeUsuario)}</Text>}
+          <View style={styles.navbar}>
+            <Pressable style={styles.brandWrap} onPress={() => setRotaAtiva(ROTA_MURAL)}>
+              <Image source={Logo} style={styles.brandLogo} resizeMode="contain" />
+              <View>
+                <Text style={styles.brandName}>ISOLVUS</Text>
+                <Text style={styles.brandSub}>ERP</Text>
               </View>
             </Pressable>
+
+            <View style={styles.navRight}>
+              <Pressable style={styles.iconButton} onPress={() => setShowNotificacoes(true)}>
+                <Ionicons name="notifications-outline" size={20} color="rgba(255,255,255,0.9)" />
+                {notificacoesNaoLidas > 0 ? (
+                  <View style={styles.badgeNotif}>
+                    <Text style={styles.badgeNotifText}>{notificacoesNaoLidas}</Text>
+                  </View>
+                ) : null}
+              </Pressable>
+
+              <Pressable style={styles.userButton} onPress={() => setShowModulos(true)}>
+                <View style={styles.userAvatar}>
+                  {avatarUsuario
+                    ? <Image source={{ uri: avatarUsuario }} style={styles.userAvatarImg} />
+                    : <Text style={styles.userAvatarText}>{iniciais(nomeUsuario)}</Text>}
+                </View>
+              </Pressable>
+            </View>
           </View>
         </LinearGradient>
 
@@ -861,8 +952,12 @@ export default function HomeScreen({ user, onLogout }) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#0c1526" },
+  safeArea: { flex: 1, backgroundColor: "#f8fafc" },
   container: { flex: 1, backgroundColor: "#f8fafc" },
+
+  topGradient: {
+    width: "100%",
+  },
 
   navbar: {
     height: 60,

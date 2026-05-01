@@ -19,7 +19,8 @@
       "bundleIdentifier": "br.com.isolvus.mobile"
     },
     "plugins": [
-      "expo-asset"
+      "expo-asset",
+      "expo-notifications"
     ]
   }
 }

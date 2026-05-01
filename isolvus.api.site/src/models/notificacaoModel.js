@@ -96,3 +96,64 @@ export async function notificacaoEnviarModel(dto){
     }
 
 }
+
+export async function registrarTokenPushModel(dto) {
+
+        const ssql = `
+        MERGE INTO BSTAB_PUSH_TOKEN A
+        USING (SELECT :EXPO_TOKEN AS EXPO_TOKEN FROM DUAL) B
+             ON (A.EXPO_TOKEN = B.EXPO_TOKEN)
+        WHEN MATCHED THEN
+            UPDATE SET
+                A.ID_USUARIO = :ID_USUARIO,
+                A.PLATAFORMA = :PLATAFORMA,
+                A.ATIVO = 1,
+                A.DATA_ATUALIZACAO = SYSDATE
+        WHEN NOT MATCHED THEN
+            INSERT (ID_TOKEN, ID_USUARIO, EXPO_TOKEN, PLATAFORMA, ATIVO, DATA_CRIACAO, DATA_ATUALIZACAO)
+            VALUES ((SELECT NVL(MAX(T.ID_TOKEN) + 1, 1) FROM BSTAB_PUSH_TOKEN T), :ID_USUARIO, :EXPO_TOKEN, :PLATAFORMA, 1, SYSDATE, SYSDATE)
+        `;
+
+        try {
+
+            await executeQuery(ssql, {
+                ID_USUARIO: dto.id_usuario,
+                EXPO_TOKEN: dto.token,
+                PLATAFORMA: dto.plataforma || 'mobile'
+            }, true);
+
+            return { mensagem: 'Token de push registrado com sucesso.' };
+
+        } catch (error) {
+            throw error;
+        }
+
+}
+
+export async function consultarTokensPushAtivosModel(idsUsuarios = []) {
+    const idsLimpos = Array.from(new Set((idsUsuarios || []).map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0)));
+    if (!idsLimpos.length) return [];
+
+    const binds = {};
+    const placeholders = idsLimpos.map((id, idx) => {
+        const chave = `ID_${idx}`;
+        binds[chave] = id;
+        return `:${chave}`;
+    }).join(',');
+
+    const ssql = `
+    SELECT A.ID_USUARIO,
+                 A.EXPO_TOKEN,
+                 A.PLATAFORMA
+        FROM BSTAB_PUSH_TOKEN A
+     WHERE A.ATIVO = 1
+         AND A.EXPO_TOKEN IS NOT NULL
+         AND A.ID_USUARIO IN (${placeholders})
+    `;
+
+    try {
+        return await executeQuery(ssql, binds);
+    } catch (error) {
+        throw error;
+    }
+}
