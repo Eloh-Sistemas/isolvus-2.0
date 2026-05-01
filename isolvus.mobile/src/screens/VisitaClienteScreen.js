@@ -1295,7 +1295,7 @@ export default function VisitaClienteScreen({ user }) {
         {step === 1 && (
           <Pressable style={({ pressed }) => [styles.btnPrimaryFull, pressed && styles.btnPressed]} onPress={avancar}>
             <LinearGradient colors={["#3f6cf6", "#2f59d9"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.btnGradient}>
-              <Text style={styles.btnPrimaryText}>Consultar</Text>
+              <Text style={styles.btnPrimaryText}>Próximo</Text>
             </LinearGradient>
           </Pressable>
         )}
@@ -1623,7 +1623,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 20,
+    marginTop: 15,
+    marginBottom: 35,
     position: "relative",
     paddingHorizontal: 4,
   },
