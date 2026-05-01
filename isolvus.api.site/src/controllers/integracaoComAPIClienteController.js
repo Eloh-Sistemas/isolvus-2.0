@@ -14,6 +14,7 @@ import { buscarVeiculo } from "../models/veiculoModal.js";
 
 let processando = false;
 let inicioProcessamento = null;
+let codigosIntegracoesEmProcessamento = [];
 const TIMEOUT_INTEGRACAO_MS = 10 * 60 * 1000; // 10 minutos — libera automaticamente se travar
 
 export async function Integrar() {
@@ -21,7 +22,10 @@ export async function Integrar() {
 
     // Se já está processando mas passou do timeout, libera (ex: restart no meio da integração)
     if (processando && inicioProcessamento && (agora - inicioProcessamento) < TIMEOUT_INTEGRACAO_MS) {
-        console.log("Já está em processamento.");
+        const codigos = codigosIntegracoesEmProcessamento.length > 0
+            ? codigosIntegracoesEmProcessamento.join(", ")
+            : "não identificadas";
+        console.log(`Já está em processamento. Integrações em execução: ${codigos}`);
         return;
     }
 
@@ -32,6 +36,7 @@ export async function Integrar() {
 
     try {
         const integracoes = await ConsultarHosts();
+        codigosIntegracoesEmProcessamento = integracoes.map((i) => i.id_integracao);
 
         //trazer para base dev as tabelas do winthor
         // Cria um array de Promises
@@ -74,6 +79,7 @@ export async function Integrar() {
         console.log(`Duração: ${(fim - inicio) / 1000} segundos`);
         processando = false;
         inicioProcessamento = null;
+        codigosIntegracoesEmProcessamento = [];
     }
 }
 
