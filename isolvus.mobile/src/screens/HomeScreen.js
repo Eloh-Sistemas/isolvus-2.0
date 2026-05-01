@@ -564,11 +564,6 @@ export default function HomeScreen({ user, onLogout }) {
                   ? <Image source={{ uri: avatarUsuario }} style={styles.userAvatarImg} />
                   : <Text style={styles.userAvatarText}>{iniciais(nomeUsuario)}</Text>}
               </View>
-              <View style={styles.userMeta}>
-                <Text numberOfLines={1} style={styles.userName}>{nomeUsuario}</Text>
-                <Text numberOfLines={1} style={styles.userSector}>{setorUsuario}</Text>
-              </View>
-              <Ionicons name="chevron-down" size={14} color="rgba(255,255,255,0.6)" />
             </Pressable>
           </View>
         </LinearGradient>
@@ -914,11 +909,10 @@ const styles = StyleSheet.create({
   badgeNotifText: { color: colors.white, fontSize: 10, fontWeight: "700" },
 
   userButton: {
-    flexDirection: "row",
+    width: 36,
+    height: 36,
     alignItems: "center",
-    maxWidth: 170,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
+    justifyContent: "center",
     borderRadius: 10,
     backgroundColor: "rgba(255,255,255,0.07)",
     borderWidth: 1,
@@ -935,9 +929,6 @@ const styles = StyleSheet.create({
   },
   userAvatarImg: { width: 28, height: 28 },
   userAvatarText: { color: "#ffffff", fontSize: 11, fontWeight: "800" },
-  userMeta: { marginLeft: 7, flex: 1 },
-  userName: { color: "#ffffff", fontSize: 11.5, fontWeight: "700" },
-  userSector: { color: "rgba(255,255,255,0.6)", fontSize: 10 },
 
   scrollWrap: { flex: 1 },
   muralContainer: {
