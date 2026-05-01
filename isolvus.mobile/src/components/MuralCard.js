@@ -92,7 +92,6 @@ export default function MuralCard({ c, idUsuario }) {
   // ── estados ──
   const [fotoAtiva, setFotoAtiva] = useState(0);
   const [pausado, setPausado]     = useState(false);
-  const [mostrarResultados, setMostrarResultados] = useState(false);
 
   const ehVideoAtivo = temFotos && isVideo(fotos[fotoAtiva]);
   const [reacoes, setReacoes]     = useState({ contagens: {}, minha_reacao: null, total: 0 });
@@ -124,8 +123,6 @@ export default function MuralCard({ c, idUsuario }) {
     api.post("/v1/enquete/consultar", { id_comunicado: idComunicado, id_usuario: idUsuario })
       .then(({ data }) => {
         setEnquete(data || null);
-        // mostra resultados se já votou
-        if (data?.opcoes?.some((o) => o.votei)) setMostrarResultados(true);
       })
       .catch(() => {})
       .finally(() => setLoadingEnquete(false));
@@ -158,7 +155,6 @@ export default function MuralCard({ c, idUsuario }) {
       await api.post("/v1/enquete/votar", { id_enquete, id_opcao, id_usuario: idUsuario });
       const { data } = await api.post("/v1/enquete/consultar", { id_comunicado: idComunicado, id_usuario: idUsuario });
       setEnquete(data);
-      setMostrarResultados(true);
     } catch {}
     finally { setVotando(false); }
   }
@@ -452,36 +448,25 @@ export default function MuralCard({ c, idUsuario }) {
               : (
                 <>
                   <Text style={s.enquetePergunta}>{enquete.pergunta}</Text>
-                  {enquete.opcoes.map((o) => {
-                    const pct = mostrarResultados && enquete.total_votos > 0
-                      ? Math.round((o.votos / enquete.total_votos) * 100)
-                      : 0;
-                    return (
-                      <Pressable
-                        key={o.id_opcao}
-                        style={[s.enqueteOpcao, o.votei && { borderColor: t.cor }]}
-                        onPress={() => votar(enquete.id_enquete, o.id_opcao)}
-                        disabled={votando}
-                      >
-                        {mostrarResultados && (
-                          <View style={[s.enqueteBar, { width: `${pct}%`, backgroundColor: `${t.cor}25` }]} />
-                        )}
-                        <Text style={[s.enqueteTxt, o.votei && { color: t.cor, fontWeight: "700" }]}>
-                          {o.texto}
-                        </Text>
-                        {mostrarResultados && (
-                          <Text style={[s.enquetePct, { color: t.cor }]}>{pct}%</Text>
-                        )}
-                        {o.votei && <Ionicons name="checkmark-circle" size={14} color={t.cor} />}
-                      </Pressable>
-                    );
-                  })}
+                  {enquete.opcoes.map((o) => (
+                    <Pressable
+                      key={o.id_opcao}
+                      style={[s.enqueteOpcao, o.votei && { borderColor: t.cor }]}
+                      onPress={() => votar(enquete.id_enquete, o.id_opcao)}
+                      disabled={votando}
+                    >
+                      <Text style={[s.enqueteTxt, o.votei && { color: t.cor, fontWeight: "700" }]}>
+                        {o.texto}
+                      </Text>
+                      {o.votei && <Ionicons name="checkmark-circle" size={14} color={t.cor} />}
+                    </Pressable>
+                  ))}
                   <Text style={s.enqueteTotal}>
                     {enquete.multipla_escolha && (
                       <Text style={{ color: "#8b5cf6" }}>múltipla escolha · </Text>
                     )}
-                    {mostrarResultados
-                      ? `${enquete.total_votos} ${enquete.total_votos === 1 ? "voto" : "votos"}`
+                    {enquete.opcoes?.some((opcao) => opcao.votei)
+                      ? <Text style={{ color: "#64748b" }}>Voce ja marcou sua resposta</Text>
                       : <Text style={{ color: "#94a3b8" }}>Selecione uma opção para votar</Text>
                     }
                   </Text>
@@ -746,9 +731,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     overflow: "hidden",
   },
-  enqueteBar: { position: "absolute", top: 0, bottom: 0, left: 0, borderRadius: 8 },
   enqueteTxt: { flex: 1, color: "#334155", fontSize: 13 },
-  enquetePct: { fontSize: 12, fontWeight: "700", marginHorizontal: 4 },
   enqueteTotal: { color: "#94a3b8", fontSize: 11, marginTop: 4 },
 
   footer: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },

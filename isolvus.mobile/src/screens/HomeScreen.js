@@ -8,6 +8,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -28,6 +29,7 @@ import * as Sharing from "expo-sharing";
 import api from "../services/api";
 import { colors } from "../theme/colors";
 import MuralCard from "../components/MuralCard";
+import VisitaClienteScreen from "./VisitaClienteScreen";
 import Logo from "../../assets/SGS.png";
 
 const ROTA_MURAL = {
@@ -106,6 +108,10 @@ function normalizarRotina(rotina) {
   };
 }
 
+function possuiScreenValida(rotina) {
+  return String(rotina?.screen || "").trim().length > 0;
+}
+
 function normalizarModulo(modulo) {
   const id = modulo.id_modulo ?? modulo.ID_MODULO ?? toSlug(modulo.modulo ?? modulo.MODULO);
   const nome = modulo.modulo ?? modulo.MODULO ?? "Modulo";
@@ -116,7 +122,9 @@ function normalizarModulo(modulo) {
   return {
     id: String(id),
     nome,
-    rotinas: rotinasRaw.map(normalizarRotina),
+    rotinas: rotinasRaw
+      .map(normalizarRotina)
+      .filter(possuiScreenValida),
   };
 }
 
@@ -147,7 +155,7 @@ function mesclarModulosPermissao(grupos) {
     }
   }
 
-  return Array.from(mapa.values());
+  return Array.from(mapa.values()).filter((modulo) => modulo.rotinas.length > 0);
 }
 
 function normalizarNotificacao(item) {
@@ -222,6 +230,7 @@ export default function HomeScreen({ user, onLogout }) {
   const [erroNotificacoes, setErroNotificacoes] = useState("");
   const [comunicados, setComunicados] = useState([]);
   const [loadingComunicados, setLoadingComunicados] = useState(false);
+  const [refreshingFeed, setRefreshingFeed] = useState(false);
   const [erroComunicados, setErroComunicados] = useState("");
   const [fotoUsuario, setFotoUsuario] = useState("");
   const [menuFotoAberto, setMenuFotoAberto] = useState(false);
@@ -238,6 +247,7 @@ export default function HomeScreen({ user, onLogout }) {
   const nomeUsuario = user?.nome || user?.usuario || "Usuario";
   const setorUsuario = user?.setor || "Setor";
   const drawerAberto = showModulos || showNotificacoes;
+  const screenAtiva = toSlug(rotaAtiva?.screen || "");
 
   const avatarUsuario = fotoUsuario || normalizarFotoUrl(user?.foto || user?.foto_usuario || "");
 
@@ -317,6 +327,15 @@ export default function HomeScreen({ user, onLogout }) {
       setLoadingMenu(false);
     }
   }, [idUsuario]);
+
+  const recarregarFeed = useCallback(async () => {
+    setRefreshingFeed(true);
+    try {
+      await carregarComunicados(true);
+    } finally {
+      setRefreshingFeed(false);
+    }
+  }, [carregarComunicados]);
 
   const carregarNotificacoes = useCallback(async () => {
     if (!idUsuario) return;
@@ -659,78 +678,97 @@ export default function HomeScreen({ user, onLogout }) {
           </View>
         </LinearGradient>
 
-        <ScrollView
-          style={styles.scrollWrap}
-          contentContainerStyle={styles.muralContainer}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.muralHeader}>
-            <View style={styles.muralHeaderLeft}>
-              {rotaAtiva.key !== "mural" && (
-                <Ionicons
-                  name={iconePorNome(rotaAtiva.nome)}
-                  size={22}
-                  color="#6366f1"
-                />
-              )}
-              <View>
-                <Text style={styles.muralTitulo}>
-                  {rotaAtiva.key === "mural" ? "Feed" : rotaAtiva.nome}
-                </Text>
-                <Text style={styles.muralSubtitulo}>
-                  {rotaAtiva.key === "mural"
-                    ? "Fique por dentro dos comunicados, eventos e novidades da empresa."
-                    : `Modulo ${rotaAtiva.modulo || "Sistema"} - ${rotaAtiva.caminho || rotaAtiva.screen || "rota interna"}`}
-                </Text>
-              </View>
-            </View>
+        {screenAtiva === "visitacliente" ? (
+          <View style={{ flex: 1, backgroundColor: "#f8fafc" }}>
+            <VisitaClienteScreen user={user} />
           </View>
-
-          {rotaAtiva.key === "mural" ? (
-            <View style={styles.feedList}>
-              {loadingComunicados ? (
-                <View style={styles.stateWrap}>
-                  <ActivityIndicator color={colors.accent} />
-                  <Text style={styles.stateText}>Carregando mural...</Text>
+        ) : (
+          <ScrollView
+            style={styles.scrollWrap}
+            contentContainerStyle={styles.muralContainer}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            refreshControl={
+              rotaAtiva.key === "mural"
+                ? (
+                  <RefreshControl
+                    refreshing={refreshingFeed}
+                    onRefresh={recarregarFeed}
+                    tintColor={colors.accent}
+                    colors={[colors.accent]}
+                  />
+                  )
+                : undefined
+            }
+          >
+            <View style={styles.muralHeader}>
+              <View style={styles.muralHeaderLeft}>
+                {rotaAtiva.key !== "mural" && (
+                  <Ionicons
+                    name={iconePorNome(rotaAtiva.nome)}
+                    size={22}
+                    color="#6366f1"
+                  />
+                )}
+                <View>
+                  <Text style={styles.muralTitulo}>
+                    {rotaAtiva.key === "mural" ? "Feed" : rotaAtiva.nome}
+                  </Text>
+                  <Text style={styles.muralSubtitulo}>
+                    {rotaAtiva.key === "mural"
+                      ? "Fique por dentro dos comunicados, eventos e novidades da empresa."
+                      : `Modulo ${rotaAtiva.modulo || "Sistema"} - ${rotaAtiva.caminho || rotaAtiva.screen || "rota interna"}`}
+                  </Text>
                 </View>
-              ) : erroComunicados ? (
-                <View style={styles.stateWrap}>
-                  <Text style={styles.stateError}>{erroComunicados}</Text>
-                  <Pressable style={styles.retryBtn} onPress={() => carregarComunicados()}>
-                    <Text style={styles.retryText}>Tentar novamente</Text>
-                  </Pressable>
-                </View>
-              ) : comunicados.length === 0 ? (
-                <View style={styles.stateWrap}>
-                  <Ionicons name="megaphone-outline" size={28} color="#94a3b8" />
-                  <Text style={styles.stateText}>Nenhum comunicado publicado ainda.</Text>
-                </View>
-              ) : (
-                comunicados.map((item) => {
-                  const id = item.id_comunicado ?? item.ID_COMUNICADO ?? Math.random().toString();
-                  return (
-                    <MuralCard key={String(id)} c={item} idUsuario={idUsuario} />
-                  );
-                })
-              )}
-            </View>
-          ) : (
-            <View style={styles.routeContainer}>
-              <View style={styles.routeCard}>
-                <View style={styles.routeTop}>
-                  <Ionicons name={iconePorNome(rotaAtiva.nome)} size={18} color={colors.accent} />
-                  <Text style={styles.routeTitle}>{rotaAtiva.nome}</Text>
-                </View>
-                <Text style={styles.routeDescription}>
-                  Rota selecionada pelo menu da API. Caminho web: {rotaAtiva.caminho || "nao informado"}.
-                </Text>
-                <Text style={styles.routeDescription}>
-                  Screen mobile: {rotaAtiva.screen || "nao informado"}.
-                </Text>
               </View>
             </View>
-          )}
-        </ScrollView>
+
+            {rotaAtiva.key === "mural" ? (
+              <View style={styles.feedList}>
+                {loadingComunicados ? (
+                  <View style={styles.stateWrap}>
+                    <ActivityIndicator color={colors.accent} />
+                    <Text style={styles.stateText}>Carregando mural...</Text>
+                  </View>
+                ) : erroComunicados ? (
+                  <View style={styles.stateWrap}>
+                    <Text style={styles.stateError}>{erroComunicados}</Text>
+                    <Pressable style={styles.retryBtn} onPress={() => carregarComunicados()}>
+                      <Text style={styles.retryText}>Tentar novamente</Text>
+                    </Pressable>
+                  </View>
+                ) : comunicados.length === 0 ? (
+                  <View style={styles.stateWrap}>
+                    <Ionicons name="megaphone-outline" size={28} color="#94a3b8" />
+                    <Text style={styles.stateText}>Nenhum comunicado publicado ainda.</Text>
+                  </View>
+                ) : (
+                  comunicados.map((item) => {
+                    const id = item.id_comunicado ?? item.ID_COMUNICADO ?? Math.random().toString();
+                    return (
+                      <MuralCard key={String(id)} c={item} idUsuario={idUsuario} />
+                    );
+                  })
+                )}
+              </View>
+            ) : (
+              <View style={styles.routeContainer}>
+                <View style={styles.routeCard}>
+                  <View style={styles.routeTop}>
+                    <Ionicons name={iconePorNome(rotaAtiva.nome)} size={18} color={colors.accent} />
+                    <Text style={styles.routeTitle}>{rotaAtiva.nome}</Text>
+                  </View>
+                  <Text style={styles.routeDescription}>
+                    Rota selecionada pelo menu da API. Caminho web: {rotaAtiva.caminho || "nao informado"}.
+                  </Text>
+                  <Text style={styles.routeDescription}>
+                    Screen mobile: {rotaAtiva.screen || "nao informado"}.
+                  </Text>
+                </View>
+              </View>
+            )}
+          </ScrollView>
+        )}
       </View>
 
       <Modal visible={showModulos} animationType="none" transparent>
