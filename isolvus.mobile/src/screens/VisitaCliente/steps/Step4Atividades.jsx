@@ -32,7 +32,7 @@ export default function Step4Atividades({
         </Pressable>
         <View style={{ flex: 1 }}>
           <Text style={styles.sectionTitle}>Atividades da visita</Text>
-          <Text style={styles.sectionSubtitle}>Registre as atividades realizadas durante a visita.</Text>
+          <Text style={styles.sectionSubtitle}>Toque em uma atividade para editar ou adicione novas abaixo.</Text>
         </View>
       </View>
 
@@ -50,13 +50,13 @@ export default function Step4Atividades({
             <Ionicons name="person" size={18} color={colors.accent} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 11, color: "#64748b", fontWeight: "500" }}>Cliente</Text>
+            <Text style={{ fontSize: 11, color: "#64748b", fontWeight: "500" }}>Visitando</Text>
             <Text style={{ fontSize: 13, color: "#0f172a", fontWeight: "700" }} numberOfLines={1}>
               {clienteSelecionado.cliente}
             </Text>
           </View>
           <View style={{ alignItems: "flex-end" }}>
-            <Text style={{ fontSize: 10, color: "#94a3b8", fontWeight: "600" }}>VISITA</Text>
+            <Text style={{ fontSize: 10, color: "#94a3b8", fontWeight: "600" }}>Nº DA VISITA</Text>
             <Text style={{ fontSize: 13, color: colors.accent, fontWeight: "700" }}>#{idVisita}</Text>
           </View>
         </View>
@@ -67,7 +67,7 @@ export default function Step4Atividades({
         <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
           <View style={{ flex: 1, backgroundColor: "#f0fdf4", borderRadius: 10, borderWidth: 1, borderColor: "#bbf7d0", padding: 10, alignItems: "center" }}>
             <Text style={{ fontSize: 18, fontWeight: "800", color: "#16a34a" }}>{realizadas}</Text>
-            <Text style={{ fontSize: 10, color: "#166534", fontWeight: "600" }}>REALIZADAS</Text>
+            <Text style={{ fontSize: 10, color: "#166534", fontWeight: "600" }}>CONCLUÍDAS</Text>
           </View>
           <View style={{ flex: 1, backgroundColor: "#fef2f2", borderRadius: 10, borderWidth: 1, borderColor: "#fecaca", padding: 10, alignItems: "center" }}>
             <Text style={{ fontSize: 18, fontWeight: "800", color: "#dc2626" }}>{atividades.length - realizadas}</Text>
@@ -84,13 +84,13 @@ export default function Step4Atividades({
       {loadingAtividades ? (
         <View style={styles.stateBox}>
           <ActivityIndicator color={colors.accent} />
-          <Text style={styles.stateText}>Carregando atividades...</Text>
+          <Text style={styles.stateText}>Buscando atividades...</Text>
         </View>
       ) : atividades.length === 0 ? (
         <View style={styles.stateBox}>
           <Ionicons name="clipboard-outline" size={32} color="#cbd5e1" style={{ marginBottom: 8 }} />
-          <Text style={styles.stateText}>Nenhuma atividade registrada.</Text>
-          <Text style={[styles.stateText, { fontSize: 12, marginTop: 4 }]}>Clique em Adicionar para registrar.</Text>
+          <Text style={styles.stateText}>Nenhuma atividade registrada ainda.</Text>
+          <Text style={[styles.stateText, { fontSize: 12, marginTop: 4 }]}>Use o botão <Text style={{ fontWeight: "700", color: "#3f6cf6" }}>Nova atividade</Text> abaixo para começar.</Text>
         </View>
       ) : (
         <View style={[styles.listWrap, { flex: 1 }]}>
@@ -120,7 +120,7 @@ export default function Step4Atividades({
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.listItemTitle} numberOfLines={1}>{item.descricao}</Text>
-                    <Text style={styles.listItemSub}>Evidência #{item.id_evidencia}</Text>
+                    <Text style={styles.listItemSub}>Registro nº {item.id_evidencia} · Toque para editar</Text>
                   </View>
                   <View style={{
                     paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20,
@@ -130,7 +130,7 @@ export default function Step4Atividades({
                       fontSize: 10, fontWeight: "700",
                       color: item.realizado === "S" ? "#16a34a" : "#dc2626",
                     }}>
-                      {item.realizado === "S" ? "REALIZADO" : "PENDENTE"}
+                      {item.realizado === "S" ? "CONCLUÍDO" : "PENDENTE"}
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={14} color="#cbd5e1" />
@@ -153,7 +153,7 @@ export default function Step4Atividades({
           })}
         >
           <Ionicons name="add-circle-outline" size={18} color="#3f6cf6" />
-          <Text style={{ fontSize: 13, fontWeight: "700", color: "#3f6cf6" }}>Adicionar</Text>
+          <Text style={{ fontSize: 13, fontWeight: "700", color: "#3f6cf6" }}>Nova atividade</Text>
         </Pressable>
 
         <Pressable
@@ -166,7 +166,7 @@ export default function Step4Atividades({
             end={{ x: 1, y: 1 }}
             style={[styles.btnGradient, { paddingVertical: 13 }]}
           >
-            <Text style={styles.btnPrimaryText}>Finalizar visita</Text>
+            <Text style={styles.btnPrimaryText}>Avançar</Text>
           </LinearGradient>
         </Pressable>
       </View>

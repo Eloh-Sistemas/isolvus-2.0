@@ -446,22 +446,70 @@ export function useVisitaCliente(user) {
     }
   }, [consultarItens, showAlert]);
 
-  const escolherFotos = useCallback(async () => {
+  const adicionarFotosSelecionadas = useCallback((assets) => {
+    const novos = (assets || []).map((a, idx) => ({
+      uri: a.uri,
+      name: a.fileName || `evidencia_${Date.now()}_${idx}.jpg`,
+      type: a.mimeType || "image/jpeg",
+    }));
+    if (novos.length > 0) {
+      setFotosSelecionadas((prev) => [...prev, ...novos]);
+    }
+  }, []);
+
+  const escolherFotosGaleria = useCallback(async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) { showAlert({ type: "warning", title: "Permissão", message: "Permita acesso a galeria para anexar fotos." }); return; }
+    if (!perm.granted) {
+      showAlert({ type: "warning", title: "Permissão", message: "Permita acesso à galeria para anexar fotos." });
+      return;
+    }
     const sel = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
       quality: 0.8,
     });
     if (sel.canceled) return;
-    const novos = (sel.assets || []).map((a, idx) => ({
-      uri: a.uri,
-      name: a.fileName || `evidencia_${Date.now()}_${idx}.jpg`,
-      type: a.mimeType || "image/jpeg",
-    }));
-    setFotosSelecionadas((prev) => [...prev, ...novos]);
+    adicionarFotosSelecionadas(sel.assets || []);
+  }, [adicionarFotosSelecionadas, showAlert]);
+
+  const tirarFotoCamera = useCallback(async () => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      showAlert({ type: "warning", title: "Permissão", message: "Permita acesso à câmera para tirar fotos." });
+      return;
+    }
+    const foto = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+      allowsEditing: false,
+    });
+    if (foto.canceled) return;
+    adicionarFotosSelecionadas(foto.assets || []);
+  }, [adicionarFotosSelecionadas, showAlert]);
+
+  const escolherFotos = useCallback(async () => {
+    showAlert({
+      type: "info",
+      title: "Adicionar fotos",
+      message: "Escolha como deseja anexar as fotos da atividade.",
+      buttons: [
+        { text: "Galeria", onPress: escolherFotosGaleria },
+        { text: "Câmera", onPress: tirarFotoCamera },
+        { text: "Cancelar", style: "cancel" },
+      ],
+    });
+  }, [escolherFotosGaleria, showAlert, tirarFotoCamera]);
+
+  const removerFotoSelecionada = useCallback((fotoUri) => {
+    if (!fotoUri) return;
+    setFotosSelecionadas((prev) => prev.filter((f) => f.uri !== fotoUri));
   }, []);
+
+  const excluirFotoSalva = useCallback(async (idArquivo) => {
+    if (!idArquivo) return;
+    await api.delete(`/v1/excluirArquivo/${idArquivo}`);
+    await consultarArquivosEvidencia();
+  }, [consultarArquivosEvidencia]);
 
   const enviarArquivos = useCallback(async (relacional) => {
     if (!relacional || fotosSelecionadas.length === 0) return;
@@ -723,6 +771,10 @@ export function useVisitaCliente(user) {
     adicionarItemAtividade,
     removerItemAtividade,
     escolherFotos,
+    escolherFotosGaleria,
+    tirarFotoCamera,
+    removerFotoSelecionada,
+    excluirFotoSalva,
     excluirEvidencia,
     salvarEvidencia,
     // checkout

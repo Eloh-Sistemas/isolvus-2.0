@@ -1,8 +1,34 @@
-import { ActivityIndicator, Image, Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, Animated, Image, Modal, PanResponder, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "../../../theme/colors";
 import { styles } from "../styles";
 import { formatarTelefone } from "../utils";
+
+function SectionCard({ icon, title, children }) {
+  return (
+    <View style={{
+      marginTop: 14, borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 14,
+      backgroundColor: "#fff", overflow: "hidden",
+    }}>
+      <View style={{
+        flexDirection: "row", alignItems: "center", gap: 8,
+        paddingHorizontal: 14, paddingVertical: 10,
+        backgroundColor: "#f8fafc", borderBottomWidth: 1, borderBottomColor: "#e2e8f0",
+      }}>
+        <View style={{
+          width: 28, height: 28, borderRadius: 8,
+          backgroundColor: "#eff6ff", alignItems: "center", justifyContent: "center",
+        }}>
+          <Ionicons name={icon} size={15} color={colors.accent} />
+        </View>
+        <Text style={{ fontSize: 13, fontWeight: "700", color: "#334155" }}>{title}</Text>
+      </View>
+      <View style={{ padding: 14 }}>{children}</View>
+    </View>
+  );
+}
 
 export default function ModalAtividade({
   visible,
@@ -31,53 +57,174 @@ export default function ModalAtividade({
   adicionarItemAtividade,
   removerItemAtividade,
   escolherFotos,
+  escolherFotosGaleria,
+  tirarFotoCamera,
+  removerFotoSelecionada,
+  excluirFotoSalva,
   excluirEvidencia,
   salvarEvidencia,
 }) {
+  const isEdicao = !!atividadeSelecionada?.id_evidencia;
+  const [previewFotoUri, setPreviewFotoUri] = useState("");
+  const [excluindoFotoId, setExcluindoFotoId] = useState(null);
+  const [erroFoto, setErroFoto] = useState("");
+  const [fotoMenuAberto, setFotoMenuAberto] = useState(false);
+  const previewTranslateY = useRef(new Animated.Value(0)).current;
+
+  const closePreview = () => {
+    setPreviewFotoUri("");
+    previewTranslateY.setValue(0);
+  };
+
+  const fecharModal = () => {
+    setPreviewFotoUri("");
+    onClose();
+  };
+
+  useEffect(() => {
+    if (!visible) {
+      closePreview();
+      setExcluindoFotoId(null);
+      setErroFoto("");
+      setFotoMenuAberto(false);
+    }
+  }, [visible]);
+
+  useEffect(() => {
+    if (previewFotoUri) {
+      previewTranslateY.setValue(0);
+      return;
+    }
+  }, [previewFotoUri]);
+
+  const previewPanResponder = useMemo(() => PanResponder.create({
+    onMoveShouldSetPanResponder: (_, gesture) => (
+      Math.abs(gesture.dy) > 6 && Math.abs(gesture.dy) > Math.abs(gesture.dx)
+    ),
+    onPanResponderMove: (_, gesture) => {
+      if (gesture.dy > 0) previewTranslateY.setValue(gesture.dy);
+    },
+    onPanResponderRelease: (_, gesture) => {
+      if (gesture.dy > 120 || gesture.vy > 1.15) {
+        Animated.timing(previewTranslateY, {
+          toValue: 500,
+          duration: 180,
+          useNativeDriver: true,
+        }).start(() => closePreview());
+        return;
+      }
+      Animated.spring(previewTranslateY, {
+        toValue: 0,
+        tension: 60,
+        friction: 10,
+        useNativeDriver: true,
+      }).start();
+    },
+  }), [previewTranslateY]);
+
+  const handleExcluirFotoSalva = async (idArquivo) => {
+    if (!idArquivo || excluindoFotoId) return;
+    setErroFoto("");
+    setExcluindoFotoId(idArquivo);
+    try {
+      await excluirFotoSalva(idArquivo);
+    } catch {
+      setErroFoto("Não foi possível excluir a foto agora. Tente novamente.");
+    } finally {
+      setExcluindoFotoId(null);
+    }
+  };
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalCardLarge}>
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <Text style={styles.modalTitle}>Evidencia da atividade</Text>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      statusBarTranslucent
+      hardwareAccelerated
+      onRequestClose={fecharModal}
+    >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCardLarge, { overflow: "hidden" }]}> 
 
-            <Text style={styles.label}>Atividade *</Text>
-            <View style={styles.selectWrap}>
-              {atividadesCatalogo.map((a) => (
-                <Pressable
-                  key={String(a.codigo)}
-                  style={[styles.optionChip, Number(a.codigo) === Number(codAtividade) ? styles.optionChipAtivo : null]}
-                  onPress={() => {
-                    setCodAtividade(Number(a.codigo));
-                    setNomeAtividade(String(a.descricao || ""));
-                  }}
-                >
-                  <Text style={[styles.optionChipText, Number(a.codigo) === Number(codAtividade) ? styles.optionChipTextAtivo : null]}>
-                    {a.descricao}
-                  </Text>
-                </Pressable>
-              ))}
+          {/* Header */}
+          <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 4 }}>
+            <View style={{
+              width: 40, height: 40, borderRadius: 12,
+              backgroundColor: "#eff6ff", alignItems: "center", justifyContent: "center",
+            }}>
+              <Ionicons name="clipboard" size={20} color={colors.accent} />
             </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 18, fontWeight: "800", color: "#111827", letterSpacing: -0.4 }}>
+                {isEdicao ? "Editar atividade" : "Nova atividade"}
+              </Text>
+              <Text style={{ fontSize: 13, color: "#6b7280", marginTop: 1 }}>
+                {isEdicao ? "Atualize os dados do registro selecionado." : "Selecione a atividade e preencha os campos."}
+              </Text>
+            </View>
+            <Pressable
+              onPress={fecharModal}
+              hitSlop={10}
+              style={({ pressed }) => ({
+                width: 34, height: 34, borderRadius: 10,
+                backgroundColor: pressed ? "#e2e8f0" : "#f1f5f9",
+                alignItems: "center", justifyContent: "center",
+              })}
+            >
+              <Ionicons name="close" size={18} color="#64748b" />
+            </Pressable>
+          </View>
 
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 8 }}>
+
+            {/* Tipo de atividade */}
+            <SectionCard icon="list" title="Tipo de atividade *">
+              <View style={styles.selectWrap}>
+                {atividadesCatalogo.map((a) => (
+                  <Pressable
+                    key={String(a.codigo)}
+                    style={[styles.optionChip, Number(a.codigo) === Number(codAtividade) ? styles.optionChipAtivo : null]}
+                    onPress={() => {
+                      setCodAtividade(Number(a.codigo));
+                      setNomeAtividade(String(a.descricao || ""));
+                    }}
+                  >
+                    <Text style={[styles.optionChipText, Number(a.codigo) === Number(codAtividade) ? styles.optionChipTextAtivo : null]}>
+                      {a.descricao}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </SectionCard>
+
+            {/* Veterinário */}
             {camposAtivos.cpveterinario && (
-              <>
-                <Text style={styles.subsectionTitle}>Veterinario</Text>
-                <Text style={styles.label}>Nome *</Text>
-                <TextInput style={styles.input} value={nomeVeterinario} onChangeText={(v) => setNomeVeterinario(v.toUpperCase())} />
-                <Text style={styles.label}>Telefone</Text>
+              <SectionCard icon="medkit-outline" title="Dados do veterinário">
+                <Text style={styles.label}>Nome completo *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={nomeVeterinario}
+                  onChangeText={(v) => setNomeVeterinario(v.toUpperCase())}
+                  placeholder="Ex: DR. CARLOS SILVA"
+                  placeholderTextColor="#94a3b8"
+                />
+                <Text style={styles.label}>Telefone de contato</Text>
                 <TextInput
                   style={styles.input}
                   value={contatoVeterinario}
                   keyboardType="phone-pad"
+                  placeholder="(00) 00000-0000"
+                  placeholderTextColor="#94a3b8"
                   onChangeText={(v) => setContatoVeterinario(formatarTelefone(v))}
                 />
-              </>
+              </SectionCard>
             )}
 
+            {/* Equipe */}
             {camposAtivos.cpequipe && (
-              <>
-                <Text style={styles.subsectionTitle}>Equipe treinada</Text>
-                <Text style={styles.label}>Equipe *</Text>
+              <SectionCard icon="people-outline" title="Equipe treinada">
+                <Text style={styles.label}>Selecione a equipe *</Text>
                 <View style={styles.selectWrap}>
                   {equipesCatalogo.map((e) => (
                     <Pressable
@@ -94,20 +241,28 @@ export default function ModalAtividade({
                     </Pressable>
                   ))}
                 </View>
-
-                {!!nomeEquipe && <Text style={styles.hintText}>Equipe: {nomeEquipe}</Text>}
-
-                <Text style={styles.label}>Qtd pessoas *</Text>
+                {!!nomeEquipe && (
+                  <View style={{
+                    flexDirection: "row", alignItems: "center", gap: 6,
+                    marginTop: 8, paddingHorizontal: 10, paddingVertical: 7,
+                    backgroundColor: "#eff6ff", borderRadius: 8,
+                  }}>
+                    <Ionicons name="checkmark-circle" size={14} color={colors.accent} />
+                    <Text style={{ fontSize: 12, color: colors.accent, fontWeight: "600" }}>Equipe: {nomeEquipe}</Text>
+                  </View>
+                )}
+                <Text style={styles.label}>Quantidade de pessoas *</Text>
                 <TextInput
                   style={styles.input}
                   value={qtdePessoa}
                   onChangeText={(v) => setQtdePessoa(v.replace(/[^\d.,]/g, ""))}
                   keyboardType="decimal-pad"
+                  placeholder="0"
+                  placeholderTextColor="#94a3b8"
                 />
-
-                <Text style={styles.label}>Fez quiz?</Text>
-                <View style={styles.row}>
-                  {[{ value: "S", label: "Sim" }, { value: "N", label: "Nao" }].map((op) => (
+                <Text style={styles.label}>O quiz foi aplicado?</Text>
+                <View style={[styles.row, { marginTop: 2 }]}>
+                  {[{ value: "S", label: "Sim" }, { value: "N", label: "Não" }].map((op) => (
                     <Pressable
                       key={op.value}
                       style={[styles.optionChip, fezQuiz === op.value ? styles.optionChipAtivo : null]}
@@ -119,16 +274,17 @@ export default function ModalAtividade({
                     </Pressable>
                   ))}
                 </View>
-              </>
+              </SectionCard>
             )}
 
+            {/* Itens */}
             {camposAtivos.cpitem && (
-              <>
-                <Text style={styles.subsectionTitle}>Itens</Text>
-                <View style={styles.row}>
+              <SectionCard icon="cube-outline" title="Itens entregues">
+                <Text style={styles.label}>Tipo de item</Text>
+                <View style={[styles.row, { marginTop: 2 }]}>
                   {[
                     { value: "AM", label: "Amostra" },
-                    { value: "MT", label: "Material Tec." },
+                    { value: "MT", label: "Material Técnico" },
                     { value: "BD", label: "Brinde" },
                   ].map((op) => (
                     <Pressable
@@ -146,13 +302,12 @@ export default function ModalAtividade({
                     </Pressable>
                   ))}
                 </View>
-
-                <Text style={styles.label}>Item</Text>
+                <Text style={styles.label}>Buscar item</Text>
                 <TextInput
                   style={styles.input}
                   value={itemBusca}
                   onChangeText={buscarItemSugestoes}
-                  placeholder="Buscar item"
+                  placeholder="Digite o nome do item..."
                   placeholderTextColor="#94a3b8"
                 />
                 {itemSugestoes.length > 0 && (
@@ -171,38 +326,57 @@ export default function ModalAtividade({
                     ))}
                   </View>
                 )}
-
                 <Text style={styles.label}>Quantidade</Text>
-                <View style={styles.rowBetween}>
+                <View style={{ flexDirection: "row", gap: 8, alignItems: "flex-start" }}>
                   <TextInput
-                    style={[styles.input, { flex: 1, marginRight: 8 }]}
+                    style={[styles.input, { flex: 1 }]}
                     value={qtItem}
                     onChangeText={(v) => setQtItem(v.replace(/[^\d.,]/g, ""))}
                     keyboardType="decimal-pad"
+                    placeholder="0"
+                    placeholderTextColor="#94a3b8"
                   />
-                  <Pressable style={styles.btnPrimarySmall} onPress={adicionarItemAtividade}>
-                    <Text style={styles.btnPrimarySmallText}>Adicionar</Text>
+                  <Pressable
+                    onPress={adicionarItemAtividade}
+                    style={({ pressed }) => ({
+                      minHeight: 48, paddingHorizontal: 16, borderRadius: 10,
+                      backgroundColor: pressed ? "#1e3a8a" : "#1d4ed8",
+                      alignItems: "center", justifyContent: "center",
+                    })}
+                  >
+                    <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>Inserir</Text>
                   </Pressable>
                 </View>
-
-                {itensAtividade.map((item) => (
-                  <View key={String(item.reg || `${item.produto}-${item.quantidade}`)} style={styles.listItemCompact}>
-                    <Text style={styles.listItemTitle}>{item.produto} - {item.quantidade} ({item.tipo})</Text>
-                    <Pressable onPress={() => removerItemAtividade(item.reg)}>
-                      <Ionicons name="trash-outline" size={16} color={colors.danger} />
-                    </Pressable>
+                {itensAtividade.length > 0 && (
+                  <View style={{ marginTop: 10, gap: 6 }}>
+                    <Text style={{ fontSize: 11, color: "#94a3b8", fontWeight: "600" }}>
+                      ITENS ADICIONADOS
+                    </Text>
+                    {itensAtividade.map((item) => (
+                      <View key={String(item.reg || `${item.produto}-${item.quantidade}`)} style={styles.listItemCompact}>
+                        <Ionicons name="cube" size={14} color="#94a3b8" />
+                        <Text style={[styles.listItemTitle, { fontSize: 12 }]}>{item.produto}</Text>
+                        <Text style={{ fontSize: 12, color: "#64748b", fontWeight: "600" }}>
+                          {item.quantidade} · {item.tipo}
+                        </Text>
+                        <Pressable onPress={() => removerItemAtividade(item.reg)} hitSlop={8}>
+                          <Ionicons name="trash-outline" size={16} color={colors.danger} />
+                        </Pressable>
+                      </View>
+                    ))}
                   </View>
-                ))}
-              </>
+                )}
+              </SectionCard>
             )}
 
+            {/* Venda */}
             {camposAtivos.cpvenda && (
-              <>
-                <Text style={styles.subsectionTitle}>Venda</Text>
-                <View style={styles.row}>
+              <SectionCard icon="cart-outline" title="Resultado de venda">
+                <Text style={styles.label}>Houve venda nesta visita?</Text>
+                <View style={[styles.row, { marginTop: 2 }]}>
                   {[
-                    { value: "S", label: "Houve venda: Sim" },
-                    { value: "N", label: "Houve venda: Nao" },
+                    { value: "S", label: "Sim, houve venda" },
+                    { value: "N", label: "Não houve venda" },
                   ].map((op) => (
                     <Pressable
                       key={op.value}
@@ -215,63 +389,271 @@ export default function ModalAtividade({
                     </Pressable>
                   ))}
                 </View>
-              </>
+              </SectionCard>
             )}
 
+            {/* Fotos */}
             {camposAtivos.cpfoto && (
-              <>
-                <Text style={styles.subsectionTitle}>Fotos</Text>
-                <Pressable style={styles.btnOutline} onPress={escolherFotos}>
-                  <Text style={styles.btnOutlineText}>Selecionar foto</Text>
+              <SectionCard icon="camera-outline" title="Evidência fotográfica">
+                <Pressable
+                  style={styles.btnOutline}
+                  onPress={() => setFotoMenuAberto(true)}
+                >
+                  <Text style={styles.btnOutlineText}>Adicionar fotos (galeria ou câmera)</Text>
                 </Pressable>
-                {fotosSelecionadas.map((foto, idx) => (
-                  <View key={`${foto.uri}-${idx}`} style={styles.photoRow}>
-                    <Image source={{ uri: foto.uri }} style={styles.photoThumb} />
-                    <Text style={styles.photoName} numberOfLines={1}>{foto.name}</Text>
+                {fotosSelecionadas.length > 0 && (
+                  <View style={{ marginTop: 10, gap: 6 }}>
+                    <Text style={{ fontSize: 11, color: "#94a3b8", fontWeight: "600" }}>
+                      {fotosSelecionadas.length} {fotosSelecionadas.length === 1 ? "FOTO SELECIONADA" : "FOTOS SELECIONADAS"}
+                    </Text>
+                    {fotosSelecionadas.map((foto, idx) => (
+                      <View key={`${foto.uri}-${idx}`} style={styles.photoRow}>
+                        <Pressable onPress={() => setPreviewFotoUri(foto.uri)}>
+                          <Image source={{ uri: foto.uri }} style={styles.photoThumb} />
+                        </Pressable>
+                        <Text style={styles.photoName} numberOfLines={1}>{foto.name}</Text>
+                        <Pressable onPress={() => removerFotoSelecionada(foto.uri)} hitSlop={8}>
+                          <Ionicons name="trash-outline" size={17} color={colors.danger} />
+                        </Pressable>
+                      </View>
+                    ))}
                   </View>
-                ))}
-                {fotosSalvas.length > 0 && (
-                  <Text style={styles.hintText}>Arquivos salvos: {fotosSalvas.length}</Text>
                 )}
-              </>
+                {fotosSalvas.length > 0 && (
+                  <View style={{ marginTop: 10, gap: 6 }}>
+                    <Text style={{ fontSize: 11, color: "#16a34a", fontWeight: "700" }}>
+                      {fotosSalvas.length} {fotosSalvas.length === 1 ? "FOTO JÁ SALVA" : "FOTOS JÁ SALVAS"}
+                    </Text>
+                    {!!erroFoto && (
+                      <Text style={{ fontSize: 12, color: "#b91c1c", fontWeight: "600" }}>{erroFoto}</Text>
+                    )}
+                    {fotosSalvas.map((foto, idx) => (
+                      <View key={String(foto.id_arquivo || idx)} style={styles.photoRow}>
+                        <Pressable onPress={() => setPreviewFotoUri(foto.url)}>
+                          <Image source={{ uri: foto.url }} style={styles.photoThumb} />
+                        </Pressable>
+                        <Text style={styles.photoName} numberOfLines={1}>
+                          {`Arquivo ${foto.id_arquivo || idx + 1}`}
+                        </Text>
+                        <Pressable
+                          onPress={() => handleExcluirFotoSalva(foto.id_arquivo)}
+                          hitSlop={8}
+                          disabled={!!excluindoFotoId}
+                        >
+                          {excluindoFotoId === foto.id_arquivo
+                            ? <ActivityIndicator size="small" color={colors.danger} />
+                            : <Ionicons name="trash-outline" size={17} color={colors.danger} />
+                          }
+                        </Pressable>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </SectionCard>
             )}
 
+            {/* Observação */}
             {camposAtivos.cpobservacao && (
-              <>
-                <Text style={styles.subsectionTitle}>Observacao</Text>
+              <SectionCard icon="create-outline" title="Observações">
                 <TextInput
-                  style={styles.textArea}
+                  style={[styles.textArea, { marginTop: 0 }]}
                   multiline
                   numberOfLines={5}
                   value={comentario}
                   onChangeText={setComentario}
-                  placeholder="Descreva a observacao"
+                  placeholder="Descreva observações relevantes desta visita..."
                   placeholderTextColor="#94a3b8"
                 />
-              </>
+              </SectionCard>
             )}
 
-            <View style={styles.modalActions}>
-              <Pressable style={styles.btnSecondary} onPress={onClose}>
-                <Text style={styles.btnSecondaryText}>Voltar</Text>
+            {/* Rodapé de ações */}
+            <View style={{ flexDirection: "row", gap: 8, marginTop: 20 }}>
+              <Pressable style={styles.btnSecondary} onPress={fecharModal}>
+                <Text style={styles.btnSecondaryText}>Cancelar</Text>
               </Pressable>
 
-              {atividadeSelecionada?.id_evidencia ? (
-                <Pressable style={styles.btnDangerSmall} onPress={excluirEvidencia}>
-                  <Text style={styles.btnDangerSmallText}>Excluir</Text>
+              {isEdicao && (
+                <Pressable
+                  style={[styles.btnDangerSmall, { paddingHorizontal: 16 }]}
+                  onPress={excluirEvidencia}
+                >
+                  <Ionicons name="trash-outline" size={16} color="#fff" />
                 </Pressable>
-              ) : null}
+              )}
 
-              <Pressable style={styles.btnPrimary} onPress={salvarEvidencia} disabled={salvandoEvidencia}>
-                {salvandoEvidencia
-                  ? <ActivityIndicator color="#fff" />
-                  : <Text style={styles.btnPrimaryText}>Salvar</Text>
-                }
+              <Pressable
+                style={{ flex: 1, borderRadius: 12, overflow: "hidden", opacity: salvandoEvidencia ? 0.7 : 1 }}
+                onPress={salvarEvidencia}
+                disabled={salvandoEvidencia}
+              >
+                <LinearGradient
+                  colors={["#3f6cf6", "#2f59d9"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.btnGradient, { minHeight: 46 }]}
+                >
+                  {salvandoEvidencia
+                    ? <ActivityIndicator color="#fff" />
+                    : <Text style={styles.btnPrimaryText}>{isEdicao ? "Salvar alterações" : "Registrar atividade"}</Text>
+                  }
+                </LinearGradient>
               </Pressable>
             </View>
+
           </ScrollView>
+
+          {/* Preview interno para evitar conflito de múltiplos Modals no Android */}
+          {previewFotoUri ? (
+            <Animated.View
+              style={{
+              position: "absolute",
+              top: 0,
+              right: 0,
+              bottom: 0,
+              left: 0,
+              backgroundColor: "#020617",
+                borderRadius: 12,
+              alignItems: "center",
+              justifyContent: "center",
+              paddingHorizontal: 0,
+              paddingTop: 22,
+              paddingBottom: 10,
+              zIndex: 50,
+              transform: [{ translateY: previewTranslateY }],
+            }}
+            >
+              <View style={{
+                width: "100%",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 6,
+                paddingHorizontal: 14,
+              }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <View style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 10,
+                    backgroundColor: "rgba(59,130,246,0.22)",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}>
+                    <Ionicons name="image-outline" size={16} color="#bfdbfe" />
+                  </View>
+                  <View>
+                    <Text style={{ color: "#f8fafc", fontSize: 14, fontWeight: "800" }}>Visualização da foto</Text>
+                    <Text style={{ color: "#94a3b8", fontSize: 11 }}>Deslize para baixo para fechar</Text>
+                  </View>
+                </View>
+
+                <Pressable
+                  onPress={closePreview}
+                  style={({ pressed }) => ({
+                    width: 40,
+                    height: 40,
+                    borderRadius: 20,
+                    backgroundColor: pressed ? "rgba(148,163,184,0.55)" : "rgba(30,41,59,0.65)",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    zIndex: 3,
+                  })}
+                >
+                  <Ionicons name="close" size={18} color="#fff" />
+                </Pressable>
+              </View>
+
+              <View style={{
+                width: "100%",
+                flex: 1,
+                backgroundColor: "#020617",
+                alignItems: "center",
+                justifyContent: "center",
+                overflow: "hidden",
+              }}
+              {...previewPanResponder.panHandlers}
+              >
+              <Image
+                source={{ uri: previewFotoUri }}
+                resizeMode="contain"
+                style={{ width: "100%", height: "100%", backgroundColor: "#020617" }}
+              />
+
+              <View style={{
+                position: "absolute",
+                bottom: 10,
+                alignSelf: "center",
+                backgroundColor: "rgba(15,23,42,0.72)",
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: "rgba(148,163,184,0.3)",
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+              }}>
+                <Text style={{ color: "#cbd5e1", fontSize: 11, fontWeight: "600" }}>
+                  Pré-visualização em tela cheia
+                </Text>
+              </View>
+              </View>
+            </Animated.View>
+          ) : null}
+
+          {fotoMenuAberto ? (
+            <View style={{
+              position: "absolute",
+              top: 0,
+              right: 0,
+              bottom: 0,
+              left: 0,
+              backgroundColor: "rgba(2,6,23,0.55)",
+              borderRadius: 12,
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 16,
+              zIndex: 70,
+            }}>
+              <View style={{
+                width: "100%",
+                maxWidth: 360,
+                borderRadius: 14,
+                backgroundColor: "#fff",
+                padding: 12,
+                borderWidth: 1,
+                borderColor: "#e2e8f0",
+              }}>
+                <Text style={{ fontSize: 15, fontWeight: "800", color: "#0f172a", marginBottom: 10 }}>
+                  Adicionar foto
+                </Text>
+                <Pressable
+                  style={[styles.btnPrimarySmall, { minHeight: 42, marginBottom: 8 }]}
+                  onPress={async () => {
+                    setFotoMenuAberto(false);
+                    await escolherFotosGaleria();
+                  }}
+                >
+                  <Text style={styles.btnPrimarySmallText}>Selecionar da galeria</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.btnPrimarySmall, { minHeight: 42, marginBottom: 8 }]}
+                  onPress={async () => {
+                    setFotoMenuAberto(false);
+                    await tirarFotoCamera();
+                  }}
+                >
+                  <Text style={styles.btnPrimarySmallText}>Tirar foto com câmera</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.btnSecondary, { minHeight: 42 }]}
+                  onPress={() => setFotoMenuAberto(false)}
+                >
+                  <Text style={styles.btnSecondaryText}>Cancelar</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
+          </View>
         </View>
-      </View>
-    </Modal>
+      </Modal>
   );
 }

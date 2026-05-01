@@ -160,36 +160,42 @@ export default function VisitaClienteScreen({ user }) {
       </Modal>
 
       {/* Modal Atividade */}
-      <ModalAtividade
-        visible={ctx.showAtividadeModal}
-        onClose={() => ctx.setShowAtividadeModal(false)}
-        atividadeSelecionada={ctx.atividadeSelecionada}
-        codAtividade={ctx.codAtividade} setCodAtividade={ctx.setCodAtividade}
-        nomeAtividade={ctx.nomeAtividade} setNomeAtividade={ctx.setNomeAtividade}
-        codEquipe={ctx.codEquipe} setCodEquipe={ctx.setCodEquipe}
-        nomeEquipe={ctx.nomeEquipe} setNomeEquipe={ctx.setNomeEquipe}
-        qtdePessoa={ctx.qtdePessoa} setQtdePessoa={ctx.setQtdePessoa}
-        fezQuiz={ctx.fezQuiz} setFezQuiz={ctx.setFezQuiz}
-        comentario={ctx.comentario} setComentario={ctx.setComentario}
-        nomeVeterinario={ctx.nomeVeterinario} setNomeVeterinario={ctx.setNomeVeterinario}
-        contatoVeterinario={ctx.contatoVeterinario} setContatoVeterinario={ctx.setContatoVeterinario}
-        houveVenda={ctx.houveVenda} setHouveVenda={ctx.setHouveVenda}
-        tipoItem={ctx.tipoItem} setTipoItem={ctx.setTipoItem}
-        itemBusca={ctx.itemBusca} itemSugestoes={ctx.itemSugestoes}
-        codItem={ctx.codItem} setCodItem={ctx.setCodItem}
-        qtItem={ctx.qtItem} setQtItem={ctx.setQtItem}
-        fotosSelecionadas={ctx.fotosSelecionadas} fotosSalvas={ctx.fotosSalvas}
-        salvandoEvidencia={ctx.salvandoEvidencia}
-        camposAtivos={ctx.camposAtivos}
-        atividadesCatalogo={ctx.atividadesCatalogo} equipesCatalogo={ctx.equipesCatalogo}
-        itensAtividade={ctx.itensAtividade}
-        buscarItemSugestoes={ctx.buscarItemSugestoes}
-        adicionarItemAtividade={ctx.adicionarItemAtividade}
-        removerItemAtividade={ctx.removerItemAtividade}
-        escolherFotos={ctx.escolherFotos}
-        excluirEvidencia={ctx.excluirEvidencia}
-        salvarEvidencia={ctx.salvarEvidencia}
-      />
+      {ctx.showAtividadeModal && (
+        <ModalAtividade
+          visible={ctx.showAtividadeModal}
+          onClose={() => ctx.setShowAtividadeModal(false)}
+          atividadeSelecionada={ctx.atividadeSelecionada}
+          codAtividade={ctx.codAtividade} setCodAtividade={ctx.setCodAtividade}
+          nomeAtividade={ctx.nomeAtividade} setNomeAtividade={ctx.setNomeAtividade}
+          codEquipe={ctx.codEquipe} setCodEquipe={ctx.setCodEquipe}
+          nomeEquipe={ctx.nomeEquipe} setNomeEquipe={ctx.setNomeEquipe}
+          qtdePessoa={ctx.qtdePessoa} setQtdePessoa={ctx.setQtdePessoa}
+          fezQuiz={ctx.fezQuiz} setFezQuiz={ctx.setFezQuiz}
+          comentario={ctx.comentario} setComentario={ctx.setComentario}
+          nomeVeterinario={ctx.nomeVeterinario} setNomeVeterinario={ctx.setNomeVeterinario}
+          contatoVeterinario={ctx.contatoVeterinario} setContatoVeterinario={ctx.setContatoVeterinario}
+          houveVenda={ctx.houveVenda} setHouveVenda={ctx.setHouveVenda}
+          tipoItem={ctx.tipoItem} setTipoItem={ctx.setTipoItem}
+          itemBusca={ctx.itemBusca} itemSugestoes={ctx.itemSugestoes}
+          codItem={ctx.codItem} setCodItem={ctx.setCodItem}
+          qtItem={ctx.qtItem} setQtItem={ctx.setQtItem}
+          fotosSelecionadas={ctx.fotosSelecionadas} fotosSalvas={ctx.fotosSalvas}
+          salvandoEvidencia={ctx.salvandoEvidencia}
+          camposAtivos={ctx.camposAtivos}
+          atividadesCatalogo={ctx.atividadesCatalogo} equipesCatalogo={ctx.equipesCatalogo}
+          itensAtividade={ctx.itensAtividade}
+          buscarItemSugestoes={ctx.buscarItemSugestoes}
+          adicionarItemAtividade={ctx.adicionarItemAtividade}
+          removerItemAtividade={ctx.removerItemAtividade}
+          escolherFotos={ctx.escolherFotos}
+          escolherFotosGaleria={ctx.escolherFotosGaleria}
+          tirarFotoCamera={ctx.tirarFotoCamera}
+          removerFotoSelecionada={ctx.removerFotoSelecionada}
+          excluirFotoSalva={ctx.excluirFotoSalva}
+          excluirEvidencia={ctx.excluirEvidencia}
+          salvarEvidencia={ctx.salvarEvidencia}
+        />
+      )}
     </View>
   );
 }
