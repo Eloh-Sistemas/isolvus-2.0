@@ -350,6 +350,7 @@ export default function HomeScreen({ user, onLogout }) {
 
   function fecharModulos() {
     Animated.timing(drawerAnim, { toValue: 400, duration: 220, useNativeDriver: true }).start(() => {
+      setMenuFotoAberto(false);
       setShowModulos(false);
     });
   }
@@ -641,6 +642,9 @@ export default function HomeScreen({ user, onLogout }) {
         <View style={styles.drawerOverlay}>
           <Pressable style={styles.backdrop} onPress={fecharModulos} />
           <Animated.View style={[styles.drawer, { paddingTop: 14 + insets.top, transform: [{ translateX: drawerAnim }] }]}>
+            {menuFotoAberto ? (
+              <Pressable style={styles.popupDismissLayer} onPress={() => setMenuFotoAberto(false)} />
+            ) : null}
             <View style={styles.drawerHeader}>
               <View style={styles.drawerProfile}>
                 <View>
@@ -652,11 +656,6 @@ export default function HomeScreen({ user, onLogout }) {
                     {avatarUsuario
                       ? <Image source={{ uri: avatarUsuario }} style={styles.drawerAvatarImg} />
                       : <Text style={styles.drawerAvatarTxt}>{iniciais(nomeUsuario)}</Text>}
-                    <View style={styles.drawerAvatarOverlay}>
-                      {salvandoFoto
-                        ? <ActivityIndicator size={11} color="#fff" />
-                        : <Ionicons name="camera" size={11} color="#fff" />}
-                    </View>
                   </Pressable>
 
                   {menuFotoAberto && (
@@ -758,7 +757,7 @@ export default function HomeScreen({ user, onLogout }) {
               </ScrollView>
             )}
 
-            <View style={styles.drawerFooter}>
+            <View style={[styles.drawerFooter, { paddingBottom: 22 }]}>
               <Pressable style={styles.logoutButton} onPress={onLogout}>
                 <Ionicons name="log-out-outline" size={16} color="#ef4444" />
                 <Text style={styles.logoutText}>Sair do sistema</Text>
@@ -994,6 +993,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingBottom: 0,
   },
+  popupDismissLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 40,
+  },
   drawerFooter: {
     borderTopWidth: 1,
     borderTopColor: "#e2e8f0",
@@ -1019,23 +1022,16 @@ const styles = StyleSheet.create({
     backgroundColor: "#6366f1",
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden",
+    overflow: "visible",
   },
-  drawerAvatarImg: { width: 56, height: 56 },
+  drawerAvatarImg: { width: 56, height: 56, borderRadius: 28 },
   drawerAvatarTxt: { color: colors.white, fontSize: 20, fontWeight: "800" },
-  drawerAvatarOverlay: {
-    position: "absolute",
-    right: 0,
-    bottom: 0,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: "rgba(15,23,42,0.82)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
   avatarPopupMenu: {
-    marginTop: 8,
+    position: "absolute",
+    top: 64,
+    left: 0,
+    zIndex: 50,
+    elevation: 8,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: "#e2e8f0",
@@ -1136,6 +1132,8 @@ const styles = StyleSheet.create({
   logoutButton: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
