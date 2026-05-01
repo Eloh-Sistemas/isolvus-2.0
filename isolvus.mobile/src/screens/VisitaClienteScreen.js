@@ -21,7 +21,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import api from "../services/api";
 import { colors } from "../theme/colors";
 
-const STEP_LABELS = ["Cliente", "Historico", "Check-In", "Atividades", "Check-Out"];
 
 function pad2(n) {
   return String(n).padStart(2, "0");
@@ -944,28 +943,6 @@ export default function VisitaClienteScreen({ user }) {
     }
   }, [pontosCheckin.length, regionCheckin, step]);
 
-  const renderStepIndicator = () => (
-    <View style={styles.stepIndicatorWrap}>
-      <View style={styles.stepConnectorTrack} />
-      {STEP_LABELS.map((label, idx) => {
-        const num = idx + 1;
-        const active = step === num;
-        const done = step > num;
-        return (
-          <View key={num} style={styles.stepItem}>
-            <View style={[styles.stepCircle, active && styles.stepCircleActive, done && styles.stepCircleDone]}>
-              {done
-                ? <Ionicons name="checkmark" size={13} color="#fff" />
-                : <Text style={[styles.stepCircleText, active && styles.stepCircleTextActive]}>{num}</Text>
-              }
-            </View>
-            <Text style={[styles.stepLabel, active && styles.stepLabelActive]} numberOfLines={1}>{label}</Text>
-          </View>
-        );
-      })}
-    </View>
-  );
-
   const renderStep1 = () => (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>Seleciona Cliente</Text>
@@ -1343,8 +1320,6 @@ export default function VisitaClienteScreen({ user }) {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {renderStepIndicator()}
-
         {step === 1 && renderStep1()}
         {step === 2 && renderStep2()}
         {step === 3 && renderStep3()}
@@ -1624,67 +1599,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingTop: 20,
     paddingBottom: 12,
-  },
-  stepIndicatorWrap: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginTop: 15,
-    marginBottom: 35,
-    position: "relative",
-    paddingHorizontal: 4,
-  },
-  stepConnectorTrack: {
-    position: "absolute",
-    top: 13,
-    left: 28,
-    right: 28,
-    height: 2,
-    backgroundColor: "#e2e8f0",
-    zIndex: 0,
-  },
-  stepItem: {
-    alignItems: "center",
-    flex: 1,
-    zIndex: 1,
-  },
-  stepCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "#e2e8f0",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 5,
-  },
-  stepCircleActive: {
-    backgroundColor: colors.accent,
-    shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  stepCircleDone: {
-    backgroundColor: "#22c55e",
-  },
-  stepCircleText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#94a3b8",
-  },
-  stepCircleTextActive: {
-    color: "#fff",
-  },
-  stepLabel: {
-    fontSize: 9,
-    color: "#94a3b8",
-    textAlign: "center",
-    fontWeight: "600",
-  },
-  stepLabelActive: {
-    color: colors.accent,
-    fontWeight: "800",
   },
   mapCard: {
     borderWidth: 1,
