@@ -437,6 +437,8 @@ function AbaLogs() {
 function AbaIntegracoes() {
     const [integracoes,   setIntegracoes]   = useState([]);
     const [filtro,        setFiltro]        = useState("");
+    const [filtroMetodo,  setFiltroMetodo]  = useState("");
+    const [filtroAtivo,   setFiltroAtivo]   = useState("");
     const [loadingIds,    setLoadingIds]    = useState([]);
     const [savingIds,     setSavingIds]     = useState([]);
     const [editando,      setEditando]      = useState({}); // { "srv_integ": { intervalominutos, realizarintegracao } }
@@ -543,9 +545,11 @@ function AbaIntegracoes() {
     const isLoading = (item) => loadingIds.includes(chave(item));
 
     const integracoesFiltradas = integracoes.filter((i) =>
-        filtro === "" ||
+        (filtro === "" ||
         i.integracao?.toLowerCase().includes(filtro.toLowerCase()) ||
-        String(i.id_servidor).includes(filtro)
+        String(i.id_servidor).includes(filtro)) &&
+        (filtroMetodo === "" || (i.metodo ?? "").toUpperCase() === filtroMetodo) &&
+        (filtroAtivo === "" || i.realizarintegracao === filtroAtivo)
     );
     const integracoesSorted   = sortarLista(integracoesFiltradas, ordem.coluna, ordem.direcao);
     const integracoesPaginadas = integracoesSorted.slice((pagina - 1) * ITEMS_POR_PAGINA, pagina * ITEMS_POR_PAGINA);
@@ -563,7 +567,7 @@ function AbaIntegracoes() {
             <p className="integ-section-title">Filtros</p>
             <div className="integ-filtros">
                 <div className="row g-2 align-items-end">
-                    <div className="col-md-4">
+                    <div className="col-md-3">
                         <label className="form-label">Integração / Servidor</label>
                         <input
                             type="text"
@@ -574,6 +578,33 @@ function AbaIntegracoes() {
                         />
                     </div>
                     <div className="col-md-2">
+                        <label className="form-label">Método</label>
+                        <select
+                            className="form-select"
+                            value={filtroMetodo}
+                            onChange={(e) => { setFiltroMetodo(e.target.value); setPagina(1); }}
+                        >
+                            <option value="">Todos</option>
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                            <option value="PUT">PUT</option>
+                            <option value="PATCH">PATCH</option>
+                            <option value="DELETE">DELETE</option>
+                        </select>
+                    </div>
+                    <div className="col-md-2">
+                        <label className="form-label">Status</label>
+                        <select
+                            className="form-select"
+                            value={filtroAtivo}
+                            onChange={(e) => { setFiltroAtivo(e.target.value); setPagina(1); }}
+                        >
+                            <option value="">Todos</option>
+                            <option value="S">Ativa</option>
+                            <option value="N">Inativa</option>
+                        </select>
+                    </div>
+                    <div className="col-md-auto">
                         <button
                             className="btn btn-primary"
                             onClick={() => carregarIntegracoes(filtro)}
@@ -584,6 +615,10 @@ function AbaIntegracoes() {
                     <div className="col-md-1 ms-auto">
                         <label className="form-label">Total</label>
                         <input type="text" className="form-control text-center" value={integracoesFiltradas.length} readOnly disabled />
+                    </div>
+                    <div className="col-md-1">
+                        <label className="form-label">Ativas</label>
+                        <input type="text" className="form-control text-center text-success fw-semibold" value={integracoesFiltradas.filter((i) => i.realizarintegracao === "S").length} readOnly disabled />
                     </div>
                 </div>
             </div>
