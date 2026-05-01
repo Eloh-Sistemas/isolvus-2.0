@@ -31,6 +31,24 @@ function formatDateTime(date) {
   return `${pad2(date.getDate())}/${pad2(date.getMonth() + 1)}/${date.getFullYear()} ${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
 }
 
+function formatDateDisplay(valor) {
+  const txt = String(valor || "").trim();
+  if (!txt) return "";
+  // ISO: 2025-10-15T14:32:00 ou 2025-10-15 14:32:00
+  const iso = txt.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+  if (iso) {
+    const [, yyyy, mm, dd, hh, min] = iso;
+    return `${dd}/${mm}/${yyyy}  ${hh}:${min}`;
+  }
+  // BR: 15/10/2025 14:32:00
+  const br = txt.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+  if (br) {
+    const [, dd, mm, yyyy, hh, min] = br;
+    return `${dd}/${mm}/${yyyy}  ${hh}:${min}`;
+  }
+  return txt;
+}
+
 function parseDateTimeBr(valor) {
   const txt = String(valor || "").trim();
   const m = txt.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})$/);
@@ -1047,17 +1065,13 @@ export default function VisitaClienteScreen({ user }) {
 
   const renderStep2 = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Historico de visitas</Text>
+      <Text style={styles.sectionTitle}>Histórico de visitas</Text>
+      <Text style={styles.sectionSubtitle}>Selecione uma visita existente ou inicie uma nova.</Text>
 
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16, gap: 10 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20, gap: 10 }}>
         <Pressable style={styles.btnBack} onPress={voltar}>
           <Ionicons name="arrow-back" size={18} color="#475569" />
           <Text style={styles.btnBackText}>Voltar</Text>
-        </Pressable>
-        <Pressable style={({ pressed }) => [styles.btnPrimary, pressed && styles.btnPressed]} onPress={avancar}>
-          <LinearGradient colors={["#3f6cf6", "#2f59d9"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.btnGradient}>
-            <Text style={styles.btnPrimaryText}>Nova Visita</Text>
-          </LinearGradient>
         </Pressable>
       </View>
 
@@ -1067,21 +1081,50 @@ export default function VisitaClienteScreen({ user }) {
           <Text style={styles.stateText}>Carregando historico...</Text>
         </View>
       ) : historico.length === 0 ? (
-        <View style={styles.stateBox}><Text style={styles.stateText}>Nenhum historico encontrado.</Text></View>
+        <View style={styles.stateBox}>
+          <Ionicons name="calendar-outline" size={32} color="#cbd5e1" style={{ marginBottom: 8 }} />
+          <Text style={styles.stateText}>Nenhuma visita encontrada.</Text>
+          <Text style={[styles.stateText, { fontSize: 12, marginTop: 4 }]}>Clique em Nova Visita para iniciar.</Text>
+        </View>
       ) : (
         <View style={styles.listWrap}>
           {historico.map((item) => (
             <Pressable
               key={String(item.id_visita)}
-              style={styles.listItem}
+              style={({ pressed }) => [styles.listItem, pressed && { backgroundColor: "#f8fafc" }]}
               onPress={() => {
                 setIdVisita(Number(item.id_visita));
                 setDataCheckin(String(item.dtcheckin || ""));
                 setStep(4);
               }}
             >
-              <Text style={styles.listItemTitle}>{item.id_visita} - {item.status}</Text>
-              <Text style={styles.listItemSub}>{String(item.dtcheckin || "")}</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <View style={{
+                  width: 38, height: 38, borderRadius: 10,
+                  backgroundColor: item.status === "FINALIZADO" ? "#dcfce7" : "#eff6ff",
+                  alignItems: "center", justifyContent: "center",
+                }}>
+                  <Ionicons
+                    name={item.status === "FINALIZADO" ? "checkmark-circle" : "time-outline"}
+                    size={20}
+                    color={item.status === "FINALIZADO" ? "#16a34a" : colors.accent}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.listItemTitle}>Visita #{item.id_visita}</Text>
+                  <Text style={styles.listItemSub}>{formatDateDisplay(item.dtcheckin)}</Text>
+                </View>
+                <View style={{
+                  paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20,
+                  backgroundColor: item.status === "FINALIZADO" ? "#dcfce7" : "#eff6ff",
+                }}>
+                  <Text style={{
+                    fontSize: 10, fontWeight: "700",
+                    color: item.status === "FINALIZADO" ? "#16a34a" : colors.accent,
+                  }}>{item.status}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={14} color="#cbd5e1" />
+              </View>
             </Pressable>
           ))}
         </View>
@@ -1310,6 +1353,16 @@ export default function VisitaClienteScreen({ user }) {
         {step === 4 && renderStep4()}
         {step === 5 && renderStep5()}
       </ScrollView>
+
+      {step === 2 && (
+        <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, paddingHorizontal: 14, paddingBottom: 24, paddingTop: 8, backgroundColor: "transparent" }}>
+          <Pressable style={({ pressed }) => [styles.btnPrimaryFull, pressed && styles.btnPressed]} onPress={avancar}>
+            <LinearGradient colors={["#3f6cf6", "#2f59d9"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.btnGradient}>
+              <Text style={styles.btnPrimaryText}>Nova Visita</Text>
+            </LinearGradient>
+          </Pressable>
+        </View>
+      )}
 
       <Modal visible={showJustificativaModal} transparent animationType="fade" onRequestClose={() => setShowJustificativaModal(false)}>
         <View style={styles.modalOverlay}>
@@ -1582,7 +1635,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 14,
     paddingTop: 20,
-    paddingBottom: 12,
+    paddingBottom: 90,
   },
   mapCard: {
     borderWidth: 1,
