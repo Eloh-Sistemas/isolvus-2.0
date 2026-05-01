@@ -81,6 +81,36 @@ function normalizarModulo(modulo) {
   };
 }
 
+function mesclarModulosPermissao(grupos) {
+  const mapa = new Map();
+
+  for (const grupo of grupos) {
+    for (const bruto of grupo) {
+      const modulo = normalizarModulo(bruto);
+      const chaveModulo = `${modulo.id}::${toSlug(modulo.nome)}`;
+
+      if (!mapa.has(chaveModulo)) {
+        mapa.set(chaveModulo, { ...modulo, rotinas: [] });
+      }
+
+      const atual = mapa.get(chaveModulo);
+      const vistas = new Set(
+        atual.rotinas.map((r) => `${r.idRotina}|${toSlug(r.nome)}|${r.caminho || ""}|${r.screen || ""}`)
+      );
+
+      for (const rotina of modulo.rotinas) {
+        const chaveRotina = `${rotina.idRotina}|${toSlug(rotina.nome)}|${rotina.caminho || ""}|${rotina.screen || ""}`;
+        if (!vistas.has(chaveRotina)) {
+          atual.rotinas.push(rotina);
+          vistas.add(chaveRotina);
+        }
+      }
+    }
+  }
+
+  return Array.from(mapa.values());
+}
+
 function normalizarNotificacao(item) {
   return {
     id: item.id_notificacao ?? item.ID_NOTIFICACAO ?? item.id ?? Math.random().toString(),
@@ -210,23 +240,21 @@ export default function HomeScreen({ user, onLogout }) {
     setErroMenu("");
 
     try {
-      let dados = [];
-      const tipos = ["M", "W"];
+      const tipos = ["W", "M"];
+      const respostas = await Promise.all(
+        tipos.map((tipo) =>
+          api.post("/v1/consultarPermissoes", {
+            matricula: idUsuario,
+            tipoaplicacao: tipo,
+          })
+        )
+      );
 
-      for (const tipo of tipos) {
-        const resposta = await api.post("/v1/consultarPermissoes", {
-          matricula: idUsuario,
-          tipoaplicacao: tipo,
-        });
+      const grupos = respostas
+        .map((res) => (Array.isArray(res?.data) ? res.data : []))
+        .filter((lista) => lista.length > 0);
 
-        const lista = Array.isArray(resposta?.data) ? resposta.data : [];
-        if (lista.length > 0) {
-          dados = lista;
-          break;
-        }
-      }
-
-      const modulosApi = dados.map(normalizarModulo);
+      const modulosApi = mesclarModulosPermissao(grupos);
       setModulos(modulosApi);
       setModulosAbertos((anterior) => {
         const proximo = { ...anterior };
@@ -465,12 +493,7 @@ export default function HomeScreen({ user, onLogout }) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <LinearGradient
-          colors={["#0c1526", "#0f2060"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.navbar}
-        >
+        <View style={styles.navbar}>
           <Pressable style={styles.brandWrap} onPress={() => setRotaAtiva(ROTA_MURAL)}>
             <Image source={Logo} style={styles.brandLogo} resizeMode="contain" />
             <View>
@@ -481,7 +504,7 @@ export default function HomeScreen({ user, onLogout }) {
 
           <View style={styles.navRight}>
             <Pressable style={styles.iconButton} onPress={() => setShowNotificacoes(true)}>
-              <Ionicons name="notifications-outline" size={20} color={colors.white} />
+              <Ionicons name="notifications-outline" size={20} color="#334155" />
               {notificacoesNaoLidas > 0 ? (
                 <View style={styles.badgeNotif}>
                   <Text style={styles.badgeNotifText}>{notificacoesNaoLidas}</Text>
@@ -499,10 +522,10 @@ export default function HomeScreen({ user, onLogout }) {
                 <Text numberOfLines={1} style={styles.userName}>{nomeUsuario}</Text>
                 <Text numberOfLines={1} style={styles.userSector}>{setorUsuario}</Text>
               </View>
-              <Ionicons name="chevron-down" size={14} color="rgba(255,255,255,0.8)" />
+              <Ionicons name="chevron-down" size={14} color="#64748b" />
             </Pressable>
           </View>
-        </LinearGradient>
+        </View>
 
         <ScrollView
           style={styles.scrollWrap}
@@ -696,15 +719,6 @@ export default function HomeScreen({ user, onLogout }) {
                     </View>
                   );
                 })}
-
-                <View style={styles.moduloCard}>
-                  <Pressable style={styles.rotinaLinha} onPress={() => setRotaAtiva(ROTA_MURAL)}>
-                    <View style={styles.rotinaDot} />
-                    <Text style={[styles.rotinaText, rotaAtiva.key === "mural" ? styles.rotinaTextAtiva : null]}>
-                      Mural
-                    </Text>
-                  </Pressable>
-                </View>
               </ScrollView>
             )}
 
@@ -806,8 +820,8 @@ export default function HomeScreen({ user, onLogout }) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#f1f5f9" },
-  container: { flex: 1, backgroundColor: "#f1f5f9" },
+  safeArea: { flex: 1, backgroundColor: "#ffffff" },
+  container: { flex: 1, backgroundColor: "#f8fafc" },
 
   navbar: {
     height: 60,
@@ -816,12 +830,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.08)",
+    borderBottomColor: "#e2e8f0",
+    backgroundColor: "#ffffff",
   },
   brandWrap: { flexDirection: "row", alignItems: "center", gap: 8 },
   brandLogo: { width: 34, height: 34, borderRadius: 6 },
-  brandName: { color: colors.white, fontSize: 14, fontWeight: "800", letterSpacing: 1 },
-  brandSub: { color: "rgba(255,255,255,0.62)", fontSize: 10, fontWeight: "700", marginTop: -1 },
+  brandName: { color: "#0f172a", fontSize: 14, fontWeight: "800", letterSpacing: 1 },
+  brandSub: { color: "#64748b", fontSize: 10, fontWeight: "700", marginTop: -1 },
 
   navRight: { flexDirection: "row", alignItems: "center", gap: 8 },
   iconButton: {
@@ -830,7 +845,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "#f1f5f9",
   },
   badgeNotif: {
     position: "absolute",
@@ -841,7 +856,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.accent,
+    backgroundColor: "#ef4444",
     paddingHorizontal: 3,
   },
   badgeNotifSecondary: {
@@ -850,7 +865,7 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.accent,
+    backgroundColor: "#ef4444",
     paddingHorizontal: 4,
   },
   badgeNotifText: { color: colors.white, fontSize: 10, fontWeight: "700" },
@@ -862,7 +877,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
   },
   userAvatar: {
     width: 28,
@@ -870,14 +887,14 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(59,130,246,0.28)",
+    backgroundColor: "#e2e8f0",
     overflow: "hidden",
   },
   userAvatarImg: { width: 28, height: 28 },
-  userAvatarText: { color: colors.white, fontSize: 11, fontWeight: "800" },
+  userAvatarText: { color: "#1e293b", fontSize: 11, fontWeight: "800" },
   userMeta: { marginLeft: 7, flex: 1 },
-  userName: { color: colors.white, fontSize: 11.5, fontWeight: "700" },
-  userSector: { color: "rgba(255,255,255,0.62)", fontSize: 10 },
+  userName: { color: "#1e293b", fontSize: 11.5, fontWeight: "700" },
+  userSector: { color: "#64748b", fontSize: 10 },
 
   scrollWrap: { flex: 1 },
   muralContainer: {
@@ -1002,9 +1019,10 @@ const styles = StyleSheet.create({
 
   searchWrap: {
     minHeight: 42,
-    borderRadius: 9,
+    borderRadius: 999,
     borderWidth: 1,
     borderColor: "#e2e8f0",
+    backgroundColor: "#f8fafc",
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 10,
@@ -1031,35 +1049,32 @@ const styles = StyleSheet.create({
 
   modulosList: { flex: 1 },
   moduloCard: {
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    borderRadius: 10,
-    backgroundColor: "#ffffff",
-    marginBottom: 10,
-    overflow: "hidden",
+    borderBottomWidth: 1,
+    borderBottomColor: "#eef2f7",
+    marginBottom: 2,
+    paddingBottom: 2,
   },
   moduloHeaderBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    backgroundColor: "#f8fafc",
+    paddingHorizontal: 4,
+    paddingVertical: 12,
+    backgroundColor: "transparent",
   },
   moduloHeaderLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
-  moduloTitulo: { color: "#334155", fontSize: 13.5, fontWeight: "700" },
+  moduloTitulo: { color: "#334155", fontSize: 14, fontWeight: "700" },
   moduloTituloAtivo: { color: "#1e293b" },
   chevronOpen: { transform: [{ rotate: "180deg" }] },
 
   rotinasList: {
-    borderTopWidth: 1,
-    borderTopColor: "#eef2f7",
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingLeft: 14,
+    paddingRight: 4,
+    paddingBottom: 8,
     gap: 2,
   },
   rotinaLinha: {
-    minHeight: 34,
+    minHeight: 36,
     borderRadius: 7,
     flexDirection: "row",
     alignItems: "center",
@@ -1070,9 +1085,9 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: "#cbd5e1",
+    backgroundColor: "#94a3b8",
   },
-  rotinaText: { color: "#475569", fontSize: 12.7, fontWeight: "600" },
+  rotinaText: { color: "#475569", fontSize: 13, fontWeight: "600" },
   rotinaTextAtiva: { color: colors.accent, fontWeight: "800" },
 
   logoutButton: {

@@ -1,6 +1,6 @@
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useState } from "react";
-import { SafeAreaView, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
 import LoginScreen from "./src/screens/LoginScreen";
 import HomeScreen from "./src/screens/HomeScreen";
 
@@ -16,20 +16,22 @@ export default function App() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style={usuarioLogado ? "dark" : "light"} />
+    <View style={[styles.container, { backgroundColor: usuarioLogado ? "#ffffff" : "#050d1a" }]}>
+      <StatusBar
+        style={usuarioLogado ? "dark" : "light"}
+        backgroundColor={usuarioLogado ? "#ffffff" : "#050d1a"}
+      />
       {usuarioLogado ? (
         <HomeScreen user={usuarioLogado} onLogout={handleLogout} />
       ) : (
         <LoginScreen onLoginSuccess={handleLoginSuccess} />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#050d1a",
   },
 });
