@@ -968,7 +968,8 @@ export default function VisitaClienteScreen({ user }) {
 
   const renderStep1 = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Dados do cliente</Text>
+      <Text style={styles.sectionTitle}>Seleciona Cliente</Text>
+      <Text style={styles.sectionSubtitle}>Busque pelo nome do cliente para iniciar a visita.</Text>
 
       <Text style={styles.label}>Cliente *</Text>
       <View style={[styles.inputSearchWrap, clienteSearchFocused && styles.inputSearchFocused]}>
@@ -1075,6 +1076,12 @@ export default function VisitaClienteScreen({ user }) {
         placeholderTextColor="#94a3b8"
         style={styles.input}
       />
+
+      <Pressable style={({ pressed }) => [styles.btnPrimaryFull, { marginTop: 24 }, pressed && styles.btnPressed]} onPress={avancar}>
+        <LinearGradient colors={["#3f6cf6", "#2f59d9"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.btnGradient}>
+          <Text style={styles.btnPrimaryText}>Consultar</Text>
+        </LinearGradient>
+      </Pressable>
     </View>
   );
 
@@ -1106,6 +1113,18 @@ export default function VisitaClienteScreen({ user }) {
           ))}
         </View>
       )}
+
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 24, gap: 10 }}>
+        <Pressable style={styles.btnBack} onPress={voltar}>
+          <Ionicons name="arrow-back" size={18} color="#475569" />
+          <Text style={styles.btnBackText}>Voltar</Text>
+        </Pressable>
+        <Pressable style={({ pressed }) => [styles.btnPrimary, pressed && styles.btnPressed]} onPress={avancar}>
+          <LinearGradient colors={["#3f6cf6", "#2f59d9"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.btnGradient}>
+            <Text style={styles.btnPrimaryText}>Nova Visita</Text>
+          </LinearGradient>
+        </Pressable>
+      </View>
     </View>
   );
 
@@ -1183,6 +1202,31 @@ export default function VisitaClienteScreen({ user }) {
       <Pressable style={styles.btnOutline} onPress={atualizarDadosCheckin}>
         <Text style={styles.btnOutlineText}>Atualizar localizacao</Text>
       </Pressable>
+
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 16, gap: 10 }}>
+        <Pressable style={styles.btnBack} onPress={voltar}>
+          <Ionicons name="arrow-back" size={18} color="#475569" />
+          <Text style={styles.btnBackText}>Voltar</Text>
+        </Pressable>
+        <Pressable
+          style={({ pressed }) => [
+            styles.btnPrimary,
+            Number(distancia) > 3 && !idJustificativa ? styles.btnDisabledWrapper : null,
+            pressed && styles.btnPressed,
+          ]}
+          onPress={avancar}
+          disabled={Number(distancia) > 3 && !idJustificativa}
+        >
+          <LinearGradient
+            colors={Number(distancia) > 3 && !idJustificativa ? ["#94a3b8", "#94a3b8"] : ["#3f6cf6", "#2f59d9"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.btnGradient}
+          >
+            <Text style={styles.btnPrimaryText}>Fazer CheckIn</Text>
+          </LinearGradient>
+        </Pressable>
+      </View>
     </View>
   );
 
@@ -1218,6 +1262,18 @@ export default function VisitaClienteScreen({ user }) {
           ))}
         </View>
       )}
+
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 24, gap: 10 }}>
+        <Pressable style={styles.btnBack} onPress={voltar}>
+          <Ionicons name="arrow-back" size={18} color="#475569" />
+          <Text style={styles.btnBackText}>Voltar</Text>
+        </Pressable>
+        <Pressable style={({ pressed }) => [styles.btnPrimary, pressed && styles.btnPressed]} onPress={avancar}>
+          <LinearGradient colors={["#3f6cf6", "#2f59d9"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.btnGradient}>
+            <Text style={styles.btnPrimaryText}>Finalizar</Text>
+          </LinearGradient>
+        </Pressable>
+      </View>
     </View>
   );
 
@@ -1264,6 +1320,18 @@ export default function VisitaClienteScreen({ user }) {
         value={localizacaoCheckout?.lat ? `${localizacaoCheckout.lat.toFixed(6)}, ${localizacaoCheckout.lon.toFixed(6)}` : "Nao disponivel"}
         style={styles.inputDisabled}
       />
+
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 24, gap: 10 }}>
+        <Pressable style={styles.btnBack} onPress={voltar}>
+          <Ionicons name="arrow-back" size={18} color="#475569" />
+          <Text style={styles.btnBackText}>Voltar</Text>
+        </Pressable>
+        <Pressable style={({ pressed }) => [styles.btnSuccess, pressed && styles.btnPressed]} onPress={fazerCheckout}>
+          <LinearGradient colors={["#1db96a", "#198754"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.btnGradient}>
+            <Text style={styles.btnSuccessText}>Fazer CheckOut</Text>
+          </LinearGradient>
+        </Pressable>
+      </View>
     </View>
   );
 
@@ -1283,68 +1351,6 @@ export default function VisitaClienteScreen({ user }) {
         {step === 4 && renderStep4()}
         {step === 5 && renderStep5()}
       </ScrollView>
-
-      <View style={styles.footerButtons}>
-        {step > 1 && (
-          <Pressable style={styles.btnBack} onPress={voltar}>
-            <Ionicons name="arrow-back" size={18} color="#475569" />
-            <Text style={styles.btnBackText}>Voltar</Text>
-          </Pressable>
-        )}
-
-        {step === 1 && (
-          <Pressable style={({ pressed }) => [styles.btnPrimaryFull, pressed && styles.btnPressed]} onPress={avancar}>
-            <LinearGradient colors={["#3f6cf6", "#2f59d9"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.btnGradient}>
-              <Text style={styles.btnPrimaryText}>Próximo</Text>
-            </LinearGradient>
-          </Pressable>
-        )}
-
-        {step === 2 && (
-          <Pressable style={({ pressed }) => [styles.btnPrimary, pressed && styles.btnPressed]} onPress={avancar}>
-            <LinearGradient colors={["#3f6cf6", "#2f59d9"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.btnGradient}>
-              <Text style={styles.btnPrimaryText}>Nova Visita</Text>
-            </LinearGradient>
-          </Pressable>
-        )}
-
-        {step === 3 && (
-          <Pressable
-            style={({ pressed }) => [
-              styles.btnPrimary,
-              Number(distancia) > 3 && !idJustificativa ? styles.btnDisabledWrapper : null,
-              pressed && styles.btnPressed,
-            ]}
-            onPress={avancar}
-            disabled={Number(distancia) > 3 && !idJustificativa}
-          >
-            <LinearGradient
-              colors={Number(distancia) > 3 && !idJustificativa ? ["#94a3b8", "#94a3b8"] : ["#3f6cf6", "#2f59d9"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.btnGradient}
-            >
-              <Text style={styles.btnPrimaryText}>Fazer CheckIn</Text>
-            </LinearGradient>
-          </Pressable>
-        )}
-
-        {step === 4 && (
-          <Pressable style={({ pressed }) => [styles.btnPrimary, pressed && styles.btnPressed]} onPress={avancar}>
-            <LinearGradient colors={["#3f6cf6", "#2f59d9"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.btnGradient}>
-              <Text style={styles.btnPrimaryText}>Finalizar</Text>
-            </LinearGradient>
-          </Pressable>
-        )}
-
-        {step === 5 && (
-          <Pressable style={({ pressed }) => [styles.btnSuccess, pressed && styles.btnPressed]} onPress={fazerCheckout}>
-            <LinearGradient colors={["#1db96a", "#198754"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.btnGradient}>
-              <Text style={styles.btnSuccessText}>Fazer CheckOut</Text>
-            </LinearGradient>
-          </Pressable>
-        )}
-      </View>
 
       <Modal visible={showJustificativaModal} transparent animationType="fade" onRequestClose={() => setShowJustificativaModal(false)}>
         <View style={styles.modalOverlay}>
@@ -1717,9 +1723,15 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: "#111827",
     fontWeight: "800",
-    fontSize: 18,
+    fontSize: 28,
+    marginBottom: 4,
+    letterSpacing: -0.6,
+  },
+  sectionSubtitle: {
+    color: "#6b7280",
+    fontSize: 14,
+    fontWeight: "400",
     marginBottom: 18,
-    letterSpacing: -0.4,
   },
   subsectionTitle: {
     color: "#334155",
