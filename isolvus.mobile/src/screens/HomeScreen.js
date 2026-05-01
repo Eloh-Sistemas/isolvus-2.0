@@ -1,18 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Image,
   Linking,
   Modal,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -188,6 +189,10 @@ export default function HomeScreen({ user, onLogout }) {
   const [menuFotoAberto, setMenuFotoAberto] = useState(false);
   const [salvandoFoto, setSalvandoFoto] = useState(false);
 
+  const insets = useSafeAreaInsets();
+  const drawerAnim = useRef(new Animated.Value(400)).current;
+  const notifAnim = useRef(new Animated.Value(400)).current;
+
   const idUsuario = Number(user?.id_usuario ?? 0);
   const nomeUsuario = user?.nome || user?.usuario || "Usuario";
   const setorUsuario = user?.setor || "Setor";
@@ -329,13 +334,39 @@ export default function HomeScreen({ user, onLogout }) {
     return () => clearInterval(timer);
   }, [carregarNotificacoes, idUsuario]);
 
+  useEffect(() => {
+    if (showModulos) {
+      drawerAnim.setValue(400);
+      Animated.timing(drawerAnim, { toValue: 0, duration: 280, useNativeDriver: true }).start();
+    }
+  }, [showModulos]);
+
+  useEffect(() => {
+    if (showNotificacoes) {
+      notifAnim.setValue(400);
+      Animated.timing(notifAnim, { toValue: 0, duration: 280, useNativeDriver: true }).start();
+    }
+  }, [showNotificacoes]);
+
+  function fecharModulos() {
+    Animated.timing(drawerAnim, { toValue: 400, duration: 220, useNativeDriver: true }).start(() => {
+      setShowModulos(false);
+    });
+  }
+
+  function fecharNotificacoes() {
+    Animated.timing(notifAnim, { toValue: 400, duration: 220, useNativeDriver: true }).start(() => {
+      setShowNotificacoes(false);
+    });
+  }
+
   function alternarModulo(moduloId) {
     setModulosAbertos((prev) => ({ ...prev, [moduloId]: !prev[moduloId] }));
   }
 
   function selecionarRota(rotina, nomeModulo) {
     setRotaAtiva({ ...rotina, modulo: nomeModulo });
-    setShowModulos(false);
+    fecharModulos();
   }
 
   async function marcarComoLida(notificacao) {
@@ -491,9 +522,14 @@ export default function HomeScreen({ user, onLogout }) {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <View style={styles.container}>
-        <View style={styles.navbar}>
+        <LinearGradient
+          colors={["#0c1526", "#0f2060"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.navbar}
+        >
           <Pressable style={styles.brandWrap} onPress={() => setRotaAtiva(ROTA_MURAL)}>
             <Image source={Logo} style={styles.brandLogo} resizeMode="contain" />
             <View>
@@ -504,7 +540,7 @@ export default function HomeScreen({ user, onLogout }) {
 
           <View style={styles.navRight}>
             <Pressable style={styles.iconButton} onPress={() => setShowNotificacoes(true)}>
-              <Ionicons name="notifications-outline" size={20} color="#334155" />
+              <Ionicons name="notifications-outline" size={20} color="rgba(255,255,255,0.9)" />
               {notificacoesNaoLidas > 0 ? (
                 <View style={styles.badgeNotif}>
                   <Text style={styles.badgeNotifText}>{notificacoesNaoLidas}</Text>
@@ -522,10 +558,10 @@ export default function HomeScreen({ user, onLogout }) {
                 <Text numberOfLines={1} style={styles.userName}>{nomeUsuario}</Text>
                 <Text numberOfLines={1} style={styles.userSector}>{setorUsuario}</Text>
               </View>
-              <Ionicons name="chevron-down" size={14} color="#64748b" />
+              <Ionicons name="chevron-down" size={14} color="rgba(255,255,255,0.6)" />
             </Pressable>
           </View>
-        </View>
+        </LinearGradient>
 
         <ScrollView
           style={styles.scrollWrap}
@@ -601,10 +637,10 @@ export default function HomeScreen({ user, onLogout }) {
         </ScrollView>
       </View>
 
-      <Modal visible={showModulos} animationType="slide" transparent>
+      <Modal visible={showModulos} animationType="none" transparent>
         <View style={styles.drawerOverlay}>
-          <Pressable style={styles.backdrop} onPress={() => setShowModulos(false)} />
-          <View style={styles.drawer}>
+          <Pressable style={styles.backdrop} onPress={fecharModulos} />
+          <Animated.View style={[styles.drawer, { paddingTop: 14 + insets.top, transform: [{ translateX: drawerAnim }] }]}>
             <View style={styles.drawerHeader}>
               <View style={styles.drawerProfile}>
                 <View>
@@ -646,7 +682,7 @@ export default function HomeScreen({ user, onLogout }) {
                   </Text>
                 </View>
               </View>
-              <Pressable onPress={() => setShowModulos(false)}>
+              <Pressable onPress={fecharModulos}>
                 <Ionicons name="close" size={24} color="#64748b" />
               </Pressable>
             </View>
@@ -722,18 +758,20 @@ export default function HomeScreen({ user, onLogout }) {
               </ScrollView>
             )}
 
-            <Pressable style={styles.logoutButton} onPress={onLogout}>
-              <Ionicons name="log-out-outline" size={18} color={colors.white} />
-              <Text style={styles.logoutText}>Sair do sistema</Text>
-            </Pressable>
-          </View>
+            <View style={styles.drawerFooter}>
+              <Pressable style={styles.logoutButton} onPress={onLogout}>
+                <Ionicons name="log-out-outline" size={16} color="#ef4444" />
+                <Text style={styles.logoutText}>Sair do sistema</Text>
+              </Pressable>
+            </View>
+          </Animated.View>
         </View>
       </Modal>
 
-      <Modal visible={showNotificacoes} animationType="slide" transparent>
+      <Modal visible={showNotificacoes} animationType="none" transparent>
         <View style={styles.drawerOverlay}>
-          <Pressable style={styles.backdrop} onPress={() => setShowNotificacoes(false)} />
-          <View style={styles.drawer}>
+          <Pressable style={styles.backdrop} onPress={fecharNotificacoes} />
+          <Animated.View style={[styles.drawer, { paddingTop: 14 + insets.top, transform: [{ translateX: notifAnim }] }]}>
             <View style={styles.drawerHeader}>
               <View style={styles.notifTitleWrap}>
                 <Text style={styles.notifTitle}>Notificacoes</Text>
@@ -743,7 +781,7 @@ export default function HomeScreen({ user, onLogout }) {
                   </View>
                 ) : null}
               </View>
-              <Pressable onPress={() => setShowNotificacoes(false)}>
+              <Pressable onPress={fecharNotificacoes}>
                 <Ionicons name="close" size={24} color="#64748b" />
               </Pressable>
             </View>
@@ -812,7 +850,7 @@ export default function HomeScreen({ user, onLogout }) {
                 )}
               </ScrollView>
             )}
-          </View>
+          </Animated.View>
         </View>
       </Modal>
     </SafeAreaView>
@@ -820,7 +858,7 @@ export default function HomeScreen({ user, onLogout }) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#ffffff" },
+  safeArea: { flex: 1, backgroundColor: "#0c1526" },
   container: { flex: 1, backgroundColor: "#f8fafc" },
 
   navbar: {
@@ -829,14 +867,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e2e8f0",
-    backgroundColor: "#ffffff",
   },
   brandWrap: { flexDirection: "row", alignItems: "center", gap: 8 },
   brandLogo: { width: 34, height: 34, borderRadius: 6 },
-  brandName: { color: "#0f172a", fontSize: 14, fontWeight: "800", letterSpacing: 1 },
-  brandSub: { color: "#64748b", fontSize: 10, fontWeight: "700", marginTop: -1 },
+  brandName: { color: "#ffffff", fontSize: 14, fontWeight: "800", letterSpacing: 1 },
+  brandSub: { color: "rgba(255,255,255,0.55)", fontSize: 10, fontWeight: "700", marginTop: -1 },
 
   navRight: { flexDirection: "row", alignItems: "center", gap: 8 },
   iconButton: {
@@ -845,7 +880,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#f1f5f9",
+    backgroundColor: "rgba(255,255,255,0.07)",
   },
   badgeNotif: {
     position: "absolute",
@@ -877,9 +912,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 10,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "rgba(255,255,255,0.07)",
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: "rgba(255,255,255,0.14)",
   },
   userAvatar: {
     width: 28,
@@ -887,14 +922,14 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#e2e8f0",
+    backgroundColor: "rgba(255,255,255,0.18)",
     overflow: "hidden",
   },
   userAvatarImg: { width: 28, height: 28 },
-  userAvatarText: { color: "#1e293b", fontSize: 11, fontWeight: "800" },
+  userAvatarText: { color: "#ffffff", fontSize: 11, fontWeight: "800" },
   userMeta: { marginLeft: 7, flex: 1 },
-  userName: { color: "#1e293b", fontSize: 11.5, fontWeight: "700" },
-  userSector: { color: "#64748b", fontSize: 10 },
+  userName: { color: "#ffffff", fontSize: 11.5, fontWeight: "700" },
+  userSector: { color: "rgba(255,255,255,0.6)", fontSize: 10 },
 
   scrollWrap: { flex: 1 },
   muralContainer: {
@@ -957,7 +992,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     paddingTop: 14,
     paddingHorizontal: 14,
-    paddingBottom: 20,
+    paddingBottom: 0,
+  },
+  drawerFooter: {
+    borderTopWidth: 1,
+    borderTopColor: "#e2e8f0",
+    backgroundColor: "#f8fafc",
+    marginHorizontal: -14,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
   drawerHeader: {
     flexDirection: "row",
@@ -1091,16 +1134,14 @@ const styles = StyleSheet.create({
   rotinaTextAtiva: { color: colors.accent, fontWeight: "800" },
 
   logoutButton: {
-    marginTop: 10,
-    minHeight: 42,
-    borderRadius: 10,
-    backgroundColor: "#1e293b",
-    alignItems: "center",
-    justifyContent: "center",
     flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
     gap: 8,
   },
-  logoutText: { color: colors.white, fontSize: 13.5, fontWeight: "700" },
+  logoutText: { color: "#ef4444", fontSize: 14, fontWeight: "500" },
 
   notifTitleWrap: { flexDirection: "row", alignItems: "center", gap: 8 },
   notifTitle: { color: "#1e293b", fontSize: 17, fontWeight: "800" },
