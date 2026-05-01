@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "ISOLVUS Mobile",
+    "slug": "isolvus-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#050d1a"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "android": {
+      "package": "br.com.isolvus.mobile"
+    },
+    "ios": {
+      "bundleIdentifier": "br.com.isolvus.mobile"
+    },
+    "plugins": [
+      "expo-asset"
+    ]
+  }
+}

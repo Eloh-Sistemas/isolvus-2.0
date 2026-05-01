@@ -1,0 +1,17 @@
+export const colors = {
+  accent: "#0d6efd",
+  accent2: "#6610f2",
+  dark: "#050d1a",
+  dark2: "#0b1a35",
+  dark3: "#0a2a6e",
+  cardBg: "#ffffff",
+  text: "#1a1a2e",
+  muted: "#6b7280",
+  inputBg: "#f3f6fc",
+  border: "rgba(255,255,255,0.08)",
+  danger: "#dc3545",
+  success: "#198754",
+  warning: "#f59e0b",
+  white: "#ffffff",
+  whiteSoft: "rgba(255,255,255,0.75)",
+};
