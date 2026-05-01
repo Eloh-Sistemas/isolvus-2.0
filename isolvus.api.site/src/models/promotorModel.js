@@ -97,7 +97,6 @@ export async function setpromotorcheckin(jsonReq) {
             id_promotor: Number(jsonReq.idpromotor),
             id_grupo_empresa: Number(jsonReq.idgrupo_empresa),
             id_cliente: jsonReq.idcliente,
-            reponsavelatendimentolocal: jsonReq.responsavel,
             dtcheckin: moment(jsonReq.dataCheckin, "DD/MM/YYYY HH:mm:ss").format("YYYY-MM-DD HH:mm:ss"),
             pro_latitude_checkin: jsonReq.latitudepromotor,
             pro_longitude_checkin: jsonReq.longitudepromotor,

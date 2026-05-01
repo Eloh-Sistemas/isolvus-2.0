@@ -33,8 +33,6 @@ export async function promotorcheckin(req, res) {
             res.status(400).json({error: 'Data/hora Checkin não informado'})
         }else if (!jsonReq.distancia){
             res.status(400).json({error: 'Distancia não informada'})
-        }else if (!jsonReq.responsavel){
-            res.status(400).json({error: 'Responsavel não informada'})
         }else{
             res.json(await setpromotorcheckin(jsonReq))    
         }

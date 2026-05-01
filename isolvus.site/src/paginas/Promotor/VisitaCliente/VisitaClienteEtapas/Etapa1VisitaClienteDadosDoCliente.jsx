@@ -132,21 +132,6 @@ function Etapa1VisitaClienteDadosDoCliente(props){
             />
             </div>
 
-            <div className="col-md-4 mb-3">
-            <label htmlFor="codigo" className="mb-2">Responsável pelo atendimento no local<span className="text-danger">*</span></label>
-            <input
-                type="text"
-                className="form-control mb-4"
-                id="cgc"
-                placeholder="Responsável pelo atendimento no local"
-                value={props.responsavel}  // Agora pega do pai corretamente
-                onChange={(e) => {
-                    const valor = e.target.value.toUpperCase();
-                    props.setResponsavel(valor);  // Atualiza diretamente no pai
-                }}
-            />
-            </div>
-
             
           
       </div>

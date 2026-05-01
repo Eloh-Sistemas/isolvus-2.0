@@ -16,7 +16,6 @@ function VisitaCliente() {
   const [step, setStep] = useState(1);      
   const [clienteSelecionado, SetClienteSelecionado] = useState({});
   const [dataCheckin, setDataCheckin] = useState();
-  const [responsavel, setresponsavel] = useState("");
   const [localizacaopromotor, setLocalizacaopromotor] = useState();
   const [distancia, setDistancia] = useState();
   const [historicodeVisita, sethistoricodeVisita] = useState([]);
@@ -53,7 +52,6 @@ function VisitaCliente() {
   function telaInicial(){
 
     SetClienteSelecionado({});
-    setresponsavel("");    
     setStep(1);
     setidjustificativa(0);
 
@@ -72,7 +70,6 @@ function VisitaCliente() {
       latitudecliente: clienteSelecionado.latitude,
       longitudecliente: clienteSelecionado.longitude,
       distancia,
-      responsavel,
       id_justificativadistancia: idjustificativa
     };
 
@@ -152,8 +149,6 @@ function VisitaCliente() {
     
     if (!clienteSelecionado.idclientevenda){
       toast.warn('Usuario não informado');
-    }else if (!responsavel){
-      toast.warn('Responsavel pelo atendimento não informado');
     }else{      
       setStep(step + 1)      
     } 
@@ -212,8 +207,6 @@ function VisitaCliente() {
           {step === 1 && ( <div>
             <Etapa1VisitaClienteDadosDoCliente            
               OnSelecionaCliente={SetClienteSelecionado}
-              setResponsavel={setresponsavel}
-              responsavel={responsavel}             
             />         
             <ToastContainer position="top-center"/>   
           </div>)}

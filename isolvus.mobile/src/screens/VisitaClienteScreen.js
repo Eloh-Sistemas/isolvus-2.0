@@ -153,7 +153,6 @@ export default function VisitaClienteScreen({ user }) {
   const [cgc, setCgc] = useState("");
   const [contato, setContato] = useState("");
   const [email, setEmail] = useState("");
-  const [responsavel, setResponsavel] = useState("");
 
   const [historico, setHistorico] = useState([]);
   const [loadingHistorico, setLoadingHistorico] = useState(false);
@@ -276,7 +275,6 @@ export default function VisitaClienteScreen({ user }) {
     setCgc("");
     setContato("");
     setEmail("");
-    setResponsavel("");
     setHistorico([]);
     setDataCheckin(formatDateTime(new Date()));
     setLocalizacaoPromotor(null);
@@ -424,10 +422,6 @@ export default function VisitaClienteScreen({ user }) {
       Alert.alert("Validacao", "Informe o cliente.");
       return;
     }
-    if (!responsavel.trim()) {
-      Alert.alert("Validacao", "Informe o responsavel no atendimento.");
-      return;
-    }
     if (!localizacaoPromotor?.lat || !localizacaoPromotor?.lng) {
       Alert.alert("Validacao", "Localizacao do promotor nao disponivel.");
       return;
@@ -448,7 +442,6 @@ export default function VisitaClienteScreen({ user }) {
         latitudecliente: clienteSelecionado.latitude,
         longitudecliente: clienteSelecionado.longitude,
         distancia,
-        responsavel,
         id_justificativadistancia: idJustificativa,
       });
 
@@ -466,7 +459,6 @@ export default function VisitaClienteScreen({ user }) {
     idJustificativa,
     idPromotor,
     localizacaoPromotor,
-    responsavel,
   ]);
 
   const consultarAtividades = useCallback(async () => {
@@ -857,10 +849,6 @@ export default function VisitaClienteScreen({ user }) {
         Alert.alert("Validacao", "Cliente nao informado.");
         return;
       }
-      if (!responsavel.trim()) {
-        Alert.alert("Validacao", "Responsavel nao informado.");
-        return;
-      }
       setStep(2);
       return;
     }
@@ -878,7 +866,7 @@ export default function VisitaClienteScreen({ user }) {
     if (step === 4) {
       setStep(5);
     }
-  }, [clienteSelecionado?.idclientevenda, fazerCheckin, responsavel, step]);
+  }, [clienteSelecionado?.idclientevenda, fazerCheckin, step]);
 
   const voltar = useCallback(() => {
     if (step === 3) {
@@ -1028,43 +1016,51 @@ export default function VisitaClienteScreen({ user }) {
         </View>
       )}
 
-      <View style={styles.row}>
-        <View style={styles.col}>
-          <Text style={styles.label}>CPF/CNPJ</Text>
-          <TextInput value={cgc} editable={false} style={styles.inputDisabled} />
-        </View>
-        <View style={styles.col}>
-          <Text style={styles.label}>Telefone</Text>
-          <TextInput value={contato} editable={false} style={styles.inputDisabled} />
-        </View>
-      </View>
+      {!!clienteSelecionado?.idclientevenda && (
+        <>
+          <View style={styles.row}>
+            <View style={styles.col}>
+              <Text style={styles.label}>CPF/CNPJ</Text>
+              <TextInput value={cgc} editable={false} style={styles.inputDisabled} />
+            </View>
+            <View style={styles.col}>
+              <Text style={styles.label}>Telefone</Text>
+              <TextInput value={contato} editable={false} style={styles.inputDisabled} />
+            </View>
+          </View>
 
-      <Text style={styles.label}>E-mail</Text>
-      <TextInput value={email} editable={false} style={styles.inputDisabled} />
+          <Text style={styles.label}>E-mail</Text>
+          <TextInput value={email} editable={false} style={styles.inputDisabled} />
 
-      <Text style={styles.label}>Promotor tecnico</Text>
-      <TextInput value={promotorDescricao} editable={false} style={styles.inputDisabled} />
+          <Text style={styles.label}>Promotor tecnico</Text>
+          <TextInput value={promotorDescricao} editable={false} style={styles.inputDisabled} />
 
-      <Text style={styles.label}>Responsavel no local *</Text>
-      <TextInput
-        value={responsavel}
-        onChangeText={(v) => setResponsavel(v.toUpperCase())}
-        placeholder="Responsavel pelo atendimento"
-        placeholderTextColor="#94a3b8"
-        style={styles.input}
-      />
-
-      <Pressable style={({ pressed }) => [styles.btnPrimaryFull, { marginTop: 24 }, pressed && styles.btnPressed]} onPress={avancar}>
-        <LinearGradient colors={["#3f6cf6", "#2f59d9"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.btnGradient}>
-          <Text style={styles.btnPrimaryText}>Consultar</Text>
-        </LinearGradient>
-      </Pressable>
+          <Pressable style={({ pressed }) => [styles.btnPrimaryFull, { marginTop: 24 }, pressed && styles.btnPressed]} onPress={avancar}>
+            <LinearGradient colors={["#3f6cf6", "#2f59d9"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.btnGradient}>
+              <Text style={styles.btnPrimaryText}>Iniciar Visita</Text>
+            </LinearGradient>
+          </Pressable>
+        </>
+      )}
     </View>
   );
 
   const renderStep2 = () => (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>Historico de visitas</Text>
+
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16, gap: 10 }}>
+        <Pressable style={styles.btnBack} onPress={voltar}>
+          <Ionicons name="arrow-back" size={18} color="#475569" />
+          <Text style={styles.btnBackText}>Voltar</Text>
+        </Pressable>
+        <Pressable style={({ pressed }) => [styles.btnPrimary, pressed && styles.btnPressed]} onPress={avancar}>
+          <LinearGradient colors={["#3f6cf6", "#2f59d9"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.btnGradient}>
+            <Text style={styles.btnPrimaryText}>Nova Visita</Text>
+          </LinearGradient>
+        </Pressable>
+      </View>
+
       {loadingHistorico ? (
         <View style={styles.stateBox}>
           <ActivityIndicator color={colors.accent} />
@@ -1090,18 +1086,6 @@ export default function VisitaClienteScreen({ user }) {
           ))}
         </View>
       )}
-
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 24, gap: 10 }}>
-        <Pressable style={styles.btnBack} onPress={voltar}>
-          <Ionicons name="arrow-back" size={18} color="#475569" />
-          <Text style={styles.btnBackText}>Voltar</Text>
-        </Pressable>
-        <Pressable style={({ pressed }) => [styles.btnPrimary, pressed && styles.btnPressed]} onPress={avancar}>
-          <LinearGradient colors={["#3f6cf6", "#2f59d9"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.btnGradient}>
-            <Text style={styles.btnPrimaryText}>Nova Visita</Text>
-          </LinearGradient>
-        </Pressable>
-      </View>
     </View>
   );
 
