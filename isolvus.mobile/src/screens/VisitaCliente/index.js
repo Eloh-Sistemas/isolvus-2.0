@@ -86,6 +86,7 @@ export default function VisitaClienteScreen({ user }) {
         {ctx.step === 4 && (
           <Step4Atividades
             idVisita={ctx.idVisita}
+            clienteSelecionado={ctx.clienteSelecionado}
             loadingAtividades={ctx.loadingAtividades}
             atividades={ctx.atividades}
             voltar={ctx.voltar}
