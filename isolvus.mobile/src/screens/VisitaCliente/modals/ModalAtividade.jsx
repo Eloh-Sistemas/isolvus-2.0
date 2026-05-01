@@ -6,14 +6,60 @@ import { colors } from "../../../theme/colors";
 import { styles } from "../styles";
 import { formatarTelefone } from "../utils";
 
-function SectionCard({ icon, title, children }) {
+function SectionCard({ icon, title, children, first = false }) {
   return (
-    <View style={{ marginTop: 16 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>
-        <Ionicons name={icon} size={15} color={colors.accent} />
-        <Text style={[styles.subsectionTitle, { marginTop: 0, marginBottom: 2 }]}>{title}</Text>
+    <View
+      style={{
+        marginTop: first ? 10 : 18,
+        borderWidth: 1,
+        borderColor: "#e2e8f0",
+        borderRadius: 12,
+        backgroundColor: "#ffffff",
+        overflow: "hidden",
+      }}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          backgroundColor: "#f8fafc",
+          borderBottomWidth: 1,
+          borderBottomColor: "#e2e8f0",
+          paddingHorizontal: 10,
+          paddingVertical: 8,
+        }}
+      >
+        <View
+          style={{
+            width: 5,
+            height: 26,
+            borderRadius: 99,
+            backgroundColor: colors.accent,
+            marginRight: 10,
+          }}
+        />
+        <View style={{
+          width: 24,
+          height: 24,
+          borderRadius: 12,
+          backgroundColor: "#f1f5f9",
+          alignItems: "center",
+          justifyContent: "center",
+          marginRight: 8,
+        }}>
+          <Ionicons name={icon} size={13} color="#334155" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 10, fontWeight: "700", color: "#64748b", letterSpacing: 0.8 }}>
+            CATEGORIA
+          </Text>
+          <Text style={[styles.subsectionTitle, { marginTop: 1, marginBottom: 0, fontSize: 14, color: "#0f172a" }]}>{title}</Text>
+        </View>
       </View>
-      <View>{children}</View>
+
+      <View style={{ paddingHorizontal: 12, paddingVertical: 10 }}>
+        <View>{children}</View>
+      </View>
     </View>
   );
 }
@@ -143,10 +189,10 @@ export default function ModalAtividade({
               <Ionicons name="arrow-back" size={20} color="#475569" />
             </Pressable>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 18, fontWeight: "800", color: "#111827", letterSpacing: -0.4 }}>
+              <Text style={[styles.sectionTitle, { marginBottom: 0 }]}> 
                 {isEdicao ? "Editar atividade" : "Nova atividade"}
               </Text>
-              <Text style={{ fontSize: 13, color: "#6b7280", marginTop: 1 }}>
+              <Text style={[styles.sectionSubtitle, { marginBottom: 0, marginTop: 2 }]}> 
                 {isEdicao ? "Atualize os dados do registro selecionado." : "Selecione a atividade e preencha os campos."}
               </Text>
             </View>
@@ -161,7 +207,7 @@ export default function ModalAtividade({
           >
 
             {/* Tipo de atividade */}
-            <SectionCard icon="list" title="Tipo de atividade *">
+            <SectionCard icon="list" title="Tipo de atividade *" first>
               <View style={styles.selectWrap}>
                 {atividadesCatalogo.map((a) => (
                   <Pressable
@@ -243,7 +289,7 @@ export default function ModalAtividade({
                   placeholderTextColor="#94a3b8"
                 />
                 <Text style={styles.label}>O quiz foi aplicado?</Text>
-                <View style={[styles.row, { marginTop: 2 }]}>
+                <View style={[styles.row, { marginTop: 2 }]}> 
                   {[{ value: "S", label: "Sim" }, { value: "N", label: "Não" }].map((op) => (
                     <Pressable
                       key={op.value}
@@ -263,7 +309,7 @@ export default function ModalAtividade({
             {camposAtivos.cpitem && (
               <SectionCard icon="cube-outline" title="Itens entregues">
                 <Text style={styles.label}>Tipo de item</Text>
-                <View style={[styles.row, { marginTop: 2 }]}>
+                <View style={[styles.row, { marginTop: 2 }]}> 
                   {[
                     { value: "AM", label: "Amostra" },
                     { value: "MT", label: "Material Técnico" },
@@ -355,7 +401,7 @@ export default function ModalAtividade({
             {camposAtivos.cpvenda && (
               <SectionCard icon="cart-outline" title="Resultado de venda">
                 <Text style={styles.label}>Houve venda nesta visita?</Text>
-                <View style={[styles.row, { marginTop: 2 }]}>
+                <View style={[styles.row, { marginTop: 2 }]}> 
                   {[
                     { value: "S", label: "Sim, houve venda" },
                     { value: "N", label: "Não houve venda" },
@@ -496,21 +542,21 @@ export default function ModalAtividade({
           {previewFotoUri ? (
             <Animated.View
               style={{
-              position: "absolute",
-              top: 0,
-              right: 0,
-              bottom: 0,
-              left: 0,
-              backgroundColor: "#020617",
+                position: "absolute",
+                top: 0,
+                right: 0,
+                bottom: 0,
+                left: 0,
+                backgroundColor: "#020617",
                 borderRadius: 12,
-              alignItems: "center",
-              justifyContent: "center",
-              paddingHorizontal: 0,
-              paddingTop: 22,
-              paddingBottom: 10,
-              zIndex: 50,
-              transform: [{ translateY: previewTranslateY }],
-            }}
+                alignItems: "center",
+                justifyContent: "center",
+                paddingHorizontal: 0,
+                paddingTop: 22,
+                paddingBottom: 10,
+                zIndex: 50,
+                transform: [{ translateY: previewTranslateY }],
+              }}
             >
               <View style={{
                 width: "100%",
@@ -553,37 +599,38 @@ export default function ModalAtividade({
                 </Pressable>
               </View>
 
-              <View style={{
-                width: "100%",
-                flex: 1,
-                backgroundColor: "#020617",
-                alignItems: "center",
-                justifyContent: "center",
-                overflow: "hidden",
-              }}
-              {...previewPanResponder.panHandlers}
+              <View
+                style={{
+                  width: "100%",
+                  flex: 1,
+                  backgroundColor: "#020617",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  overflow: "hidden",
+                }}
+                {...previewPanResponder.panHandlers}
               >
-              <Image
-                source={{ uri: previewFotoUri }}
-                resizeMode="contain"
-                style={{ width: "100%", height: "100%", backgroundColor: "#020617" }}
-              />
+                <Image
+                  source={{ uri: previewFotoUri }}
+                  resizeMode="contain"
+                  style={{ width: "100%", height: "100%", backgroundColor: "#020617" }}
+                />
 
-              <View style={{
-                position: "absolute",
-                bottom: 10,
-                alignSelf: "center",
-                backgroundColor: "rgba(15,23,42,0.72)",
-                borderRadius: 999,
-                borderWidth: 1,
-                borderColor: "rgba(148,163,184,0.3)",
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-              }}>
-                <Text style={{ color: "#cbd5e1", fontSize: 11, fontWeight: "600" }}>
-                  Pré-visualização em tela cheia
-                </Text>
-              </View>
+                <View style={{
+                  position: "absolute",
+                  bottom: 10,
+                  alignSelf: "center",
+                  backgroundColor: "rgba(15,23,42,0.72)",
+                  borderRadius: 999,
+                  borderWidth: 1,
+                  borderColor: "rgba(148,163,184,0.3)",
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                }}>
+                  <Text style={{ color: "#cbd5e1", fontSize: 11, fontWeight: "600" }}>
+                    Pré-visualização em tela cheia
+                  </Text>
+                </View>
               </View>
             </Animated.View>
           ) : null}
