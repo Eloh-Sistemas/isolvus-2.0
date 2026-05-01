@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Animated, Image, Modal, PanResponder, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Animated, Image, PanResponder, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "../../../theme/colors";
@@ -8,24 +8,12 @@ import { formatarTelefone } from "../utils";
 
 function SectionCard({ icon, title, children }) {
   return (
-    <View style={{
-      marginTop: 14, borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 14,
-      backgroundColor: "#fff", overflow: "hidden",
-    }}>
-      <View style={{
-        flexDirection: "row", alignItems: "center", gap: 8,
-        paddingHorizontal: 14, paddingVertical: 10,
-        backgroundColor: "#f8fafc", borderBottomWidth: 1, borderBottomColor: "#e2e8f0",
-      }}>
-        <View style={{
-          width: 28, height: 28, borderRadius: 8,
-          backgroundColor: "#eff6ff", alignItems: "center", justifyContent: "center",
-        }}>
-          <Ionicons name={icon} size={15} color={colors.accent} />
-        </View>
-        <Text style={{ fontSize: 13, fontWeight: "700", color: "#334155" }}>{title}</Text>
+    <View style={{ marginTop: 16 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>
+        <Ionicons name={icon} size={15} color={colors.accent} />
+        <Text style={[styles.subsectionTitle, { marginTop: 0, marginBottom: 2 }]}>{title}</Text>
       </View>
-      <View style={{ padding: 14 }}>{children}</View>
+      <View>{children}</View>
     </View>
   );
 }
@@ -135,26 +123,25 @@ export default function ModalAtividade({
     }
   };
 
+  if (!visible) return null;
+
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      statusBarTranslucent
-      hardwareAccelerated
-      onRequestClose={fecharModal}
-    >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalCardLarge, { overflow: "hidden" }]}> 
+    <View style={[styles.section, { flex: 1, paddingHorizontal: 0, paddingBottom: 0, marginBottom: 0 }]}> 
+      <View style={{ flex: 1, maxHeight: "100%" }}> 
 
           {/* Header */}
-          <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 4 }}>
-            <View style={{
-              width: 40, height: 40, borderRadius: 12,
-              backgroundColor: "#eff6ff", alignItems: "center", justifyContent: "center",
-            }}>
-              <Ionicons name="clipboard" size={20} color={colors.accent} />
-            </View>
+          <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 8 }}>
+            <Pressable
+              onPress={fecharModal}
+              hitSlop={12}
+              style={({ pressed }) => ({
+                width: 36, height: 36, borderRadius: 10,
+                backgroundColor: pressed ? "#e2e8f0" : "#f1f5f9",
+                alignItems: "center", justifyContent: "center",
+              })}
+            >
+              <Ionicons name="arrow-back" size={20} color="#475569" />
+            </Pressable>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 18, fontWeight: "800", color: "#111827", letterSpacing: -0.4 }}>
                 {isEdicao ? "Editar atividade" : "Nova atividade"}
@@ -163,20 +150,15 @@ export default function ModalAtividade({
                 {isEdicao ? "Atualize os dados do registro selecionado." : "Selecione a atividade e preencha os campos."}
               </Text>
             </View>
-            <Pressable
-              onPress={fecharModal}
-              hitSlop={10}
-              style={({ pressed }) => ({
-                width: 34, height: 34, borderRadius: 10,
-                backgroundColor: pressed ? "#e2e8f0" : "#f1f5f9",
-                alignItems: "center", justifyContent: "center",
-              })}
-            >
-              <Ionicons name="close" size={18} color="#64748b" />
-            </Pressable>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 8 }}>
+          <ScrollView
+            style={{ flex: 1 }}
+            showsVerticalScrollIndicator
+            keyboardShouldPersistTaps="handled"
+            nestedScrollEnabled
+            contentContainerStyle={{ paddingBottom: 20 }}
+          >
 
             {/* Tipo de atividade */}
             <SectionCard icon="list" title="Tipo de atividade *">
@@ -467,41 +449,48 @@ export default function ModalAtividade({
               </SectionCard>
             )}
 
-            {/* Rodapé de ações */}
-            <View style={{ flexDirection: "row", gap: 8, marginTop: 20 }}>
-              <Pressable style={styles.btnSecondary} onPress={fecharModal}>
-                <Text style={styles.btnSecondaryText}>Cancelar</Text>
-              </Pressable>
-
-              {isEdicao && (
-                <Pressable
-                  style={[styles.btnDangerSmall, { paddingHorizontal: 16 }]}
-                  onPress={excluirEvidencia}
-                >
-                  <Ionicons name="trash-outline" size={16} color="#fff" />
-                </Pressable>
-              )}
-
-              <Pressable
-                style={{ flex: 1, borderRadius: 12, overflow: "hidden", opacity: salvandoEvidencia ? 0.7 : 1 }}
-                onPress={salvarEvidencia}
-                disabled={salvandoEvidencia}
-              >
-                <LinearGradient
-                  colors={["#3f6cf6", "#2f59d9"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[styles.btnGradient, { minHeight: 46 }]}
-                >
-                  {salvandoEvidencia
-                    ? <ActivityIndicator color="#fff" />
-                    : <Text style={styles.btnPrimaryText}>{isEdicao ? "Salvar alterações" : "Registrar atividade"}</Text>
-                  }
-                </LinearGradient>
-              </Pressable>
-            </View>
-
           </ScrollView>
+
+          <View style={{
+            flexDirection: "row",
+            gap: 8,
+            paddingTop: 10,
+            paddingBottom: 16,
+            borderTopWidth: 1,
+            borderTopColor: "#e2e8f0",
+            backgroundColor: "#f8fafc",
+          }}>
+            <Pressable style={styles.btnSecondary} onPress={fecharModal}>
+              <Text style={styles.btnSecondaryText}>Cancelar</Text>
+            </Pressable>
+
+            {isEdicao && (
+              <Pressable
+                style={[styles.btnDangerSmall, { paddingHorizontal: 16 }]}
+                onPress={excluirEvidencia}
+              >
+                <Ionicons name="trash-outline" size={16} color="#fff" />
+              </Pressable>
+            )}
+
+            <Pressable
+              style={{ flex: 1, borderRadius: 12, overflow: "hidden", opacity: salvandoEvidencia ? 0.7 : 1 }}
+              onPress={salvarEvidencia}
+              disabled={salvandoEvidencia}
+            >
+              <LinearGradient
+                colors={["#3f6cf6", "#2f59d9"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.btnGradient, { minHeight: 46 }]}
+              >
+                {salvandoEvidencia
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={styles.btnPrimaryText}>{isEdicao ? "Salvar alterações" : "Registrar atividade"}</Text>
+                }
+              </LinearGradient>
+            </Pressable>
+          </View>
 
           {/* Preview interno para evitar conflito de múltiplos Modals no Android */}
           {previewFotoUri ? (
@@ -607,7 +596,6 @@ export default function ModalAtividade({
               bottom: 0,
               left: 0,
               backgroundColor: "rgba(2,6,23,0.55)",
-              borderRadius: 12,
               alignItems: "center",
               justifyContent: "center",
               padding: 16,
@@ -652,8 +640,7 @@ export default function ModalAtividade({
               </View>
             </View>
           ) : null}
-          </View>
-        </View>
-      </Modal>
+      </View>
+    </View>
   );
 }
