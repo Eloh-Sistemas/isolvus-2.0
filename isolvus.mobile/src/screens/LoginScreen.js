@@ -42,6 +42,7 @@ export default function LoginScreen() {
 
   const shakeX = useRef(new Animated.Value(0)).current;
   const fraseOpacity = useRef(new Animated.Value(1)).current;
+  const scanY = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const intervalo = setInterval(() => {
@@ -60,6 +61,25 @@ export default function LoginScreen() {
     }, 3000);
     return () => clearInterval(intervalo);
   }, [fraseOpacity]);
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scanY, {
+          toValue: HERO_H,
+          duration: 5000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scanY, {
+          toValue: 0,
+          duration: 0,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [scanY]);
 
   const buttonLabel = useMemo(() => {
     if (loading) return "Autenticando...";
@@ -117,6 +137,18 @@ export default function LoginScreen() {
 
       {/* Hero — branding no topo */}
       <View style={styles.hero}>
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.scanLine, { transform: [{ translateY: scanY }] }]}
+        >
+          <LinearGradient
+            colors={["transparent", "rgba(96,165,250,0.65)", "transparent"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </Animated.View>
+
         <View style={styles.logoRow}>
           <Ionicons name="layers" size={26} color="#3f6cf6" />
           <Text style={styles.logoText}>
@@ -254,22 +286,38 @@ export default function LoginScreen() {
   );
 }
 
-const CARD_H = SCREEN_H * 0.62;
+const HERO_H = SCREEN_H - CARD_H;
+const CARD_H = SCREEN_H * 0.72;
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   hero: {
-    height: SCREEN_H - CARD_H,
+    height: HERO_H,
     paddingTop: 56,
     paddingHorizontal: 26,
     gap: 8,
     justifyContent: "center",
+    overflow: "hidden",
+  },
+  scanLine: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 2,
+    zIndex: 2,
   },
   logoRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 6 },
   logoText: { color: "#ffffff", fontSize: 20, fontWeight: "800", letterSpacing: 0.4 },
   logoErp: { color: "#3f6cf6", fontWeight: "800" },
   heroFrase: { color: "#ffffff", fontSize: 26, fontWeight: "800", lineHeight: 34 },
-  heroSub: { color: "rgba(255,255,255,0.55)", fontSize: 13, lineHeight: 20, marginTop: 4 },
+  heroSub: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 4,
+    marginBottom: 20,
+  },
   cardWrapper: { height: CARD_H },
   card: {
     flex: 1,
