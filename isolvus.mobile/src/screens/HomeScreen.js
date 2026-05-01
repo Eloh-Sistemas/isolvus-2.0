@@ -11,8 +11,10 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
@@ -190,12 +192,14 @@ export default function HomeScreen({ user, onLogout }) {
   const [salvandoFoto, setSalvandoFoto] = useState(false);
 
   const insets = useSafeAreaInsets();
+  const { width: larguraTela } = useWindowDimensions();
   const drawerAnim = useRef(new Animated.Value(400)).current;
   const notifAnim = useRef(new Animated.Value(400)).current;
 
   const idUsuario = Number(user?.id_usuario ?? 0);
   const nomeUsuario = user?.nome || user?.usuario || "Usuario";
   const setorUsuario = user?.setor || "Setor";
+  const drawerAberto = showModulos || showNotificacoes;
 
   const avatarUsuario = fotoUsuario || normalizarFotoUrl(user?.foto || user?.foto_usuario || "");
 
@@ -336,27 +340,27 @@ export default function HomeScreen({ user, onLogout }) {
 
   useEffect(() => {
     if (showModulos) {
-      drawerAnim.setValue(400);
+      drawerAnim.setValue(larguraTela);
       Animated.timing(drawerAnim, { toValue: 0, duration: 280, useNativeDriver: true }).start();
     }
-  }, [showModulos]);
+  }, [showModulos, drawerAnim, larguraTela]);
 
   useEffect(() => {
     if (showNotificacoes) {
-      notifAnim.setValue(400);
+      notifAnim.setValue(larguraTela);
       Animated.timing(notifAnim, { toValue: 0, duration: 280, useNativeDriver: true }).start();
     }
-  }, [showNotificacoes]);
+  }, [showNotificacoes, notifAnim, larguraTela]);
 
   function fecharModulos() {
-    Animated.timing(drawerAnim, { toValue: 400, duration: 220, useNativeDriver: true }).start(() => {
+    Animated.timing(drawerAnim, { toValue: larguraTela, duration: 220, useNativeDriver: true }).start(() => {
       setMenuFotoAberto(false);
       setShowModulos(false);
     });
   }
 
   function fecharNotificacoes() {
-    Animated.timing(notifAnim, { toValue: 400, duration: 220, useNativeDriver: true }).start(() => {
+    Animated.timing(notifAnim, { toValue: larguraTela, duration: 220, useNativeDriver: true }).start(() => {
       setShowNotificacoes(false);
     });
   }
@@ -524,6 +528,11 @@ export default function HomeScreen({ user, onLogout }) {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
+      <StatusBar
+        style={drawerAberto ? "dark" : "light"}
+        backgroundColor={drawerAberto ? "#f8fafc" : "#0c1526"}
+        translucent={false}
+      />
       <View style={styles.container}>
         <LinearGradient
           colors={["#0c1526", "#0f2060"]}
@@ -986,8 +995,7 @@ const styles = StyleSheet.create({
   drawerOverlay: { flex: 1, flexDirection: "row", backgroundColor: "rgba(15,23,42,0.45)" },
   backdrop: { flex: 1 },
   drawer: {
-    width: "88%",
-    maxWidth: 370,
+    width: "100%",
     backgroundColor: colors.white,
     paddingTop: 14,
     paddingHorizontal: 14,
