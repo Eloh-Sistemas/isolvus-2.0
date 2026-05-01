@@ -29,7 +29,7 @@ const FRASES = [
   "Acesse onde\ne quando quiser.",
 ];
 
-export default function LoginScreen() {
+export default function LoginScreen({ onLoginSuccess }) {
   const [user, setUser] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -110,7 +110,11 @@ export default function LoginScreen() {
         ["id_empresa", String(usuario.id_empresa ?? "")],
         ["razaosocial", String(usuario.razaosocial ?? "")],
       ]);
-      Alert.alert("Login efetuado", `Bem-vindo, ${usuario.nome ?? usuario.usuario ?? "usuário"}.`);
+      if (typeof onLoginSuccess === "function") {
+        onLoginSuccess(usuario);
+      } else {
+        Alert.alert("Login efetuado", `Bem-vindo, ${usuario.nome ?? usuario.usuario ?? "usuário"}.`);
+      }
     } catch (error) {
       setErroCredencial(true);
       Animated.sequence([
@@ -286,8 +290,8 @@ export default function LoginScreen() {
   );
 }
 
-const HERO_H = SCREEN_H - CARD_H;
 const CARD_H = SCREEN_H * 0.72;
+const HERO_H = SCREEN_H - CARD_H;
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
