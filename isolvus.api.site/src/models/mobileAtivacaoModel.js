@@ -49,16 +49,49 @@ export async function gerarAtivacaoMobile({
   const token_bruto = gerarTokenBruto();
   const token_hash = hashToken(token_bruto);
   const minutos = Number(validade_minutos || 10);
+  let ativacoesAtivasParaDesativar = [];
 
   if (id_usuario_destino) {
-    const ssqlDeleteAnteriores = `
-      DELETE FROM BSTAB_MOBILE_ATIVACAO
-       WHERE ID_EMPRESA = :id_empresa
-         AND ID_USUARIO_DESTINO = :id_usuario_destino
-    `;
+    // Captura ativações em uso para enviar comando remoto antes de deletar.
+    ativacoesAtivasParaDesativar = await executeQuery(
+      `
+        SELECT ID_ATIVACAO
+          FROM BSTAB_MOBILE_ATIVACAO
+         WHERE ID_EMPRESA = :id_empresa
+           AND ID_USUARIO_DESTINO = :id_usuario_destino
+           AND TRIM(UPPER(STATUS)) = 'U'
+      `,
+      {
+        id_empresa: String(id_empresa || ""),
+        id_usuario_destino: Number(id_usuario_destino),
+      }
+    );
 
+    // Remove todos os comandos pendentes das ativações antigas (FK: CMD → ATIVACAO).
     await executeQuery(
-      ssqlDeleteAnteriores,
+      `
+        DELETE FROM BSTAB_MOBILE_ATIVACAO_CMD
+         WHERE ID_ATIVACAO IN (
+           SELECT ID_ATIVACAO
+             FROM BSTAB_MOBILE_ATIVACAO
+            WHERE ID_EMPRESA = :id_empresa
+              AND ID_USUARIO_DESTINO = :id_usuario_destino
+         )
+      `,
+      {
+        id_empresa: String(id_empresa || ""),
+        id_usuario_destino: Number(id_usuario_destino),
+      },
+      true
+    );
+
+    // Deleta todos os registros anteriores do usuário (garante que só haverá uma ativação).
+    await executeQuery(
+      `
+        DELETE FROM BSTAB_MOBILE_ATIVACAO
+         WHERE ID_EMPRESA = :id_empresa
+           AND ID_USUARIO_DESTINO = :id_usuario_destino
+      `,
       {
         id_empresa: String(id_empresa || ""),
         id_usuario_destino: Number(id_usuario_destino),
@@ -105,6 +138,48 @@ export async function gerarAtivacaoMobile({
     token_hash,
     minutos,
   }, true);
+
+  if (Array.isArray(ativacoesAtivasParaDesativar) && ativacoesAtivasParaDesativar.length > 0) {
+    for (const ativacao of ativacoesAtivasParaDesativar) {
+      const idAtivacaoAntiga = Number(ativacao?.id_ativacao || 0);
+      if (!idAtivacaoAntiga) continue;
+
+      const nextId = await executeQuery(
+        `SELECT SEQ_BSTAB_MOBILE_ATIVACAO_CMD.NEXTVAL AS ID_COMANDO FROM DUAL`
+      );
+      const id_comando = Number(nextId?.[0]?.id_comando || 0);
+      if (!id_comando) continue;
+
+      await executeQuery(
+        `
+          INSERT INTO BSTAB_MOBILE_ATIVACAO_CMD (
+            ID_COMANDO,
+            ID_ATIVACAO,
+            TIPO_COMANDO,
+            PAYLOAD_JSON,
+            STATUS,
+            DT_CRIACAO,
+            ID_USUARIO_CRIACAO
+          ) VALUES (
+            :id_comando,
+            :id_ativacao,
+            'redefinir_ativacao',
+            :payload_json,
+            'P',
+            SYSDATE,
+            :id_usuario_criacao
+          )
+        `,
+        {
+          id_comando,
+          id_ativacao: idAtivacaoAntiga,
+          payload_json: JSON.stringify({ motivo: "nova_ativacao_gerada" }),
+          id_usuario_criacao: id_usuario != null ? Number(id_usuario) : null,
+        },
+        true
+      );
+    }
+  }
 
   return {
     codigo_ativacao,
@@ -545,6 +620,38 @@ export async function atualizarStatusComandoAtivacaoMobile({
     },
     true
   );
+  const atualizado = Number(result?.rowsAffected || 0) > 0;
+  if (!atualizado) return false;
 
-  return Number(result?.rowsAffected || 0) > 0;
+  const statusFinal = String(status_execucao || "").trim().toLowerCase();
+  if (statusFinal === "done" || statusFinal === "done_no_grant") {
+    const comando = await executeQuery(
+      `
+        SELECT TIPO_COMANDO
+          FROM BSTAB_MOBILE_ATIVACAO_CMD
+         WHERE ID_ATIVACAO = TO_NUMBER(:id_ativacao)
+           AND ID_COMANDO = TO_NUMBER(:id_comando)
+      `,
+      {
+        id_ativacao: String(id_ativacao || "0"),
+        id_comando: String(id_comando || "0"),
+      }
+    );
+
+    if (String(comando?.[0]?.tipo_comando || "").trim().toLowerCase() === "redefinir_ativacao") {
+      await executeQuery(
+        `
+          UPDATE BSTAB_MOBILE_ATIVACAO
+             SET STATUS = 'D',
+                 DT_ALTERACAO = SYSDATE
+           WHERE ID_ATIVACAO = TO_NUMBER(:id_ativacao)
+             AND TRIM(UPPER(STATUS)) = 'U'
+        `,
+        { id_ativacao: String(id_ativacao || "0") },
+        true
+      );
+    }
+  }
+
+  return true;
 }

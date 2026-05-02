@@ -411,6 +411,34 @@ export async function EnviarComandoPermissao(req, res) {
   }
 }
 
+export async function EnviarComandoInativarDispositivo(req, res) {
+  try {
+    const { id_ativacao } = req.params || {};
+
+    if (!id_ativacao) {
+      return res.status(400).json({ error: "id_ativacao é obrigatório." });
+    }
+
+    const resultado = await enfileirarComandoAtivacaoMobile({
+      id_ativacao,
+      tipo_comando: "redefinir_ativacao",
+      payload: { motivo: "inativacao_remota_web" },
+      id_usuario_criacao: req.body?.id_usuario || null,
+    });
+
+    if (!resultado.ok) {
+      return res.status(409).json({
+        error: "Somente ativações com status U podem ser inativadas remotamente.",
+        status_atual: resultado.statusAtivacao,
+      });
+    }
+
+    return res.json({ sucesso: true, comando: resultado.comando });
+  } catch (error) {
+    return res.status(500).json({ error: error.message || "Erro ao enviar comando de inativação para dispositivo." });
+  }
+}
+
 export async function ConfirmarComandoMobile(req, res) {
   try {
     const { id_ativacao } = req.params || {};

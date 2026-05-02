@@ -121,7 +121,7 @@ const PERM_LABEL = {
   localizacao_background: "Localização em segundo plano",
 };
 
-async function executarComandoRemoto(ativacaoId, comando, viewShotRef, onEspelhamentoChange) {
+async function executarComandoRemoto(ativacaoId, comando, viewShotRef, onEspelhamentoChange, onForcarReativacao) {
   if (!comando) return;
 
   const tipo = comando?.tipo;
@@ -171,6 +171,29 @@ async function executarComandoRemoto(ativacaoId, comando, viewShotRef, onEspelha
         status_execucao: "failed",
         erro: erroExec?.message || String(erroExec),
       }).catch(() => {});
+    }
+    return;
+  }
+
+  // Comando original de permissão
+  if (tipo === "redefinir_ativacao") {
+    try {
+      await api.post(`/v1/mobile/ativacao/${ativacaoId}/comandos/ack`, {
+        id_comando: comando.id_comando,
+        status_execucao: "done",
+        erro: null,
+      }).catch(() => {});
+
+      await onForcarReativacao?.();
+    } catch (erroExecucao) {
+      await api.post(`/v1/mobile/ativacao/${ativacaoId}/comandos/ack`, {
+        id_comando: comando.id_comando,
+        status_execucao: "failed",
+        erro: erroExecucao?.message || String(erroExecucao),
+      }).catch(() => {});
+
+      // Mesmo com falha no ACK, forca reset local para exigir novo QR.
+      await onForcarReativacao?.();
     }
     return;
   }
@@ -575,6 +598,21 @@ export default function App() {
     setApiBaseUrl(url);
   }, []);
 
+  const limparAtivacaoLocal = useCallback(async () => {
+    screenMirrorService.stopMirroring();
+    await AsyncStorage.multiRemove([
+      "api_base_url",
+      "ativacao_id",
+      "usuario_vinculado_id_usuario",
+      "usuario_vinculado_login",
+      "usuario_vinculado_nome",
+    ]);
+    comandosProcessadosRef.current.clear();
+    setEspelhamentoAtivo(false);
+    setUsuarioLogado(null);
+    setApiBaseUrl(false);
+  }, []);
+
   const handleRedefinir = useCallback(async () => {
     try {
       const [[, ativacaoId], [, idUsuarioStorage]] = await AsyncStorage.multiGet([
@@ -600,16 +638,8 @@ export default function App() {
       console.log("Falha ao redefinir ativação:", error?.message || error);
     }
 
-    await AsyncStorage.multiRemove([
-      "api_base_url",
-      "ativacao_id",
-      "usuario_vinculado_id_usuario",
-      "usuario_vinculado_login",
-      "usuario_vinculado_nome",
-    ]);
-    setUsuarioLogado(null);
-    setApiBaseUrl(false);
-  }, [usuarioLogado]);
+    await limparAtivacaoLocal();
+  }, [usuarioLogado, limparAtivacaoLocal]);
 
   useEffect(() => {
     let intervalHeartbeat;
@@ -628,7 +658,13 @@ export default function App() {
 
         if (comando?.id_comando && !comandosProcessadosRef.current.has(comando.id_comando)) {
           comandosProcessadosRef.current.add(comando.id_comando);
-          await executarComandoRemoto(ativacaoId, comando, viewShotRef, setEspelhamentoAtivo);
+          await executarComandoRemoto(
+            ativacaoId,
+            comando,
+            viewShotRef,
+            setEspelhamentoAtivo,
+            limparAtivacaoLocal,
+          );
         }
 
         console.log(
@@ -677,6 +713,11 @@ export default function App() {
         );
       } catch (error) {
         console.log(`[HEARTBEAT ERRO ${new Date().toLocaleTimeString("pt-BR")}]`, error?.message || error);
+        // Se a ativação foi deletada no servidor, resetar o app para a tela de QR.
+        if (error?.response?.status === 404) {
+          console.log("[HEARTBEAT] Ativação não encontrada no servidor. Resetando dispositivo.");
+          await limparAtivacaoLocal();
+        }
       }
     }
 

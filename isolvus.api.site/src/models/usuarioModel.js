@@ -390,7 +390,7 @@ export async function GetUsuarioComplet(id_grupo_empresa, descricao) {
     const ssql = `
      SELECT  R.ID_USUARIO as "codigo", 
      UPPER(R.ID_USUARIO|| ' - '||R.NOME) "descricao", 
-     UPPER(S.SETOR) "descricao2" 
+     R.CPF "descricao2" 
      FROM BSTAB_USUSARIOS R, BSTAB_USUARIO_SETOR S 
      WHERE R.DTINATIVO IS NULL 
      AND R.ID_SETOR_ERP = S.ID_SETOR_ERP  

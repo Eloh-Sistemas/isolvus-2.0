@@ -1,10 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
-import iconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
-import iconUrl from "leaflet/dist/images/marker-icon.png";
-import shadowUrl from "leaflet/dist/images/marker-shadow.png";
 import { MapPin, Smartphone, ShieldCheck, XCircle, Copy, CheckCheck, RefreshCw } from "lucide-react";
 import QRCode from "qrcode";
 import Swal from "sweetalert2";
@@ -13,28 +7,6 @@ import api from "../../../servidor/api";
 import EspelhoScreenModal from "./EspelhoScreenModal";
 import "./MobileAtivacao.css";
 
-const deviceLocationIcon = L.icon({
-  iconRetinaUrl,
-  iconUrl,
-  shadowUrl,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-
-function createNearbyPlaceIcon(color) {
-  return new L.Icon({
-    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${color}.png`,
-    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41],
-  });
-}
-
-const nearbyPlaceIcon = createNearbyPlaceIcon("violet");
 
 function traduzirTipoLocal(item) {
   const amenity = item?.tags?.amenity;
@@ -84,7 +56,7 @@ function statusTag(status) {
   if (status === "P") return "Pendente";
   if (status === "U") return "Utilizado";
   if (status === "R") return "Revogado";
-  if (status === "D") return "Redefinido pelo dispositivo";
+  if (status === "D") return "Desativado";
   return status || "-";
 }
 
@@ -330,20 +302,6 @@ function obterPermissoes(item) {
   );
 }
 
-function LocalizacaoMapaController({ latitude, longitude, markerRef }) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (typeof latitude !== "number" || typeof longitude !== "number") return;
-    map.setView([latitude, longitude], 16, { animate: false });
-    if (markerRef.current) {
-      markerRef.current.openPopup();
-    }
-  }, [latitude, longitude, map, markerRef]);
-
-  return null;
-}
-
 export default function MobileAtivacao() {
   const [loadingGerar, setLoadingGerar] = useState(false);
   const [loadingLista, setLoadingLista] = useState(false);
@@ -373,11 +331,8 @@ export default function MobileAtivacao() {
   const interagindoTabelaRef = useRef(false);
   const tabelaContainerRef = useRef(null);
   const menuAcaoRef = useRef(null);
-  const localizacaoMarkerRef = useRef(null);
   const [localizacaoEndereco, setLocalizacaoEndereco] = useState(null);
   const [loadingEndereco, setLoadingEndereco] = useState(false);
-  const [locaisProximos, setLocaisProximos] = useState([]);
-  const [loadingLocaisProximos, setLoadingLocaisProximos] = useState(false);
   const [copiado, setCopiado] = useState(false);
 
   const empresaInfo = useMemo(() => ({
@@ -458,7 +413,7 @@ export default function MobileAtivacao() {
         descricao: valor,
         id_grupo_empresa: empresaInfo.id_grupo_empresa,
       });
-      setResultadosUsuario(Array.isArray(data) ? data.slice(0, 10) : []);
+      setResultadosUsuario(Array.isArray(data) ? data.slice(0, 5) : []);
     } catch {
       setResultadosUsuario([]);
     } finally {
@@ -469,6 +424,15 @@ export default function MobileAtivacao() {
   function selecionarUsuario(item) {
     setUsuarioSelecionado(item);
     setBuscaUsuario(item.descricao);
+    setResultadosUsuario([]);
+  }
+
+  function fecharModalGerarAtivacao() {
+    setModalGerarAberto(false);
+    setTokenAtual(null);
+    setQrDataUrl("");
+    setBuscaUsuario("");
+    setUsuarioSelecionado(null);
     setResultadosUsuario([]);
   }
 
@@ -620,6 +584,42 @@ export default function MobileAtivacao() {
     }
   }
 
+  async function inativarDispositivoRemoto(item) {
+    if (!item?.id_ativacao) return;
+
+    const confirmacao = await Swal.fire({
+      title: "Inativar dispositivo?",
+      text: "O app mobile será bloqueado e voltará para a tela de leitura de QR Code no próximo heartbeat.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sim, inativar",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+    });
+
+    if (!confirmacao.isConfirmed) return;
+
+    try {
+      await api.post(`/v1/mobile/ativacao/${item.id_ativacao}/comandos/inativar-dispositivo`, {
+        id_usuario: empresaInfo.id_usuario,
+      });
+
+      await Swal.fire({
+        icon: "success",
+        title: "Comando enviado",
+        text: "O dispositivo será inativado remotamente e exigirá novo QR Code.",
+      });
+
+      await carregarAtivacoes({ silencioso: true });
+    } catch (error) {
+      await Swal.fire({
+        icon: "error",
+        title: "Falha ao inativar dispositivo",
+        text: error?.response?.data?.error || "Não foi possível enviar o comando de inativação.",
+      });
+    }
+  }
+
   function abrirEspelhoModal(item) {
     setEspelhoAtivacaoId(item.id_ativacao);
     setEspelhoDispositivo(item.dispositivo || `Ativação ${item.id_ativacao}`);
@@ -635,9 +635,10 @@ export default function MobileAtivacao() {
     const altitude = info?.location?.altitude ?? null;
     const speed = info?.location?.speed ?? null;
     const timestamp = info?.location?.timestamp || info?.location?.last_updated || null;
+    const batteryLevel = info?.battery?.level ?? null;
+    const batteryState = info?.battery?.state ?? null;
 
     setLocalizacaoEndereco(null);
-    setLocaisProximos([]);
     setLocalizacaoAtual({
       idAtivacao: item?.id_ativacao,
       dispositivo: item?.dispositivo || `Ativação ${item?.id_ativacao || ""}`,
@@ -648,6 +649,8 @@ export default function MobileAtivacao() {
       altitude,
       speed,
       timestamp,
+      batteryLevel,
+      batteryState,
     });
     setLocalizacaoModalAberto(true);
   }
@@ -728,61 +731,6 @@ export default function MobileAtivacao() {
     return () => { cancelado = true; };
   }, [localizacaoModalAberto, localizacaoAtual?.latitude, localizacaoAtual?.longitude]);
 
-  useEffect(() => {
-    if (!localizacaoModalAberto || typeof localizacaoAtual?.latitude !== "number" || typeof localizacaoAtual?.longitude !== "number") return;
-
-    let cancelado = false;
-    setLoadingLocaisProximos(true);
-    setLocaisProximos([]);
-
-    const query = `
-      [out:json][timeout:20];
-      (
-        node(around:700,${localizacaoAtual.latitude},${localizacaoAtual.longitude})[amenity];
-        node(around:700,${localizacaoAtual.latitude},${localizacaoAtual.longitude})[shop];
-        node(around:700,${localizacaoAtual.latitude},${localizacaoAtual.longitude})[tourism];
-        node(around:700,${localizacaoAtual.latitude},${localizacaoAtual.longitude})[healthcare];
-        node(around:700,${localizacaoAtual.latitude},${localizacaoAtual.longitude})[office];
-      );
-      out body 20;
-    `;
-
-    fetch("https://overpass-api.de/api/interpreter", {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=UTF-8" },
-      body: query,
-    })
-      .then((resposta) => resposta.json())
-      .then((data) => {
-        if (cancelado) return;
-
-        const elementos = Array.isArray(data?.elements) ? data.elements : [];
-        const itens = elementos
-          .filter((item) => typeof item?.lat === "number" && typeof item?.lon === "number")
-          .map((item) => ({
-            id: item.id,
-            latitude: item.lat,
-            longitude: item.lon,
-            nome: item?.tags?.name || traduzirTipoLocal(item),
-            tipo: traduzirTipoLocal(item),
-            endereco: [item?.tags?.addr_street, item?.tags?.addr_housenumber].filter(Boolean).join(", "),
-          }))
-          .slice(0, 20);
-
-        setLocaisProximos(itens);
-      })
-      .catch(() => {
-        if (!cancelado) setLocaisProximos([]);
-      })
-      .finally(() => {
-        if (!cancelado) setLoadingLocaisProximos(false);
-      });
-
-    return () => {
-      cancelado = true;
-    };
-  }, [localizacaoModalAberto, localizacaoAtual?.latitude, localizacaoAtual?.longitude]);
-
   async function copiarCoordenadas() {
     const texto = `${localizacaoAtual.latitude.toFixed(6)}, ${localizacaoAtual.longitude.toFixed(6)}`;
     try {
@@ -850,81 +798,46 @@ export default function MobileAtivacao() {
               <div className="modal-body p-0 espelho-modal-body localizacao-modal-body">
                 {typeof localizacaoAtual?.latitude === "number" && typeof localizacaoAtual?.longitude === "number" ? (
                   <div className="localizacao-map-shell">
-                    <MapContainer
+                    <iframe
+                      title="Mapa de localização do dispositivo"
                       className="localizacao-leaflet-map"
-                      center={[localizacaoAtual.latitude, localizacaoAtual.longitude]}
-                      zoom={16}
-                      scrollWheelZoom
-                    >
-                      <TileLayer
-                        attribution='&copy; OpenStreetMap contributors'
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      />
-                      <LocalizacaoMapaController
-                        latitude={localizacaoAtual.latitude}
-                        longitude={localizacaoAtual.longitude}
-                        markerRef={localizacaoMarkerRef}
-                      />
-                      <Marker
-                        position={[localizacaoAtual.latitude, localizacaoAtual.longitude]}
-                        icon={deviceLocationIcon}
-                        ref={localizacaoMarkerRef}
-                      >
-                        <Popup autoPan className="localizacao-popup">
-                          <div className="localizacao-popup-content">
-                            <div className="localizacao-popup-title">
-                              {localizacaoAtual?.dispositivo || "Dispositivo"}
-                            </div>
-                            <div className="localizacao-popup-line">
-                              {loadingEndereco ? "Buscando endereço..." : (localizacaoEndereco || "Endereço não disponível")}
-                            </div>
-                            <div className="localizacao-popup-line">
-                              Coordenadas: {localizacaoAtual.latitude.toFixed(6)}, {localizacaoAtual.longitude.toFixed(6)}
-                            </div>
-                            <div className="localizacao-popup-line">
-                              Permissão: {localizacaoAtual?.permissao || "unknown"}
-                            </div>
-                            {typeof localizacaoAtual.accuracy === "number" && (
-                              <div className="localizacao-popup-line">
-                                Precisão: ± {localizacaoAtual.accuracy.toFixed(0)} m
-                              </div>
-                            )}
-                            {typeof localizacaoAtual.altitude === "number" && (
-                              <div className="localizacao-popup-line">
-                                Altitude: {localizacaoAtual.altitude.toFixed(0)} m
-                              </div>
-                            )}
-                            {typeof localizacaoAtual.speed === "number" && localizacaoAtual.speed >= 0 && (
-                              <div className="localizacao-popup-line">
-                                Velocidade: {(localizacaoAtual.speed * 3.6).toFixed(1)} km/h
-                              </div>
-                            )}
-                            {localizacaoAtual.timestamp && (
-                              <div className="localizacao-popup-line">
-                                Atualizado em: {formatarData(localizacaoAtual.timestamp)}
-                              </div>
-                            )}
-                          </div>
-                        </Popup>
-                      </Marker>
-                      {locaisProximos.map((local) => (
-                        <Marker
-                          key={String(local.id)}
-                          position={[local.latitude, local.longitude]}
-                          icon={nearbyPlaceIcon}
-                        >
-                          <Popup className="localizacao-popup localizacao-popup-poi">
-                            <div className="localizacao-popup-content">
-                              <div className="localizacao-popup-title">{local.nome}</div>
-                              <div className="localizacao-popup-line">Tipo: {local.tipo}</div>
-                              {local.endereco && (
-                                <div className="localizacao-popup-line">Endereco: {local.endereco}</div>
-                              )}
-                            </div>
-                          </Popup>
-                        </Marker>
-                      ))}
-                    </MapContainer>
+                      src={`https://maps.google.com/maps?q=${localizacaoAtual.latitude},${localizacaoAtual.longitude}&z=16&output=embed`}
+                      allowFullScreen
+                      loading="lazy"
+                      style={{ border: 0 }}
+                    />
+                    <div className="localizacao-device-overlay-card">
+                      <div className="localizacao-device-card-title">{localizacaoAtual.dispositivo || "Dispositivo"}</div>
+                      {loadingEndereco ? (
+                        <div className="localizacao-device-card-row">Buscando endereço...</div>
+                      ) : localizacaoEndereco ? (
+                        <div className="localizacao-device-card-row localizacao-device-card-address" title={localizacaoEndereco}>
+                          📍 {localizacaoEndereco.length > 60 ? localizacaoEndereco.slice(0, 60) + "…" : localizacaoEndereco}
+                        </div>
+                      ) : null}
+                      <div className="localizacao-device-card-row">
+                        🗺 {localizacaoAtual.latitude.toFixed(6)}, {localizacaoAtual.longitude.toFixed(6)}
+                      </div>
+                      <div className="localizacao-device-card-row">GPS: {localizacaoAtual.permissao}</div>
+                      {typeof localizacaoAtual.accuracy === "number" && (
+                        <div className="localizacao-device-card-row">Precisão: ± {localizacaoAtual.accuracy.toFixed(0)} m</div>
+                      )}
+                      {typeof localizacaoAtual.altitude === "number" && (
+                        <div className="localizacao-device-card-row">Altitude: {localizacaoAtual.altitude.toFixed(0)} m</div>
+                      )}
+                      {typeof localizacaoAtual.speed === "number" && localizacaoAtual.speed >= 0 && (
+                        <div className="localizacao-device-card-row">Velocidade: {(localizacaoAtual.speed * 3.6).toFixed(1)} km/h</div>
+                      )}
+                      {typeof localizacaoAtual.batteryLevel === "number" && (
+                        <div className="localizacao-device-card-row">
+                          🔋 Bateria: {Math.min(Math.max(localizacaoAtual.batteryLevel, 0), 100)}%
+                          {localizacaoAtual.batteryState === "charging" || localizacaoAtual.batteryState === "full" ? " ⚡" : ""}
+                        </div>
+                      )}
+                      {localizacaoAtual.timestamp && (
+                        <div className="localizacao-device-card-row">🕐 {formatarData(localizacaoAtual.timestamp)}</div>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="espelho-frame-placeholder">
@@ -963,14 +876,6 @@ export default function MobileAtivacao() {
                     </button>
                     {typeof localizacaoAtual.accuracy === "number" && (
                       <span className="localizacao-info-chip" title="Precisão do GPS">± {localizacaoAtual.accuracy.toFixed(0)} m</span>
-                    )}
-                    {loadingLocaisProximos && (
-                      <span className="localizacao-info-chip">Buscando locais próximos...</span>
-                    )}
-                    {!loadingLocaisProximos && locaisProximos.length > 0 && (
-                      <span className="localizacao-info-chip" title="Quantidade de locais próximos mapeados">
-                        {locaisProximos.length} locais próximos
-                      </span>
                     )}
                     {typeof localizacaoAtual.altitude === "number" && (
                       <span className="localizacao-info-chip" title="Altitude">↑ {localizacaoAtual.altitude.toFixed(0)} m alt</span>
@@ -1016,18 +921,29 @@ export default function MobileAtivacao() {
           </div>
         </div>
       ) : null}
-      <div className="container-fluid Containe-Tela mobile-ativacao-page">
-        <div className={`modal ${modalGerarAberto ? "show d-block" : ""}`} tabIndex="-1" role="dialog" aria-modal="true" style={{ background: "rgba(15,23,42,.45)" }}>
-          <div className="modal-dialog modal-xl modal-dialog-centered" role="document" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title" style={{ fontWeight: 700 }}>Gerar ativação mobile</h5>
-                <button type="button" className="btn-close" onClick={() => setModalGerarAberto(false)} />
+      {modalGerarAberto ? (
+        <div
+          className="modal show espelho-modal gerar-ativacao-modal"
+          style={{ display: "block" }}
+          onClick={fecharModalGerarAtivacao}
+        >
+          <div
+            className="modal-dialog modal-dialog-centered gerar-ativacao-modal-dialog"
+            role="document"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-content espelho-modal-content gerar-ativacao-modal-content">
+              <div className="modal-header espelho-modal-header">
+                <div>
+                  <h5 className="modal-title mb-0" style={{ fontWeight: 700 }}>Gerar ativação mobile</h5>
+                  <small className="text-muted">Gere o QR Code para o usuário vincular o app</small>
+                </div>
+                <button type="button" className="btn-close" onClick={fecharModalGerarAtivacao} />
               </div>
-              <div className="modal-body">
-                <div className="row g-3">
-                  <div className="col-12 col-lg-5">
-                    <div className="card mobile-ativacao-card h-100">
+              <div className="modal-body espelho-modal-body gerar-ativacao-modal-body">
+                <div className="row g-3 h-100">
+                  <div className="col-12 col-lg-5 d-flex flex-column">
+                    <div className="card mobile-ativacao-card flex-fill">
                       <div className="card-body">
                         <h5 className="card-title mb-3">Nova ativação</h5>
 
@@ -1047,7 +963,7 @@ export default function MobileAtivacao() {
                             </div>
                           )}
                           {resultadosUsuario.length > 0 && (
-                            <ul className="list-group position-absolute w-100 shadow-sm" style={{ zIndex: 999, top: "100%" }}>
+                            <ul className="list-group position-absolute w-100" style={{ zIndex: 999, top: "100%", border: "1px solid #dbe3ef", borderRadius: "0 0 6px 6px", height: "auto", overflow: "hidden" }}>
                               {resultadosUsuario.map((u) => (
                                 <li
                                   key={u.codigo}
@@ -1055,8 +971,8 @@ export default function MobileAtivacao() {
                                   style={{ cursor: "pointer" }}
                                   onMouseDown={() => selecionarUsuario(u)}
                                 >
-                                  <strong>{u.codigo}</strong> — {u.descricao}
-                                  {u.descricao2 ? <span className="text-muted ms-1">({u.descricao2})</span> : null}
+                                  <div>{u.descricao}</div>
+                                  {u.descricao2 ? <div className="text-muted" style={{ fontSize: "0.8em" }}>CPF: {u.descricao2}</div> : null}
                                 </li>
                               ))}
                             </ul>
@@ -1086,8 +1002,8 @@ export default function MobileAtivacao() {
                     </div>
                   </div>
 
-                  <div className="col-12 col-lg-7">
-                    <div className="card mobile-ativacao-card h-100">
+                  <div className="col-12 col-lg-7 d-flex flex-column">
+                    <div className="card mobile-ativacao-card flex-fill">
                       <div className="card-body qr-preview-wrap">
                         <h5 className="card-title mb-3">QR Code de ativação</h5>
 
@@ -1106,9 +1022,16 @@ export default function MobileAtivacao() {
                   </div>
                 </div>
               </div>
+              <div className="modal-footer espelho-modal-footer">
+                <button type="button" className="btn btn-secondary btn-sm" onClick={fecharModalGerarAtivacao}>
+                  Fechar
+                </button>
+              </div>
             </div>
           </div>
         </div>
+      ) : null}
+      <div className="container-fluid Containe-Tela mobile-ativacao-page">
 
         <div className="row text-body-secondary mb-3">
           <h1 className="mb-2 titulo-da-pagina">Configuração - Ativação Mobile por QR Code</h1>
@@ -1281,6 +1204,19 @@ export default function MobileAtivacao() {
                               >
                                 <ShieldCheck size={15} strokeWidth={1.8} /> Permissões
                               </button>
+                              {item.status === "U" ? (
+                                <button
+                                  type="button"
+                                  className="mobile-acao-item mobile-acao-item-danger"
+                                  title="Inativar dispositivo remotamente e forçar nova leitura de QR"
+                                  onClick={() => {
+                                    fecharMenuAcao();
+                                    inativarDispositivoRemoto(item);
+                                  }}
+                                >
+                                  <XCircle size={15} strokeWidth={1.8} /> Inativar dispositivo
+                                </button>
+                              ) : null}
                               {item.status === "P" ? (
                                 <button
                                   type="button"
@@ -1308,9 +1244,9 @@ export default function MobileAtivacao() {
                           </span>
                         </td>
                         <td>
-                          {item.id_usuario_destino
-                            ? `${item.id_usuario_destino} - ${item.nome_usuario_ativacao || "-"}`
-                            : item.nome_usuario_ativacao || "-"}
+                          {item.nome_usuario_ativacao
+                            ? (item.id_usuario_destino ? `${item.id_usuario_destino} - ${item.nome_usuario_ativacao}` : item.nome_usuario_ativacao)
+                            : "-"}
                         </td>
                         <td>{item.dispositivo || "-"}</td>
                         <td>{obterPermissoes(item)}</td>
