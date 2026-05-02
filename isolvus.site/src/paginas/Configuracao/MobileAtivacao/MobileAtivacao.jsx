@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { MapPin, Smartphone, ShieldCheck, XCircle } from "lucide-react";
 import QRCode from "qrcode";
 import Swal from "sweetalert2";
 import Menu from "../../../componentes/Menu/Menu";
@@ -647,18 +648,14 @@ export default function MobileAtivacao() {
                 <button type="button" className="btn-close" onClick={() => setLocalizacaoModalAberto(false)} />
               </div>
 
-              <div className="modal-body p-2 p-md-3 espelho-modal-body">
+              <div className="modal-body p-0 espelho-modal-body localizacao-modal-body">
                 {typeof localizacaoAtual?.latitude === "number" && typeof localizacaoAtual?.longitude === "number" ? (
-                  <div className="espelho-frame-wrap">
-                    <div className="localizacao-frame-map">
-                      <iframe
-                        title="Mapa da localizacao do dispositivo"
-                        className="localizacao-map-iframe"
-                        loading="lazy"
-                        src={`https://www.google.com/maps?q=${encodeURIComponent(`${localizacaoAtual.latitude},${localizacaoAtual.longitude}`)}&z=16&output=embed`}
-                      />
-                    </div>
-                  </div>
+                  <iframe
+                    title="Mapa da localizacao do dispositivo"
+                    className="localizacao-map-iframe"
+                    loading="lazy"
+                    src={`https://www.google.com/maps?q=${encodeURIComponent(`${localizacaoAtual.latitude},${localizacaoAtual.longitude}`)}&z=16&output=embed`}
+                  />
                 ) : (
                   <div className="espelho-frame-placeholder">
                     <div className="text-center">
@@ -894,7 +891,7 @@ export default function MobileAtivacao() {
                       <th>ID</th>
                       <th>Código</th>
                       <th>Status</th>
-                      <th>Destinatário / Usuário</th>
+                      <th>Usuário</th>
                       <th>Dispositivo</th>
                       <th>Permissões</th>
                       <th>Rede</th>
@@ -937,7 +934,7 @@ export default function MobileAtivacao() {
                                   abrirLocalizacaoModal(item);
                                 }}
                               >
-                                📍 Localizar
+                                <MapPin size={15} strokeWidth={1.8} /> Localizar
                               </button>
                               <button
                                 type="button"
@@ -948,7 +945,7 @@ export default function MobileAtivacao() {
                                   abrirEspelhoModal(item);
                                 }}
                               >
-                                📱 Espelhar
+                                <Smartphone size={15} strokeWidth={1.8} /> Espelhar
                               </button>
                               <button
                                 type="button"
@@ -959,7 +956,7 @@ export default function MobileAtivacao() {
                                   solicitarPermissaoRemota(item);
                                 }}
                               >
-                                🔐 Permissões
+                                <ShieldCheck size={15} strokeWidth={1.8} /> Permissões
                               </button>
                               {item.status === "P" ? (
                                 <button
@@ -971,7 +968,7 @@ export default function MobileAtivacao() {
                                   }}
                                   disabled={revogandoId === item.id_ativacao}
                                 >
-                                  {revogandoId === item.id_ativacao ? "Revogando..." : "⛔ Revogar"}
+                                  {revogandoId === item.id_ativacao ? "Revogando..." : <><XCircle size={15} strokeWidth={1.8} /> Revogar</>}
                                 </button>
                               ) : (
                                 <span className="mobile-acao-item-disabled">Revogar indisponível</span>
@@ -988,10 +985,9 @@ export default function MobileAtivacao() {
                           </span>
                         </td>
                         <td>
-                          <span style={{ display: "inline-flex", flexDirection: "column", gap: 1 }}>
-                            <span>{item.id_usuario_destino || "-"}</span>
-                            <span className="text-muted">{item.nome_usuario_ativacao || "-"}</span>
-                          </span>
+                          {item.id_usuario_destino
+                            ? `${item.id_usuario_destino} - ${item.nome_usuario_ativacao || "-"}`
+                            : item.nome_usuario_ativacao || "-"}
                         </td>
                         <td>{item.dispositivo || "-"}</td>
                         <td>{obterPermissoes(item)}</td>
