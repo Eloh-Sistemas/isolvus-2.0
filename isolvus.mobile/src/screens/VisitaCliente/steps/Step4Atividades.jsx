@@ -9,6 +9,7 @@ export default function Step4Atividades({
   clienteSelecionado,
   loadingAtividades,
   atividades,
+  somenteLeitura = false,
   voltar,
   avancar,
   abrirModalAtividade,
@@ -32,7 +33,11 @@ export default function Step4Atividades({
         </Pressable>
         <View style={{ flex: 1 }}>
           <Text style={styles.sectionTitle}>Atividades da visita</Text>
-          <Text style={styles.sectionSubtitle}>Toque em uma atividade para editar ou adicione novas abaixo.</Text>
+          <Text style={styles.sectionSubtitle}>
+            {somenteLeitura
+              ? "Visita finalizada: somente visualizacao das atividades."
+              : "Toque em uma atividade para editar ou adicione novas abaixo."}
+          </Text>
         </View>
       </View>
 
@@ -112,7 +117,9 @@ export default function Step4Atividades({
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.listItemTitle} numberOfLines={1}>{item.descricao}</Text>
-                    <Text style={styles.listItemSub}>Registro nº {item.id_evidencia} · Toque para editar</Text>
+                    <Text style={styles.listItemSub}>
+                      Registro nº {item.id_evidencia} · {somenteLeitura ? "Toque para visualizar" : "Toque para editar"}
+                    </Text>
                   </View>
                   <View style={{
                     paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20,
@@ -136,12 +143,16 @@ export default function Step4Atividades({
       {/* Rodapé: Adicionar + Finalizar */}
       <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
         <Pressable
-          onPress={() => abrirModalAtividade(null)}
+          onPress={() => {
+            if (!somenteLeitura) abrirModalAtividade(null);
+          }}
+          disabled={somenteLeitura}
           style={({ pressed }) => ({
             flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
             paddingVertical: 13, borderRadius: 12,
             borderWidth: 1.5, borderColor: pressed ? "#1e3a8a" : "#3f6cf6",
-            backgroundColor: pressed ? "#eff6ff" : "#fff",
+            backgroundColor: somenteLeitura ? "#f8fafc" : (pressed ? "#eff6ff" : "#fff"),
+            opacity: somenteLeitura ? 0.55 : 1,
           })}
         >
           <Ionicons name="add-circle-outline" size={18} color="#3f6cf6" />
@@ -151,14 +162,15 @@ export default function Step4Atividades({
         <Pressable
           style={({ pressed }) => [{ flex: 1, borderRadius: 12, overflow: "hidden" }, pressed && styles.btnPressed]}
           onPress={avancar}
+          disabled={somenteLeitura}
         >
           <LinearGradient
-            colors={["#3f6cf6", "#2f59d9"]}
+            colors={somenteLeitura ? ["#94a3b8", "#94a3b8"] : ["#3f6cf6", "#2f59d9"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={[styles.btnGradient, { paddingVertical: 13 }]}
           >
-            <Text style={styles.btnPrimaryText}>Avançar</Text>
+            <Text style={styles.btnPrimaryText}>{somenteLeitura ? "Somente visualizacao" : "Avançar"}</Text>
           </LinearGradient>
         </Pressable>
       </View>

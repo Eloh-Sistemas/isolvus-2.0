@@ -19,6 +19,8 @@ export function useVisitaCliente(user) {
   const showAlert = useShowAlert();
   const idGrupoEmpresa = Number(user?.id_grupo_empresa ?? 0);
   const idPromotor = Number(user?.id_usuario_erp ?? 0);
+  const idUsuarioPermissao = Number(user?.id_usuario ?? 0);
+  const ID_ROTINA_VISITA_CLIENTE = 3001;
 
   const [step, setStep] = useState(1);
 
@@ -33,6 +35,8 @@ export function useVisitaCliente(user) {
 
   const [historico, setHistorico] = useState([]);
   const [loadingHistorico, setLoadingHistorico] = useState(false);
+  const [statusVisitaSelecionada, setStatusVisitaSelecionada] = useState("");
+  const [permitirEditarFinalizada, setPermitirEditarFinalizada] = useState(false);
 
   const [dataCheckin, setDataCheckin] = useState(formatDateTime(new Date()));
   const [localizacaoPromotor, setLocalizacaoPromotor] = useState(null);
@@ -144,6 +148,11 @@ export function useVisitaCliente(user) {
     }) || null;
   }, [historico]);
 
+  const visitaFinalizadaSelecionada = useMemo(
+    () => String(statusVisitaSelecionada || "").trim().toUpperCase() === "FINALIZADO",
+    [statusVisitaSelecionada]
+  );
+
   const limparTela = useCallback(() => {
     setStep(1);
     setClienteBusca("");
@@ -153,6 +162,7 @@ export function useVisitaCliente(user) {
     setContato("");
     setEmail("");
     setHistorico([]);
+    setStatusVisitaSelecionada("");
     setDataCheckin(formatDateTime(new Date()));
     setLocalizacaoPromotor(null);
     setEnderecoPromotor("");
@@ -168,6 +178,47 @@ export function useVisitaCliente(user) {
     setAtividadeRealizadaTexto("");
     setGpsAguardandoCheckout(false);
   }, []);
+
+  const normalizarTexto = useCallback((valor) => {
+    return String(valor || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toUpperCase();
+  }, []);
+
+  const carregarPermissaoEdicaoFinalizada = useCallback(async () => {
+    if (!idUsuarioPermissao) {
+      setPermitirEditarFinalizada(false);
+      return;
+    }
+    try {
+      const { data } = await api.post("/v1/consultarPermissoesDoUsuario", {
+        matricula: idUsuarioPermissao,
+      });
+
+      const modulos = Array.isArray(data) ? data : [];
+      let permitido = false;
+      const alvoDescricao = "EDITAR SOLICITACAO DEPOIS DE FINALIZADO";
+
+      for (const modulo of modulos) {
+        const rotinas = Array.isArray(modulo?.rotinas) ? modulo.rotinas : [];
+        const rotinaVisita = rotinas.find((rotina) => Number(rotina?.id_rotina) === ID_ROTINA_VISITA_CLIENTE);
+        if (!rotinaVisita) continue;
+
+        const subpermissoes = Array.isArray(rotinaVisita?.subpermissoes) ? rotinaVisita.subpermissoes : [];
+        const subEncontrada = subpermissoes.find((sub) => normalizarTexto(sub?.descricao) === alvoDescricao);
+        if (subEncontrada && String(subEncontrada?.permitir || "N").toUpperCase() === "S") {
+          permitido = true;
+        }
+        break;
+      }
+
+      setPermitirEditarFinalizada(permitido);
+    } catch {
+      setPermitirEditarFinalizada(false);
+    }
+  }, [ID_ROTINA_VISITA_CLIENTE, idUsuarioPermissao, normalizarTexto]);
 
   const consultarClienteCompleto = useCallback(async (idCliente) => {
     if (!idCliente || !idGrupoEmpresa) return;
@@ -678,6 +729,7 @@ export function useVisitaCliente(user) {
       if (visitaEmAberto?.id_visita) {
         setIdVisita(Number(visitaEmAberto.id_visita));
         setDataCheckin(String(visitaEmAberto.dtcheckin_texto || visitaEmAberto.dtcheckin || ""));
+        setStatusVisitaSelecionada(String(visitaEmAberto.status || ""));
         setStep(4);
         showAlert({
           type: "warning",
@@ -690,8 +742,18 @@ export function useVisitaCliente(user) {
       return;
     }
     if (step === 3) { fazerCheckin(); return; }
-    if (step === 4) { setStep(5); }
-  }, [clienteSelecionado?.idclientevenda, fazerCheckin, showAlert, step, visitaEmAberto]);
+    if (step === 4) {
+      if (visitaFinalizadaSelecionada) {
+        showAlert({
+          type: "info",
+          title: "Visita finalizada",
+          message: "Esta visita já foi finalizada. Apenas consulta está disponível.",
+        });
+        return;
+      }
+      setStep(5);
+    }
+  }, [clienteSelecionado?.idclientevenda, fazerCheckin, showAlert, step, visitaEmAberto, visitaFinalizadaSelecionada]);
 
   const voltar = useCallback(() => {
     if (step === 3) { setIdJustificativa(0); setStep(2); return; }
@@ -703,6 +765,10 @@ export function useVisitaCliente(user) {
   useEffect(() => {
     if (step === 2) consultarHistorico();
   }, [consultarHistorico, step]);
+
+  useEffect(() => {
+    carregarPermissaoEdicaoFinalizada();
+  }, [carregarPermissaoEdicaoFinalizada]);
 
   useEffect(() => {
     if (step === 3) {
@@ -758,6 +824,9 @@ export function useVisitaCliente(user) {
     // historico
     historico, loadingHistorico,
     visitaEmAberto,
+    statusVisitaSelecionada, setStatusVisitaSelecionada,
+    visitaFinalizadaSelecionada,
+    permitirEditarFinalizada,
     // checkin
     dataCheckin, localizacaoPromotor,
     enderecoPromotor, enderecoCliente,

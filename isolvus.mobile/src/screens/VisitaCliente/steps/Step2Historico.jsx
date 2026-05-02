@@ -11,6 +11,7 @@ export default function Step2Historico({
   voltar,
   setIdVisita,
   setDataCheckin,
+  setStatusVisitaSelecionada,
   setStep,
 }) {
   return (
@@ -91,6 +92,7 @@ export default function Step2Historico({
                   onPress={() => {
                     setIdVisita(Number(item.id_visita));
                     setDataCheckin(String(item.dtcheckin_texto || item.dtcheckin || ""));
+                    setStatusVisitaSelecionada(String(item.status || ""));
                     setStep(4);
                   }}
                 >

@@ -1,0 +1,19 @@
+-- V1.8 - Adiciona coluna ID_USUARIO_ATIVACAO na tabela BSTAB_MOBILE_ATIVACAO
+-- Registra qual usuario do sistema consumiu o QR Code de ativacao mobile
+
+DECLARE
+  v_count NUMBER;
+BEGIN
+  SELECT COUNT(*) INTO v_count
+    FROM USER_TAB_COLUMNS
+   WHERE TABLE_NAME  = 'BSTAB_MOBILE_ATIVACAO'
+     AND COLUMN_NAME = 'ID_USUARIO_ATIVACAO';
+
+  IF v_count = 0 THEN
+    EXECUTE IMMEDIATE '
+      ALTER TABLE BSTAB_MOBILE_ATIVACAO
+        ADD ID_USUARIO_ATIVACAO NUMBER(18) DEFAULT NULL
+    ';
+  END IF;
+END;
+/

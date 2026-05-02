@@ -25,6 +25,7 @@ import RelatorioAutorizacaoDePagamento from "./paginas/RelatorioAutorizacaoDePag
 import ImportacaoDespesa from "./paginas/ImportacaoDespesa/ImportacaoDespesa.jsx";
 import IATreinamento from './paginas/IATreinamento/IATreinamento.jsx';
 import MuralAdmin from './paginas/Mural/MuralAdmin.jsx';
+import MobileAtivacao from "./paginas/Configuracao/MobileAtivacao/MobileAtivacao.jsx";
 
 function Rotas () {
     return <BrowserRouter>
@@ -52,6 +53,7 @@ function Rotas () {
 
                 {/*Rtoas Cadastro de Filial*/}
                 <Route path="/Configuracao/CadastroDeFilial" element={<CadastroDeFilial />}  /> 
+                <Route path="/Configuracao/MobileAtivacao" element={<MobileAtivacao />}  /> 
                 
                 {/*Rotas do Orcamento Mensal */}
                 <Route path="/OrcamentoMensal" element={<OrcamentoMensal />} />

@@ -20,6 +20,7 @@ export default function VisitaClienteScreen({ user }) {
             visible={ctx.showAtividadeModal}
             onClose={() => ctx.setShowAtividadeModal(false)}
             atividadeSelecionada={ctx.atividadeSelecionada}
+            somenteLeitura={ctx.visitaFinalizadaSelecionada && !ctx.permitirEditarFinalizada}
             codAtividade={ctx.codAtividade} setCodAtividade={ctx.setCodAtividade}
             nomeAtividade={ctx.nomeAtividade} setNomeAtividade={ctx.setNomeAtividade}
             codEquipe={ctx.codEquipe} setCodEquipe={ctx.setCodEquipe}
@@ -61,6 +62,7 @@ export default function VisitaClienteScreen({ user }) {
             voltar={ctx.voltar}
             setIdVisita={ctx.setIdVisita}
             setDataCheckin={ctx.setDataCheckin}
+            setStatusVisitaSelecionada={ctx.setStatusVisitaSelecionada}
             setStep={ctx.setStep}
           />
         </View>
@@ -127,6 +129,7 @@ export default function VisitaClienteScreen({ user }) {
               clienteSelecionado={ctx.clienteSelecionado}
               loadingAtividades={ctx.loadingAtividades}
               atividades={ctx.atividades}
+              somenteLeitura={ctx.visitaFinalizadaSelecionada && !ctx.permitirEditarFinalizada}
               voltar={ctx.voltar}
               avancar={ctx.avancar}
               abrirModalAtividade={ctx.abrirModalAtividade}

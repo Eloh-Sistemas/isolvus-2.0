@@ -39,6 +39,7 @@ import reacaoRoutes from "./routes/reacaoRoutes.js";
 import comentarioRoutes from "./routes/comentarioRoutes.js";
 import swaggerRoutes from './routes/swaggerRoutes.js';
 import logIntegracaoRoutes from './routes/logIntegracaoRoutes.js';
+import mobileAtivacaoRoutes from './routes/mobileAtivacaoRoutes.js';
 
 import { errorHandler } from './middlewares/errorHandler.js';
 
@@ -99,7 +100,8 @@ const rotas = [
   comentarioRoutes,
   swaggerRoutes,
   notificacaoRoutes,
-  logIntegracaoRoutes
+  logIntegracaoRoutes,
+  mobileAtivacaoRoutes
 ];
 
 

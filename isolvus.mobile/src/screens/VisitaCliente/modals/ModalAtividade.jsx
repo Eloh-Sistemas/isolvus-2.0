@@ -65,6 +65,7 @@ export default function ModalAtividade({
   visible,
   onClose,
   atividadeSelecionada,
+  somenteLeitura = false,
   codAtividade, setCodAtividade,
   nomeAtividade, setNomeAtividade,
   codEquipe, setCodEquipe,
@@ -249,10 +250,10 @@ export default function ModalAtividade({
             </Pressable>
             <View style={{ flex: 1 }}>
               <Text style={[styles.sectionTitle, { marginBottom: 0 }]}> 
-                {isEdicao ? "Editar atividade" : "Nova atividade"}
+                {somenteLeitura ? "Visualizar atividade" : (isEdicao ? "Editar atividade" : "Nova atividade")}
               </Text>
               <Text style={[styles.sectionSubtitle, { marginBottom: 0, marginTop: 2 }]}> 
-                {isEdicao ? "Atualize os dados do registro selecionado." : "Selecione a atividade e preencha os campos."}
+                {somenteLeitura ? "Somente visualizacao. Edicao nao permitida." : (isEdicao ? "Atualize os dados do registro selecionado." : "Selecione a atividade e preencha os campos.")}
               </Text>
             </View>
           </View>
@@ -279,11 +280,11 @@ export default function ModalAtividade({
                   return (
                     <Pressable
                       key={String(a.codigo)}
-                      disabled={isEdicao}
+                      disabled={isEdicao || somenteLeitura}
                       style={[
                         styles.optionChip,
                         ativo ? styles.optionChipAtivo : null,
-                        isEdicao && !ativo ? { opacity: 0.4 } : null,
+                        (isEdicao || somenteLeitura) && !ativo ? { opacity: 0.4 } : null,
                       ]}
                       onPress={() => {
                         Keyboard.dismiss();
@@ -319,24 +320,26 @@ export default function ModalAtividade({
                 <View onLayout={(e) => { vetNomeLabelY.current = e.nativeEvent.layout.y; }}>
                 <Text style={styles.label}>Nome completo *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, somenteLeitura && { backgroundColor: "#f1f5f9", color: "#64748b" }]}
                   value={nomeVeterinario}
                   onFocus={handleFocusNomeVet}
                   onChangeText={(v) => setNomeVeterinario(v.toUpperCase())}
                   placeholder="Ex: DR. CARLOS SILVA"
                   placeholderTextColor="#94a3b8"
+                  editable={!somenteLeitura}
                 />
                 </View>
                 <View onLayout={(e) => { vetContatoLabelY.current = e.nativeEvent.layout.y; }}>
                 <Text style={styles.label}>Telefone de contato</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, somenteLeitura && { backgroundColor: "#f1f5f9", color: "#64748b" }]}
                   value={contatoVeterinario}
                   onFocus={handleFocusContatoVet}
                   keyboardType="phone-pad"
                   placeholder="(00) 00000-0000"
                   placeholderTextColor="#94a3b8"
                   onChangeText={(v) => setContatoVeterinario(formatarTelefone(v))}
+                  editable={!somenteLeitura}
                 />
                 </View>
               </SectionCard>
@@ -352,7 +355,8 @@ export default function ModalAtividade({
                   {equipesCatalogo.map((e) => (
                     <Pressable
                       key={String(e.codigo)}
-                      style={[styles.optionChip, Number(e.codigo) === Number(codEquipe) ? styles.optionChipAtivo : null]}
+                      disabled={somenteLeitura}
+                      style={[styles.optionChip, Number(e.codigo) === Number(codEquipe) ? styles.optionChipAtivo : null, somenteLeitura && Number(e.codigo) !== Number(codEquipe) ? { opacity: 0.4 } : null]}
                       onPress={() => {
                         Keyboard.dismiss();
                         setCodEquipe(Number(e.codigo));
@@ -378,13 +382,14 @@ export default function ModalAtividade({
                 <View onLayout={(e) => { qtdePessoaLabelY.current = e.nativeEvent.layout.y; }}>
                 <Text style={styles.label}>Quantidade de pessoas *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, somenteLeitura && { backgroundColor: "#f1f5f9", color: "#64748b" }]}
                   value={qtdePessoa}
                   onFocus={handleFocusQtdePessoa}
                   onChangeText={(v) => setQtdePessoa(v.replace(/[^\d.,]/g, ""))}
                   keyboardType="decimal-pad"
                   placeholder="0"
                   placeholderTextColor="#94a3b8"
+                  editable={!somenteLeitura}
                 />
                 </View>
                 <Text style={styles.label}>O quiz foi aplicado?</Text>
@@ -392,7 +397,8 @@ export default function ModalAtividade({
                   {[{ value: "S", label: "Sim" }, { value: "N", label: "Não" }].map((op) => (
                     <Pressable
                       key={op.value}
-                      style={[styles.optionChip, fezQuiz === op.value ? styles.optionChipAtivo : null]}
+                      disabled={somenteLeitura}
+                      style={[styles.optionChip, fezQuiz === op.value ? styles.optionChipAtivo : null, somenteLeitura && fezQuiz !== op.value ? { opacity: 0.4 } : null]}
                       onPress={() => { Keyboard.dismiss(); setFezQuiz(op.value); }}
                     >
                       <Text style={[styles.optionChipText, fezQuiz === op.value ? styles.optionChipTextAtivo : null]}>
@@ -418,7 +424,8 @@ export default function ModalAtividade({
                   ].map((op) => (
                     <Pressable
                       key={op.value}
-                      style={[styles.optionChip, tipoItem === op.value ? styles.optionChipAtivo : null]}
+                      disabled={somenteLeitura}
+                      style={[styles.optionChip, tipoItem === op.value ? styles.optionChipAtivo : null, somenteLeitura && tipoItem !== op.value ? { opacity: 0.4 } : null]}
                       onPress={() => {
                         Keyboard.dismiss();
                         setTipoItem(op.value);
@@ -436,7 +443,7 @@ export default function ModalAtividade({
                 <Text style={styles.label}>Buscar item</Text>
                 <TextInput
                   ref={itemBuscaInputRef}
-                  style={styles.input}
+                  style={[styles.input, somenteLeitura && { backgroundColor: "#f1f5f9", color: "#64748b" }]}
                   value={itemBusca}
                   onFocus={handleFocusItemBusca}
                   onChangeText={(v) => {
@@ -445,6 +452,7 @@ export default function ModalAtividade({
                   }}
                   placeholder="Digite o nome do item..."
                   placeholderTextColor="#94a3b8"
+                  editable={!somenteLeitura}
                 />
                 {mostrarSugestoesItem && itemSugestoes.length > 0 && (
                   <View style={styles.suggestionsWrap}>
@@ -476,14 +484,16 @@ export default function ModalAtividade({
                 <View style={{ flexDirection: "row", gap: 8, alignItems: "flex-start" }}>
                   <TextInput
                     ref={qtItemInputRef}
-                    style={[styles.input, { flex: 1 }]}
+                    style={[styles.input, { flex: 1 }, somenteLeitura && { backgroundColor: "#f1f5f9", color: "#64748b" }]}
                     value={qtItem}
                     onFocus={handleFocusQtItem}
                     onChangeText={(v) => setQtItem(v.replace(/[^\d.,]/g, ""))}
                     keyboardType="decimal-pad"
                     placeholder="0"
                     placeholderTextColor="#94a3b8"
+                    editable={!somenteLeitura}
                   />
+                  {!somenteLeitura && (
                   <Pressable
                     onPress={() => { Keyboard.dismiss(); adicionarItemAtividade(); }}
                     style={({ pressed }) => ({
@@ -494,6 +504,7 @@ export default function ModalAtividade({
                   >
                     <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>Inserir</Text>
                   </Pressable>
+                  )}
                 </View>
                 {itensAtividade.length > 0 && (
                   <View style={{ marginTop: 10, gap: 6 }}>
@@ -507,9 +518,11 @@ export default function ModalAtividade({
                         <Text style={{ fontSize: 12, color: "#64748b", fontWeight: "600" }}>
                           {item.quantidade} · {item.tipo}
                         </Text>
+                        {!somenteLeitura && (
                         <Pressable onPress={() => removerItemAtividade(item.reg)} hitSlop={8}>
                           <Ionicons name="trash-outline" size={16} color={colors.danger} />
                         </Pressable>
+                        )}
                       </View>
                     ))}
                   </View>
@@ -529,7 +542,8 @@ export default function ModalAtividade({
                   ].map((op) => (
                     <Pressable
                       key={op.value}
-                      style={[styles.optionChip, houveVenda === op.value ? styles.optionChipAtivo : null]}
+                      disabled={somenteLeitura}
+                      style={[styles.optionChip, houveVenda === op.value ? styles.optionChipAtivo : null, somenteLeitura && houveVenda !== op.value ? { opacity: 0.4 } : null]}
                       onPress={() => { Keyboard.dismiss(); setHouveVenda(op.value); }}
                     >
                       <Text style={[styles.optionChipText, houveVenda === op.value ? styles.optionChipTextAtivo : null]}>
@@ -544,12 +558,14 @@ export default function ModalAtividade({
             {/* Fotos */}
             {camposAtivos.cpfoto && (
               <SectionCard icon="camera-outline" title="Evidência fotográfica">
+                {!somenteLeitura && (
                 <Pressable
                   style={styles.btnOutline}
                   onPress={() => setFotoMenuAberto(true)}
                 >
                   <Text style={styles.btnOutlineText}>Adicionar fotos (galeria ou câmera)</Text>
                 </Pressable>
+                )}
                 {fotosSelecionadas.length > 0 && (
                   <View style={{ marginTop: 10, gap: 6 }}>
                     <Text style={{ fontSize: 11, color: "#94a3b8", fontWeight: "600" }}>
@@ -587,7 +603,7 @@ export default function ModalAtividade({
                         <Pressable
                           onPress={() => handleExcluirFotoSalva(foto.id_arquivo)}
                           hitSlop={8}
-                          disabled={!!excluindoFotoId}
+                          disabled={!!excluindoFotoId || somenteLeitura}
                         >
                           {excluindoFotoId === foto.id_arquivo
                             ? <ActivityIndicator size="small" color={colors.danger} />
@@ -607,7 +623,7 @@ export default function ModalAtividade({
               <SectionCard icon="create-outline" title="Observações">
                 <TextInput
                   ref={observacaoInputRef}
-                  style={[styles.textArea, { marginTop: 0 }]}
+                  style={[styles.textArea, { marginTop: 0 }, somenteLeitura && { backgroundColor: "#f1f5f9", color: "#64748b" }]}
                   multiline
                   numberOfLines={5}
                   value={comentario}
@@ -615,6 +631,7 @@ export default function ModalAtividade({
                   onChangeText={setComentario}
                   placeholder="Descreva observações relevantes desta visita..."
                   placeholderTextColor="#94a3b8"
+                  editable={!somenteLeitura}
                 />
               </SectionCard>
             )}
@@ -633,10 +650,10 @@ export default function ModalAtividade({
             backgroundColor: "#f8fafc",
           }}>
             <Pressable style={styles.btnSecondary} onPress={fecharModal}>
-              <Text style={styles.btnSecondaryText}>Cancelar</Text>
+              <Text style={styles.btnSecondaryText}>{somenteLeitura ? "Fechar" : "Cancelar"}</Text>
             </Pressable>
 
-            {isEdicao && (
+            {!somenteLeitura && isEdicao && (
               <Pressable
                 style={[styles.btnDangerSmall, { paddingHorizontal: 16 }]}
                 onPress={() => { Keyboard.dismiss(); excluirEvidencia(); }}
@@ -645,23 +662,25 @@ export default function ModalAtividade({
               </Pressable>
             )}
 
-            <Pressable
-              style={{ flex: 1, borderRadius: 12, overflow: "hidden", opacity: salvandoEvidencia ? 0.7 : 1 }}
-              onPress={() => { Keyboard.dismiss(); salvarEvidencia(); }}
-              disabled={salvandoEvidencia}
-            >
-              <LinearGradient
-                colors={["#3f6cf6", "#2f59d9"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[styles.btnGradient, { minHeight: 46 }]}
+            {!somenteLeitura && (
+              <Pressable
+                style={{ flex: 1, borderRadius: 12, overflow: "hidden", opacity: salvandoEvidencia ? 0.7 : 1 }}
+                onPress={() => { Keyboard.dismiss(); salvarEvidencia(); }}
+                disabled={salvandoEvidencia}
               >
-                {salvandoEvidencia
-                  ? <ActivityIndicator color="#fff" />
-                  : <Text style={styles.btnPrimaryText}>{isEdicao ? "Salvar alterações" : "Registrar atividade"}</Text>
-                }
-              </LinearGradient>
-            </Pressable>
+                <LinearGradient
+                  colors={["#3f6cf6", "#2f59d9"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.btnGradient, { minHeight: 46 }]}
+                >
+                  {salvandoEvidencia
+                    ? <ActivityIndicator color="#fff" />
+                    : <Text style={styles.btnPrimaryText}>{isEdicao ? "Salvar alterações" : "Registrar atividade"}</Text>
+                  }
+                </LinearGradient>
+              </Pressable>
+            )}
           </View>
 
           {/* Preview interno para evitar conflito de múltiplos Modals no Android */}
@@ -669,18 +688,18 @@ export default function ModalAtividade({
             <Animated.View
               style={{
                 position: "absolute",
-                top: 0,
-                right: 0,
+                top: -20,
+                right: -14,
                 bottom: 0,
-                left: 0,
+                left: -14,
                 backgroundColor: "#020617",
-                borderRadius: 12,
+                borderRadius: 0,
                 alignItems: "center",
                 justifyContent: "center",
                 paddingHorizontal: 0,
                 paddingTop: 22,
                 paddingBottom: 10,
-                zIndex: 50,
+                zIndex: 90,
                 transform: [{ translateY: previewTranslateY }],
               }}
             >
