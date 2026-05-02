@@ -223,7 +223,14 @@ function obterPermissoes(item) {
   if (!perms) return <span className="text-muted">-</span>;
 
   return (
-    <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 3 }}>
+    <span
+      style={{
+        display: "inline-grid",
+        gridAutoFlow: "column",
+        gridTemplateRows: "repeat(2, auto)",
+        gap: 2,
+      }}
+    >
       {Object.entries(perms).map(([key, status]) => {
         const label = PERM_LABELS[key] || key;
         const granted = status === "granted";
@@ -237,17 +244,18 @@ function obterPermissoes(item) {
             key={key}
             title={`${label}: ${statusPt}`}
             style={{
-              fontSize: "inherit",
+              fontSize: "10px",
               fontWeight: 700,
               color,
               background: bg,
               border: `1px solid ${color}`,
               borderRadius: 3,
-              padding: "1px 5px",
+              padding: "0 4px",
               whiteSpace: "nowrap",
+              lineHeight: 1.25,
             }}
           >
-            {icon} {label}
+            <span style={{ fontSize: "12px", lineHeight: 1 }}>{icon}</span> {label}
           </span>
         );
       })}
@@ -259,9 +267,15 @@ export default function MobileAtivacao() {
   const [loadingGerar, setLoadingGerar] = useState(false);
   const [loadingLista, setLoadingLista] = useState(false);
   const [revogandoId, setRevogandoId] = useState(null);
+  const [modalGerarAberto, setModalGerarAberto] = useState(false);
   const [tokenAtual, setTokenAtual] = useState(null);
   const [qrDataUrl, setQrDataUrl] = useState("");
   const [ativacoes, setAtivacoes] = useState([]);
+
+  const [filtroCodigo, setFiltroCodigo] = useState("");
+  const [filtroStatus, setFiltroStatus] = useState("");
+  const [filtroUsuarioTabela, setFiltroUsuarioTabela] = useState("");
+  const [filtroDispositivo, setFiltroDispositivo] = useState("");
 
   const [buscaUsuario, setBuscaUsuario] = useState("");
   const [usuarioSelecionado, setUsuarioSelecionado] = useState(null);
@@ -272,8 +286,12 @@ export default function MobileAtivacao() {
   const [espelhoModalAberto, setEspelhoModalAberto] = useState(false);
   const [espelhoAtivacaoId, setEspelhoAtivacaoId] = useState(null);
   const [espelhoDispositivo, setEspelhoDispositivo] = useState("");
+  const [localizacaoModalAberto, setLocalizacaoModalAberto] = useState(false);
+  const [localizacaoAtual, setLocalizacaoAtual] = useState(null);
+  const [menuAcaoAberto, setMenuAcaoAberto] = useState({ id: null, top: 0, left: 0, up: false });
   const interagindoTabelaRef = useRef(false);
   const tabelaContainerRef = useRef(null);
+  const menuAcaoRef = useRef(null);
 
   const empresaInfo = useMemo(() => ({
     id_empresa: String(localStorage.getItem("id_empresa") || ""),
@@ -281,6 +299,35 @@ export default function MobileAtivacao() {
     id_usuario: Number(localStorage.getItem("id_usuario") || 0),
     id_grupo_empresa: String(localStorage.getItem("id_grupo_empresa") || ""),
   }), []);
+
+  const ativacoesFiltradas = useMemo(() => {
+    const codigo = filtroCodigo.trim().toLowerCase();
+    const usuario = filtroUsuarioTabela.trim().toLowerCase();
+    const dispositivo = filtroDispositivo.trim().toLowerCase();
+
+    return ativacoes.filter((item) => {
+      if (filtroStatus && String(item?.status || "") !== filtroStatus) return false;
+
+      if (codigo) {
+        const idAtiv = String(item?.id_ativacao || "").toLowerCase();
+        const codAtiv = String(item?.codigo_ativacao || "").toLowerCase();
+        if (!idAtiv.includes(codigo) && !codAtiv.includes(codigo)) return false;
+      }
+
+      if (usuario) {
+        const idDestino = String(item?.id_usuario_destino || "").toLowerCase();
+        const nomeUsuario = String(item?.nome_usuario_ativacao || "").toLowerCase();
+        if (!idDestino.includes(usuario) && !nomeUsuario.includes(usuario)) return false;
+      }
+
+      if (dispositivo) {
+        const nomeDispositivo = String(item?.dispositivo || "").toLowerCase();
+        if (!nomeDispositivo.includes(dispositivo)) return false;
+      }
+
+      return true;
+    });
+  }, [ativacoes, filtroCodigo, filtroStatus, filtroUsuarioTabela, filtroDispositivo]);
 
   async function carregarAtivacoes({ silencioso = false } = {}) {
     if (!silencioso) setLoadingLista(true);
@@ -302,7 +349,7 @@ export default function MobileAtivacao() {
 
     const timer = setInterval(() => {
       const tabela = tabelaContainerRef.current;
-      const existeMenuAberto = Boolean(tabela?.querySelector("details[open]"));
+      const existeMenuAberto = Boolean(tabela?.querySelector(".mobile-acao-dropdown"));
 
       if (interagindoTabelaRef.current || existeMenuAberto) return;
       carregarAtivacoes({ silencioso: true });
@@ -492,6 +539,82 @@ export default function MobileAtivacao() {
     setEspelhoModalAberto(true);
   }
 
+  function abrirLocalizacaoModal(item) {
+    const info = parseDispositivoInfo(item?.dispositivo_info_json);
+    const latitude = info?.location?.latitude;
+    const longitude = info?.location?.longitude;
+    const permissao = info?.location?.permission || "unknown";
+
+    setLocalizacaoAtual({
+      idAtivacao: item?.id_ativacao,
+      dispositivo: item?.dispositivo || `Ativação ${item?.id_ativacao || ""}`,
+      latitude,
+      longitude,
+      permissao,
+    });
+    setLocalizacaoModalAberto(true);
+  }
+
+  function fecharMenuAcao() {
+    setMenuAcaoAberto({ id: null, top: 0, left: 0, up: false });
+  }
+
+  function toggleMenuAcao(item, event) {
+    event.stopPropagation();
+
+    if (menuAcaoAberto.id === item.id_ativacao) {
+      fecharMenuAcao();
+      return;
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+    const larguraMenu = 210;
+    const alturaMenuEstimada = item.status === "P" ? 190 : 160;
+    const margem = 8;
+
+    const espacoAbaixo = viewportHeight - rect.bottom;
+    const espacoAcima = rect.top;
+    const up = espacoAbaixo < alturaMenuEstimada && espacoAcima > espacoAbaixo;
+
+    const topBase = up ? rect.top - alturaMenuEstimada - 6 : rect.bottom + 6;
+    const top = Math.max(margem, Math.min(topBase, viewportHeight - alturaMenuEstimada - margem));
+    const left = Math.max(margem, Math.min(rect.left, viewportWidth - larguraMenu - margem));
+
+    setMenuAcaoAberto({ id: item.id_ativacao, top, left, up });
+  }
+
+  useEffect(() => {
+    if (!menuAcaoAberto.id) return;
+
+    function handleClickFora(event) {
+      if (menuAcaoRef.current?.contains(event.target)) return;
+      if (event.target?.closest?.(".mobile-acao-trigger")) return;
+      fecharMenuAcao();
+    }
+
+    function handleEsc(event) {
+      if (event.key === "Escape") fecharMenuAcao();
+    }
+
+    function handleReflow() {
+      fecharMenuAcao();
+    }
+
+    document.addEventListener("mousedown", handleClickFora);
+    document.addEventListener("keydown", handleEsc);
+    window.addEventListener("resize", handleReflow);
+    window.addEventListener("scroll", handleReflow, true);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickFora);
+      document.removeEventListener("keydown", handleEsc);
+      window.removeEventListener("resize", handleReflow);
+      window.removeEventListener("scroll", handleReflow, true);
+    };
+  }, [menuAcaoAberto.id]);
+
   return (
     <>
       <Menu />
@@ -502,7 +625,154 @@ export default function MobileAtivacao() {
         id_usuario={empresaInfo.id_usuario}
         dispositivo={espelhoDispositivo}
       />
+      <div
+        className={`modal ${localizacaoModalAberto ? "show d-block" : ""}`}
+        tabIndex="-1"
+        role="dialog"
+        aria-modal="true"
+        style={{ background: "rgba(15,23,42,.45)" }}
+        onClick={() => setLocalizacaoModalAberto(false)}
+      >
+        <div className="modal-dialog modal-lg modal-dialog-centered" role="document" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content">
+            <div className="modal-header">
+              <h5 className="modal-title" style={{ fontWeight: 700 }}>Localização do dispositivo</h5>
+              <button type="button" className="btn-close" onClick={() => setLocalizacaoModalAberto(false)} />
+            </div>
+            <div className="modal-body">
+              <p className="mb-2"><strong>Dispositivo:</strong> {localizacaoAtual?.dispositivo || "-"}</p>
+
+              {typeof localizacaoAtual?.latitude === "number" && typeof localizacaoAtual?.longitude === "number" ? (
+                <>
+                  <p className="mb-2">
+                    <strong>Coordenadas:</strong> {localizacaoAtual.latitude.toFixed(6)}, {localizacaoAtual.longitude.toFixed(6)}
+                  </p>
+                  <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden" }}>
+                    <iframe
+                      title="Mapa da localização do dispositivo"
+                      width="100%"
+                      height="360"
+                      loading="lazy"
+                      style={{ border: 0 }}
+                      src={`https://www.google.com/maps?q=${encodeURIComponent(`${localizacaoAtual.latitude},${localizacaoAtual.longitude}`)}&z=16&output=embed`}
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="alert alert-warning mb-0" role="alert">
+                  Localização indisponível no momento. Permissão atual: <strong>{localizacaoAtual?.permissao || "unknown"}</strong>.
+                </div>
+              )}
+            </div>
+            {typeof localizacaoAtual?.latitude === "number" && typeof localizacaoAtual?.longitude === "number" ? (
+              <div className="modal-footer">
+                <a
+                  className="btn btn-outline-primary"
+                  href={`https://www.google.com/maps?q=${encodeURIComponent(`${localizacaoAtual.latitude},${localizacaoAtual.longitude}`)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Abrir no Google Maps
+                </a>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
       <div className="container-fluid Containe-Tela mobile-ativacao-page">
+        <div className={`modal ${modalGerarAberto ? "show d-block" : ""}`} tabIndex="-1" role="dialog" aria-modal="true" style={{ background: "rgba(15,23,42,.45)" }}>
+          <div className="modal-dialog modal-xl modal-dialog-centered" role="document" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title" style={{ fontWeight: 700 }}>Gerar ativação mobile</h5>
+                <button type="button" className="btn-close" onClick={() => setModalGerarAberto(false)} />
+              </div>
+              <div className="modal-body">
+                <div className="row g-3">
+                  <div className="col-12 col-lg-5">
+                    <div className="card mobile-ativacao-card h-100">
+                      <div className="card-body">
+                        <h5 className="card-title mb-3">Nova ativação</h5>
+
+                        <div className="mb-3 position-relative">
+                          <label className="form-label">Usuário destinatário</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="Digite o nome ou código do usuário..."
+                            value={buscaUsuario}
+                            onChange={(e) => buscarUsuarios(e.target.value)}
+                            autoComplete="off"
+                          />
+                          {loadingUsuario && (
+                            <div className="position-absolute end-0 top-50 me-2" style={{ marginTop: "12px" }}>
+                              <span className="spinner-border spinner-border-sm text-secondary" />
+                            </div>
+                          )}
+                          {resultadosUsuario.length > 0 && (
+                            <ul className="list-group position-absolute w-100 shadow-sm" style={{ zIndex: 999, top: "100%" }}>
+                              {resultadosUsuario.map((u) => (
+                                <li
+                                  key={u.codigo}
+                                  className="list-group-item list-group-item-action"
+                                  style={{ cursor: "pointer" }}
+                                  onMouseDown={() => selecionarUsuario(u)}
+                                >
+                                  <strong>{u.codigo}</strong> — {u.descricao}
+                                  {u.descricao2 ? <span className="text-muted ms-1">({u.descricao2})</span> : null}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          {!usuarioSelecionado && buscaUsuario.length > 1 && !loadingUsuario && resultadosUsuario.length === 0 && (
+                            <div className="text-muted small mt-1">Nenhum usuário encontrado.</div>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          className="btn btn-primary w-100"
+                          onClick={gerarAtivacao}
+                          disabled={loadingGerar}
+                        >
+                          {loadingGerar ? "Gerando..." : "Gerar token e QR Code"}
+                        </button>
+
+                        {!!tokenAtual && (
+                          <div className="alert alert-info mt-3 mb-0" role="alert">
+                            <div><strong>Código:</strong> {tokenAtual.codigo_ativacao}</div>
+                            <div><strong>Expira em:</strong> {tokenAtual.validade_minutos} min</div>
+                            <div className="text-break"><strong>Token:</strong> {tokenAtual.token_ativacao}</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="col-12 col-lg-7">
+                    <div className="card mobile-ativacao-card h-100">
+                      <div className="card-body qr-preview-wrap">
+                        <h5 className="card-title mb-3">QR Code de ativação</h5>
+
+                        {qrDataUrl ? (
+                          <>
+                            <img src={qrDataUrl} alt="QR Code de ativação mobile" className="qr-image" />
+                            <p className="text-muted mt-2 mb-0 text-center">
+                              O usuário deve escanear este QR no primeiro acesso do aplicativo.
+                            </p>
+                          </>
+                        ) : (
+                          <div className="placeholder-qrcode">Nenhum QR gerado ainda.</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="row text-body-secondary mb-3">
           <h1 className="mb-2 titulo-da-pagina">Configuração - Ativação Mobile por QR Code</h1>
           <p className="text-muted mb-0">
@@ -510,234 +780,218 @@ export default function MobileAtivacao() {
           </p>
         </div>
 
-        <p className="mobile-ativacao-section-title">Ativação</p>
-        <div className="row g-3">
-          <div className="col-12 col-lg-5">
-            <div className="card mobile-ativacao-card h-100">
-              <div className="card-body">
-                <h5 className="card-title mb-3">Gerar nova ativação</h5>
-
-                <div className="mb-3 position-relative">
-                  <label className="form-label">Usuário destinatário</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Digite o nome ou código do usuário..."
-                    value={buscaUsuario}
-                    onChange={(e) => buscarUsuarios(e.target.value)}
-                    autoComplete="off"
-                  />
-                  {loadingUsuario && (
-                    <div className="position-absolute end-0 top-50 me-2" style={{ marginTop: "12px" }}>
-                      <span className="spinner-border spinner-border-sm text-secondary" />
-                    </div>
-                  )}
-                  {resultadosUsuario.length > 0 && (
-                    <ul className="list-group position-absolute w-100 shadow-sm" style={{ zIndex: 999, top: "100%" }}>
-                      {resultadosUsuario.map((u) => (
-                        <li
-                          key={u.codigo}
-                          className="list-group-item list-group-item-action"
-                          style={{ cursor: "pointer" }}
-                          onMouseDown={() => selecionarUsuario(u)}
-                        >
-                          <strong>{u.codigo}</strong> — {u.descricao}
-                          {u.descricao2 ? <span className="text-muted ms-1">({u.descricao2})</span> : null}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  {!usuarioSelecionado && buscaUsuario.length > 1 && !loadingUsuario && resultadosUsuario.length === 0 && (
-                    <div className="text-muted small mt-1">Nenhum usuário encontrado.</div>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  className="btn btn-primary w-100"
-                  onClick={gerarAtivacao}
-                  disabled={loadingGerar}
-                >
-                  {loadingGerar ? "Gerando..." : "Gerar QR Code"}
-                </button>
-
-                {!!tokenAtual && (
-                  <div className="alert alert-info mt-3 mb-0" role="alert">
-                    <div><strong>Código:</strong> {tokenAtual.codigo_ativacao}</div>
-                    <div><strong>Expira em:</strong> {tokenAtual.validade_minutos} min</div>
-                    <div className="text-break"><strong>Token:</strong> {tokenAtual.token_ativacao}</div>
-                  </div>
-                )}
-              </div>
+        <p className="mobile-ativacao-section-title">Filtros</p>
+        <div className="mobile-ativacao-card mobile-ativacao-filtros-card">
+          <div className="row g-3 align-items-end">
+            <div className="col-12 col-md-3">
+              <label className="form-label">Código / ID</label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Filtrar por código ou ID"
+                value={filtroCodigo}
+                onChange={(e) => setFiltroCodigo(e.target.value)}
+              />
             </div>
-          </div>
-
-          <div className="col-12 col-lg-7">
-            <div className="card mobile-ativacao-card h-100">
-              <div className="card-body qr-preview-wrap">
-                <h5 className="card-title mb-3">QR Code de ativação</h5>
-
-                {qrDataUrl ? (
-                  <>
-                    <img src={qrDataUrl} alt="QR Code de ativação mobile" className="qr-image" />
-                    <p className="text-muted mt-2 mb-0 text-center">
-                      O usuário deve escanear este QR no primeiro acesso do aplicativo.
-                    </p>
-                  </>
-                ) : (
-                  <div className="placeholder-qrcode">Nenhum QR gerado ainda.</div>
-                )}
-              </div>
+            <div className="col-12 col-md-2">
+              <label className="form-label">Status</label>
+              <select
+                className="form-select"
+                value={filtroStatus}
+                onChange={(e) => setFiltroStatus(e.target.value)}
+              >
+                <option value="">Todos</option>
+                <option value="P">Pendente</option>
+                <option value="U">Utilizado</option>
+                <option value="R">Revogado</option>
+                <option value="D">Redefinido</option>
+              </select>
+            </div>
+            <div className="col-12 col-md-3">
+              <label className="form-label">Usuário</label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Filtrar por usuário"
+                value={filtroUsuarioTabela}
+                onChange={(e) => setFiltroUsuarioTabela(e.target.value)}
+              />
+            </div>
+            <div className="col-12 col-md-4">
+              <label className="form-label">Dispositivo</label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Filtrar por dispositivo"
+                value={filtroDispositivo}
+                onChange={(e) => setFiltroDispositivo(e.target.value)}
+              />
             </div>
           </div>
         </div>
 
-        <p className="mobile-ativacao-section-title">Aviso</p>
-        <div className="mobile-ativacao-card mobile-ativacao-info-banner d-flex align-items-center">
-          <h6 className="m-0">
-            <span>
-              <i className="bi bi-exclamation-circle-fill text-warning"> </i>
-              Utilize o botão Espelhar para suporte remoto e Permissões para solicitar acessos no dispositivo.
-            </span>
-          </h6>
-        </div>
-
-        <p className="mobile-ativacao-section-title">Resultados</p>
         <div className="row mt-3">
           <div className="col-12">
-            <div className="mobile-ativacao-card mobile-ativacao-table-card">
-              <div className="card-body">
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <h5 className="card-title mb-0">Controle de ativações</h5>
-                  <button type="button" className="btn btn-outline-secondary btn-sm" onClick={carregarAtivacoes}>
-                    Atualizar
-                  </button>
-                </div>
-
-                {loadingLista ? (
-                  <p className="text-muted mb-0">Consultando ativações...</p>
-                ) : ativacoes.length === 0 ? (
-                  <p className="text-muted mb-0">Nenhuma ativação encontrada.</p>
-                ) : (
-                  <div
-                    className="table-responsive"
-                    ref={tabelaContainerRef}
-                    onMouseEnter={() => {
-                      interagindoTabelaRef.current = true;
-                    }}
-                    onMouseLeave={() => {
-                      interagindoTabelaRef.current = false;
-                    }}
-                    onFocusCapture={() => {
-                      interagindoTabelaRef.current = true;
-                    }}
-                    onBlurCapture={() => {
-                      setTimeout(() => {
-                        const ativo = document.activeElement;
-                        if (!tabelaContainerRef.current?.contains(ativo)) {
-                          interagindoTabelaRef.current = false;
-                        }
-                      }, 0);
-                    }}
-                  >
-                    <table className="table table-sm table-hover align-middle mb-0 mobile-ativacao-table">
-                      <thead>
-                        <tr>
-                          <th className="text-start">Ação</th>
-                          <th>ID</th>
-                          <th>Código</th>
-                          <th>Status</th>
-                          <th>Destinatário</th>
-                          <th>Nome usuário</th>
-                          <th>Dispositivo</th>
-                          <th>MAC</th>
-                          <th>Rede</th>
-                          <th>Bateria</th>
-                          <th>Localização</th>
-                          <th>Armazenamento</th>
-                          <th>Memória RAM</th>
-                          <th>CPU</th>
-                          <th>Versão app</th>
-                          <th>Segurança</th>
-                          <th>Permissões</th>
-                          <th>Uso apps</th>
-                          <th>Criação</th>
-                          <th>Expiração</th>
-                          <th>Uso</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {ativacoes.map((item) => (
-                          <tr key={String(item.id_ativacao)}>
-                            <td className="text-start mobile-acao-col">
-                              <details className="mobile-acao-menu">
-                                <summary className="btn btn-outline-secondary btn-sm mobile-acao-trigger">
-                                  Opções
-                                </summary>
-                                <div className="mobile-acao-dropdown" role="menu" aria-label={`Ações da ativação ${item.id_ativacao}`}>
-                                  <button
-                                    type="button"
-                                    className="mobile-acao-item"
-                                    title="Espelhar tela do dispositivo"
-                                    onClick={() => abrirEspelhoModal(item)}
-                                  >
-                                    📱 Espelhar
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="mobile-acao-item"
-                                    title="Solicitar permissão no dispositivo"
-                                    onClick={() => solicitarPermissaoRemota(item)}
-                                  >
-                                    🔐 Permissões
-                                  </button>
-                                  {item.status === "P" ? (
-                                    <button
-                                      type="button"
-                                      className="mobile-acao-item mobile-acao-item-danger"
-                                      onClick={() => revogarAtivacao(item)}
-                                      disabled={revogandoId === item.id_ativacao}
-                                    >
-                                      {revogandoId === item.id_ativacao ? "Revogando..." : "⛔ Revogar"}
-                                    </button>
-                                  ) : (
-                                    <span className="mobile-acao-item-disabled">Revogar indisponível</span>
-                                  )}
-                                </div>
-                              </details>
-                            </td>
-                            <td>{item.id_ativacao}</td>
-                            <td>{item.codigo_ativacao}</td>
-                            <td>
-                              <span className={`status-pill status-${String(item.status || "").toLowerCase()}`}>
-                                {statusTag(item.status)}
-                              </span>
-                            </td>
-                            <td>{item.id_usuario_destino || "-"}</td>
-                            <td>{item.nome_usuario_ativacao || "-"}</td>
-                            <td>{item.dispositivo || "-"}</td>
-                            <td>{obterMacDispositivo(item)}</td>
-                            <td>{obterRede(item)}</td>
-                            <td>{obterBateria(item)}</td>
-                            <td>{obterLocalizacao(item)}</td>
-                            <td>{obterStorage(item)}</td>
-                            <td>{obterMemoria(item)}</td>
-                            <td>{obterCpu(item)}</td>
-                            <td>{obterVersaoApp(item)}</td>
-                            <td>{obterSeguranca(item)}</td>
-                            <td>{obterPermissoes(item)}</td>
-                            <td>{obterUsoApps(item)}</td>
-                            <td>{formatarData(item.dt_criacao)}</td>
-                            <td>{formatarData(item.dt_expiracao)}</td>
-                            <td>{formatarData(item.dt_utilizacao)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <h5 className="card-title mb-0">Meus Dispositivos</h5>
+              <div className="d-flex align-items-center gap-2">
+                <button type="button" className="btn btn-primary btn-sm" onClick={() => setModalGerarAberto(true)}>
+                  Nova ativação
+                </button>
+                <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => carregarAtivacoes()}>
+                  Atualizar
+                </button>
               </div>
             </div>
+
+            {loadingLista ? (
+              <p className="text-muted mb-0">Consultando ativações...</p>
+            ) : ativacoesFiltradas.length === 0 ? (
+              <p className="text-muted mb-0">Nenhuma ativação encontrada.</p>
+            ) : (
+              <div
+                className="table-responsive"
+                ref={tabelaContainerRef}
+                onMouseEnter={() => {
+                  interagindoTabelaRef.current = true;
+                }}
+                onMouseLeave={() => {
+                  interagindoTabelaRef.current = false;
+                }}
+                onFocusCapture={() => {
+                  interagindoTabelaRef.current = true;
+                }}
+                onBlurCapture={() => {
+                  setTimeout(() => {
+                    const ativo = document.activeElement;
+                    if (!tabelaContainerRef.current?.contains(ativo)) {
+                      interagindoTabelaRef.current = false;
+                    }
+                  }, 0);
+                }}
+              >
+                <table className="table table-sm table-hover align-middle mb-0 mobile-ativacao-table">
+                  <thead>
+                    <tr>
+                      <th className="text-start">Ação</th>
+                      <th>ID</th>
+                      <th>Código</th>
+                      <th>Status</th>
+                      <th>Destinatário / Usuário</th>
+                      <th>Dispositivo</th>
+                      <th>Permissões</th>
+                      <th>Rede</th>
+                      <th>Bateria</th>
+                      <th>Armazenamento</th>
+                      <th>Memória RAM</th>
+                      <th>CPU</th>
+                      <th>Versão app</th>
+                      <th>Segurança</th>
+                      <th>MAC</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ativacoesFiltradas.map((item) => (
+                      <tr key={String(item.id_ativacao)}>
+                        <td className="text-start mobile-acao-col">
+                          <div className="mobile-acao-menu">
+                            <button
+                              type="button"
+                              className="btn btn-outline-secondary btn-sm mobile-acao-trigger"
+                              onClick={(event) => toggleMenuAcao(item, event)}
+                              aria-expanded={menuAcaoAberto.id === item.id_ativacao}
+                            >
+                              Opções
+                            </button>
+                            {menuAcaoAberto.id === item.id_ativacao ? (
+                              <div
+                                ref={menuAcaoRef}
+                                className={`mobile-acao-dropdown${menuAcaoAberto.up ? " mobile-acao-dropdown-up" : ""}`}
+                                style={{ top: menuAcaoAberto.top, left: menuAcaoAberto.left }}
+                                role="menu"
+                                aria-label={`Ações da ativação ${item.id_ativacao}`}
+                              >
+                              <button
+                                type="button"
+                                className="mobile-acao-item"
+                                title="Localizar dispositivo no mapa"
+                                onClick={() => {
+                                  fecharMenuAcao();
+                                  abrirLocalizacaoModal(item);
+                                }}
+                              >
+                                📍 Localizar
+                              </button>
+                              <button
+                                type="button"
+                                className="mobile-acao-item"
+                                title="Espelhar tela do dispositivo"
+                                onClick={() => {
+                                  fecharMenuAcao();
+                                  abrirEspelhoModal(item);
+                                }}
+                              >
+                                📱 Espelhar
+                              </button>
+                              <button
+                                type="button"
+                                className="mobile-acao-item"
+                                title="Solicitar permissão no dispositivo"
+                                onClick={() => {
+                                  fecharMenuAcao();
+                                  solicitarPermissaoRemota(item);
+                                }}
+                              >
+                                🔐 Permissões
+                              </button>
+                              {item.status === "P" ? (
+                                <button
+                                  type="button"
+                                  className="mobile-acao-item mobile-acao-item-danger"
+                                  onClick={() => {
+                                    fecharMenuAcao();
+                                    revogarAtivacao(item);
+                                  }}
+                                  disabled={revogandoId === item.id_ativacao}
+                                >
+                                  {revogandoId === item.id_ativacao ? "Revogando..." : "⛔ Revogar"}
+                                </button>
+                              ) : (
+                                <span className="mobile-acao-item-disabled">Revogar indisponível</span>
+                              )}
+                              </div>
+                            ) : null}
+                          </div>
+                        </td>
+                        <td>{item.id_ativacao}</td>
+                        <td>{item.codigo_ativacao}</td>
+                        <td>
+                          <span className={`status-pill status-${String(item.status || "").toLowerCase()}`}>
+                            {statusTag(item.status)}
+                          </span>
+                        </td>
+                        <td>
+                          <span style={{ display: "inline-flex", flexDirection: "column", gap: 1 }}>
+                            <span>{item.id_usuario_destino || "-"}</span>
+                            <span className="text-muted">{item.nome_usuario_ativacao || "-"}</span>
+                          </span>
+                        </td>
+                        <td>{item.dispositivo || "-"}</td>
+                        <td>{obterPermissoes(item)}</td>
+                        <td>{obterRede(item)}</td>
+                        <td>{obterBateria(item)}</td>
+                        <td>{obterStorage(item)}</td>
+                        <td>{obterMemoria(item)}</td>
+                        <td>{obterCpu(item)}</td>
+                        <td>{obterVersaoApp(item)}</td>
+                        <td>{obterSeguranca(item)}</td>
+                        <td>{obterMacDispositivo(item)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                </div>
+            )}
           </div>
         </div>
       </div>

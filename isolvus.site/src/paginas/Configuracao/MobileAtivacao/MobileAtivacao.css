@@ -34,6 +34,21 @@
   color: #64748b;
 }
 
+.mobile-ativacao-filtros-card .form-label {
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+  min-height: 24px;
+}
+
+.mobile-ativacao-filtros-card .form-control,
+.mobile-ativacao-filtros-card .form-select {
+  min-height: 38px;
+}
+
+.mobile-ativacao-page .modal .modal-content {
+  border: 1px solid #e9ecef;
+}
+
 .mobile-ativacao-table-card {
   overflow: visible;
   padding: 0;
@@ -46,6 +61,12 @@
 .mobile-ativacao-table-card .table-responsive {
   overflow-x: auto;
   overflow-y: visible;
+  position: relative;
+}
+
+.mobile-ativacao-page .table-responsive {
+  overflow-x: auto;
+  overflow-y: visible !important;
   position: relative;
 }
 
@@ -62,13 +83,22 @@
   text-align: center;
 }
 
+.mobile-ativacao-table {
+  border: 1px solid #e9ecef;
+}
+
 .mobile-ativacao-table tbody td {
   font-size: 12px;
   padding: 0.55rem 0.75rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 0;
   vertical-align: middle;
   white-space: nowrap;
   text-align: center;
+}
+
+.mobile-ativacao-table thead th,
+.mobile-ativacao-table tbody td {
+  border-right: 0;
 }
 
 .mobile-ativacao-table tbody tr:hover {
@@ -77,15 +107,11 @@
 
 .mobile-acao-col {
   min-width: 150px;
+  position: relative;
 }
 
 .mobile-acao-menu {
-  position: relative;
   display: inline-block;
-}
-
-.mobile-acao-menu[open] {
-  z-index: 9998;
 }
 
 .mobile-acao-trigger {
@@ -96,20 +122,9 @@
   justify-content: center;
 }
 
-.mobile-acao-menu summary {
-  list-style: none;
-  cursor: pointer;
-}
-
-.mobile-acao-menu summary::-webkit-details-marker {
-  display: none;
-}
-
 .mobile-acao-dropdown {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 9999;
+  position: fixed;
+  z-index: 20000;
   min-width: 190px;
   background: #ffffff;
   border: 1px solid #dbe3ef;
