@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Animated, Image, PanResponder, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Animated, Image, Keyboard, KeyboardAvoidingView, PanResponder, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "../../../theme/colors";
@@ -50,10 +50,7 @@ function SectionCard({ icon, title, children, first = false }) {
           <Ionicons name={icon} size={13} color="#334155" />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 10, fontWeight: "700", color: "#64748b", letterSpacing: 0.8 }}>
-            CATEGORIA
-          </Text>
-          <Text style={[styles.subsectionTitle, { marginTop: 1, marginBottom: 0, fontSize: 14, color: "#0f172a" }]}>{title}</Text>
+          <Text style={[styles.subsectionTitle, { marginTop: 0, marginBottom: 0, fontSize: 14, color: "#0f172a" }]}>{title}</Text>
         </View>
       </View>
 
@@ -103,7 +100,38 @@ export default function ModalAtividade({
   const [excluindoFotoId, setExcluindoFotoId] = useState(null);
   const [erroFoto, setErroFoto] = useState("");
   const [fotoMenuAberto, setFotoMenuAberto] = useState(false);
+  const [mostrarSugestoesItem, setMostrarSugestoesItem] = useState(true);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const previewTranslateY = useRef(new Animated.Value(0)).current;
+  const formScrollRef = useRef(null);
+  const observacaoInputRef = useRef(null);
+  const itemBuscaInputRef = useRef(null);
+  const qtItemInputRef = useRef(null);
+  const itemBuscaOffsetY = useRef(0);
+  const itemBuscaLabelY = useRef(0);
+  const qtItemLabelY = useRef(0);
+  const vetSectionY = useRef(0);
+  const vetNomeLabelY = useRef(0);
+  const vetContatoLabelY = useRef(0);
+  const equipeSectionY = useRef(0);
+  const qtdePessoaLabelY = useRef(0);
+  const observacaoSectionY = useRef(0);
+  const footerKeyboardOffset = keyboardHeight > 0 ? keyboardHeight : 0;
+
+  const handleFocusObservacao = () => scrollToField(observacaoSectionY.current, 0);
+
+  const CARD_OVERHEAD = 71;
+  const scrollToField = (sectionY, fieldY = 0) => {
+    setTimeout(() => {
+      formScrollRef.current?.scrollTo({ y: sectionY + CARD_OVERHEAD + fieldY, animated: true });
+    }, 120);
+  };
+
+  const handleFocusNomeVet = () => scrollToField(vetSectionY.current, vetNomeLabelY.current);
+  const handleFocusContatoVet = () => scrollToField(vetSectionY.current, vetContatoLabelY.current);
+  const handleFocusQtdePessoa = () => scrollToField(equipeSectionY.current, qtdePessoaLabelY.current);
+  const handleFocusItemBusca = () => scrollToField(itemBuscaOffsetY.current, itemBuscaLabelY.current);
+  const handleFocusQtItem = () => scrollToField(itemBuscaOffsetY.current, qtItemLabelY.current);
 
   const closePreview = () => {
     setPreviewFotoUri("");
@@ -111,6 +139,7 @@ export default function ModalAtividade({
   };
 
   const fecharModal = () => {
+    Keyboard.dismiss();
     setPreviewFotoUri("");
     onClose();
   };
@@ -130,6 +159,35 @@ export default function ModalAtividade({
       return;
     }
   }, [previewFotoUri]);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      const h = e?.endCoordinates?.height || 0;
+      setKeyboardHeight(h);
+    });
+
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!visible || !isEdicao || keyboardHeight <= 0) return;
+
+    const timer = setTimeout(() => {
+      formScrollRef.current?.scrollToEnd({ animated: true });
+    }, 140);
+
+    return () => clearTimeout(timer);
+  }, [visible, isEdicao, keyboardHeight]);
 
   const previewPanResponder = useMemo(() => PanResponder.create({
     onMoveShouldSetPanResponder: (_, gesture) => (
@@ -172,6 +230,7 @@ export default function ModalAtividade({
   if (!visible) return null;
 
   return (
+    <View style={{ flex: 1 }}>
     <View style={[styles.section, { flex: 1, paddingHorizontal: 0, paddingBottom: 0, marginBottom: 0 }]}> 
       <View style={{ flex: 1, maxHeight: "100%" }}> 
 
@@ -199,6 +258,7 @@ export default function ModalAtividade({
           </View>
 
           <ScrollView
+            ref={formScrollRef}
             style={{ flex: 1 }}
             showsVerticalScrollIndicator
             keyboardShouldPersistTaps="handled"
@@ -208,48 +268,83 @@ export default function ModalAtividade({
 
             {/* Tipo de atividade */}
             <SectionCard icon="list" title="Tipo de atividade *" first>
+              {isEdicao && (
+                <Text style={{ fontSize: 11, color: "#94a3b8", marginBottom: 6 }}>
+                  O tipo não pode ser alterado após salvo.
+                </Text>
+              )}
               <View style={styles.selectWrap}>
-                {atividadesCatalogo.map((a) => (
-                  <Pressable
-                    key={String(a.codigo)}
-                    style={[styles.optionChip, Number(a.codigo) === Number(codAtividade) ? styles.optionChipAtivo : null]}
-                    onPress={() => {
-                      setCodAtividade(Number(a.codigo));
-                      setNomeAtividade(String(a.descricao || ""));
-                    }}
-                  >
-                    <Text style={[styles.optionChipText, Number(a.codigo) === Number(codAtividade) ? styles.optionChipTextAtivo : null]}>
-                      {a.descricao}
-                    </Text>
-                  </Pressable>
-                ))}
+                {atividadesCatalogo.map((a) => {
+                  const ativo = Number(a.codigo) === Number(codAtividade);
+                  return (
+                    <Pressable
+                      key={String(a.codigo)}
+                      disabled={isEdicao}
+                      style={[
+                        styles.optionChip,
+                        ativo ? styles.optionChipAtivo : null,
+                        isEdicao && !ativo ? { opacity: 0.4 } : null,
+                      ]}
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        setCodAtividade(Number(a.codigo));
+                        setNomeAtividade(String(a.descricao || ""));
+                        // Limpa todos os campos ao trocar o tipo
+                        setNomeVeterinario("");
+                        setContatoVeterinario("");
+                        setCodEquipe(0);
+                        setNomeEquipe("");
+                        setQtdePessoa("");
+                        setFezQuiz("");
+                        setComentario("");
+                        setHouveVenda("");
+                        setTipoItem("");
+                        setCodItem(0);
+                        setQtItem("");
+                      }}
+                    >
+                      <Text style={[styles.optionChipText, ativo ? styles.optionChipTextAtivo : null]}>
+                        {a.descricao}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
               </View>
             </SectionCard>
 
             {/* Veterinário */}
+            <View onLayout={(e) => { vetSectionY.current = e.nativeEvent.layout.y; }}>
             {camposAtivos.cpveterinario && (
               <SectionCard icon="medkit-outline" title="Dados do veterinário">
+                <View onLayout={(e) => { vetNomeLabelY.current = e.nativeEvent.layout.y; }}>
                 <Text style={styles.label}>Nome completo *</Text>
                 <TextInput
                   style={styles.input}
                   value={nomeVeterinario}
+                  onFocus={handleFocusNomeVet}
                   onChangeText={(v) => setNomeVeterinario(v.toUpperCase())}
                   placeholder="Ex: DR. CARLOS SILVA"
                   placeholderTextColor="#94a3b8"
                 />
+                </View>
+                <View onLayout={(e) => { vetContatoLabelY.current = e.nativeEvent.layout.y; }}>
                 <Text style={styles.label}>Telefone de contato</Text>
                 <TextInput
                   style={styles.input}
                   value={contatoVeterinario}
+                  onFocus={handleFocusContatoVet}
                   keyboardType="phone-pad"
                   placeholder="(00) 00000-0000"
                   placeholderTextColor="#94a3b8"
                   onChangeText={(v) => setContatoVeterinario(formatarTelefone(v))}
                 />
+                </View>
               </SectionCard>
             )}
+            </View>
 
             {/* Equipe */}
+            <View onLayout={(e) => { equipeSectionY.current = e.nativeEvent.layout.y; }}>
             {camposAtivos.cpequipe && (
               <SectionCard icon="people-outline" title="Equipe treinada">
                 <Text style={styles.label}>Selecione a equipe *</Text>
@@ -259,6 +354,7 @@ export default function ModalAtividade({
                       key={String(e.codigo)}
                       style={[styles.optionChip, Number(e.codigo) === Number(codEquipe) ? styles.optionChipAtivo : null]}
                       onPress={() => {
+                        Keyboard.dismiss();
                         setCodEquipe(Number(e.codigo));
                         setNomeEquipe(String(e.descricao || ""));
                       }}
@@ -279,22 +375,25 @@ export default function ModalAtividade({
                     <Text style={{ fontSize: 12, color: colors.accent, fontWeight: "600" }}>Equipe: {nomeEquipe}</Text>
                   </View>
                 )}
+                <View onLayout={(e) => { qtdePessoaLabelY.current = e.nativeEvent.layout.y; }}>
                 <Text style={styles.label}>Quantidade de pessoas *</Text>
                 <TextInput
                   style={styles.input}
                   value={qtdePessoa}
+                  onFocus={handleFocusQtdePessoa}
                   onChangeText={(v) => setQtdePessoa(v.replace(/[^\d.,]/g, ""))}
                   keyboardType="decimal-pad"
                   placeholder="0"
                   placeholderTextColor="#94a3b8"
                 />
+                </View>
                 <Text style={styles.label}>O quiz foi aplicado?</Text>
                 <View style={[styles.row, { marginTop: 2 }]}> 
                   {[{ value: "S", label: "Sim" }, { value: "N", label: "Não" }].map((op) => (
                     <Pressable
                       key={op.value}
                       style={[styles.optionChip, fezQuiz === op.value ? styles.optionChipAtivo : null]}
-                      onPress={() => setFezQuiz(op.value)}
+                      onPress={() => { Keyboard.dismiss(); setFezQuiz(op.value); }}
                     >
                       <Text style={[styles.optionChipText, fezQuiz === op.value ? styles.optionChipTextAtivo : null]}>
                         {op.label}
@@ -304,8 +403,10 @@ export default function ModalAtividade({
                 </View>
               </SectionCard>
             )}
+            </View>
 
             {/* Itens */}
+            <View onLayout={(e) => { itemBuscaOffsetY.current = e.nativeEvent.layout.y; }}>
             {camposAtivos.cpitem && (
               <SectionCard icon="cube-outline" title="Itens entregues">
                 <Text style={styles.label}>Tipo de item</Text>
@@ -319,6 +420,7 @@ export default function ModalAtividade({
                       key={op.value}
                       style={[styles.optionChip, tipoItem === op.value ? styles.optionChipAtivo : null]}
                       onPress={() => {
+                        Keyboard.dismiss();
                         setTipoItem(op.value);
                         buscarItemSugestoes("");
                         setCodItem(0);
@@ -330,15 +432,21 @@ export default function ModalAtividade({
                     </Pressable>
                   ))}
                 </View>
+                <View onLayout={(e) => { itemBuscaLabelY.current = e.nativeEvent.layout.y; }}>
                 <Text style={styles.label}>Buscar item</Text>
                 <TextInput
+                  ref={itemBuscaInputRef}
                   style={styles.input}
                   value={itemBusca}
-                  onChangeText={buscarItemSugestoes}
+                  onFocus={handleFocusItemBusca}
+                  onChangeText={(v) => {
+                    setMostrarSugestoesItem(true);
+                    buscarItemSugestoes(v);
+                  }}
                   placeholder="Digite o nome do item..."
                   placeholderTextColor="#94a3b8"
                 />
-                {itemSugestoes.length > 0 && (
+                {mostrarSugestoesItem && itemSugestoes.length > 0 && (
                   <View style={styles.suggestionsWrap}>
                     {itemSugestoes.map((it) => (
                       <Pressable
@@ -347,6 +455,13 @@ export default function ModalAtividade({
                         onPress={() => {
                           setCodItem(Number(it.codigo));
                           buscarItemSugestoes(String(it.descricao || ""));
+                          setMostrarSugestoesItem(false);
+                          setTimeout(() => {
+                            formScrollRef.current?.scrollTo({ y: itemBuscaOffsetY.current + CARD_OVERHEAD + qtItemLabelY.current, animated: true });
+                          }, 80);
+                          setTimeout(() => {
+                            qtItemInputRef.current?.focus();
+                          }, 220);
                         }}
                       >
                         <Text style={styles.suggestionTitle}>{it.descricao}</Text>
@@ -354,18 +469,23 @@ export default function ModalAtividade({
                     ))}
                   </View>
                 )}
+                </View>
+                <View onLayout={(e) => { qtItemLabelY.current = e.nativeEvent.layout.y; }}>
                 <Text style={styles.label}>Quantidade</Text>
+                </View>
                 <View style={{ flexDirection: "row", gap: 8, alignItems: "flex-start" }}>
                   <TextInput
+                    ref={qtItemInputRef}
                     style={[styles.input, { flex: 1 }]}
                     value={qtItem}
+                    onFocus={handleFocusQtItem}
                     onChangeText={(v) => setQtItem(v.replace(/[^\d.,]/g, ""))}
                     keyboardType="decimal-pad"
                     placeholder="0"
                     placeholderTextColor="#94a3b8"
                   />
                   <Pressable
-                    onPress={adicionarItemAtividade}
+                    onPress={() => { Keyboard.dismiss(); adicionarItemAtividade(); }}
                     style={({ pressed }) => ({
                       minHeight: 48, paddingHorizontal: 16, borderRadius: 10,
                       backgroundColor: pressed ? "#1e3a8a" : "#1d4ed8",
@@ -396,6 +516,7 @@ export default function ModalAtividade({
                 )}
               </SectionCard>
             )}
+            </View>
 
             {/* Venda */}
             {camposAtivos.cpvenda && (
@@ -409,7 +530,7 @@ export default function ModalAtividade({
                     <Pressable
                       key={op.value}
                       style={[styles.optionChip, houveVenda === op.value ? styles.optionChipAtivo : null]}
-                      onPress={() => setHouveVenda(op.value)}
+                      onPress={() => { Keyboard.dismiss(); setHouveVenda(op.value); }}
                     >
                       <Text style={[styles.optionChipText, houveVenda === op.value ? styles.optionChipTextAtivo : null]}>
                         {op.label}
@@ -481,19 +602,23 @@ export default function ModalAtividade({
             )}
 
             {/* Observação */}
+            <View onLayout={(e) => { observacaoSectionY.current = e.nativeEvent.layout.y; }}>
             {camposAtivos.cpobservacao && (
               <SectionCard icon="create-outline" title="Observações">
                 <TextInput
+                  ref={observacaoInputRef}
                   style={[styles.textArea, { marginTop: 0 }]}
                   multiline
                   numberOfLines={5}
                   value={comentario}
+                  onFocus={handleFocusObservacao}
                   onChangeText={setComentario}
                   placeholder="Descreva observações relevantes desta visita..."
                   placeholderTextColor="#94a3b8"
                 />
               </SectionCard>
             )}
+            </View>
 
           </ScrollView>
 
@@ -502,6 +627,7 @@ export default function ModalAtividade({
             gap: 8,
             paddingTop: 10,
             paddingBottom: 16,
+            marginBottom: footerKeyboardOffset,
             borderTopWidth: 1,
             borderTopColor: "#e2e8f0",
             backgroundColor: "#f8fafc",
@@ -513,7 +639,7 @@ export default function ModalAtividade({
             {isEdicao && (
               <Pressable
                 style={[styles.btnDangerSmall, { paddingHorizontal: 16 }]}
-                onPress={excluirEvidencia}
+                onPress={() => { Keyboard.dismiss(); excluirEvidencia(); }}
               >
                 <Ionicons name="trash-outline" size={16} color="#fff" />
               </Pressable>
@@ -521,7 +647,7 @@ export default function ModalAtividade({
 
             <Pressable
               style={{ flex: 1, borderRadius: 12, overflow: "hidden", opacity: salvandoEvidencia ? 0.7 : 1 }}
-              onPress={salvarEvidencia}
+              onPress={() => { Keyboard.dismiss(); salvarEvidencia(); }}
               disabled={salvandoEvidencia}
             >
               <LinearGradient
@@ -688,6 +814,7 @@ export default function ModalAtividade({
             </View>
           ) : null}
       </View>
+    </View>
     </View>
   );
 }
