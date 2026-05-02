@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   Image,
   Linking,
@@ -216,7 +217,7 @@ function iconePorNome(nome) {
   return "chevron-forward-outline";
 }
 
-export default function HomeScreen({ user, onLogout }) {
+export default function HomeScreen({ user, onLogout, onRedefinir }) {
   const showAlert = useShowAlert();
   const [showModulos, setShowModulos] = useState(false);
   const [showNotificacoes, setShowNotificacoes] = useState(false);
@@ -249,6 +250,25 @@ export default function HomeScreen({ user, onLogout }) {
   const setorUsuario = user?.setor || "Setor";
   const drawerAberto = showModulos || showNotificacoes;
   const screenAtiva = toSlug(rotaAtiva?.screen || "");
+
+  const handleConfirmarRedefinicao = useCallback(() => {
+    Alert.alert(
+      "Redefinir ativação?",
+      "Esta ação vai remover a ativação atual deste app, encerrar sua sessão e exigir um novo QR Code para acessar novamente.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Redefinir",
+          style: "destructive",
+          onPress: () => {
+            if (typeof onRedefinir === "function") {
+              onRedefinir();
+            }
+          },
+        },
+      ]
+    );
+  }, [onRedefinir]);
 
   const avatarUsuario = fotoUsuario || normalizarFotoUrl(user?.foto || user?.foto_usuario || "");
 
@@ -892,10 +912,17 @@ export default function HomeScreen({ user, onLogout }) {
             )}
 
             <View style={[styles.drawerFooter, { paddingBottom: 22 }]}>
-              <Pressable style={styles.logoutButton} onPress={onLogout}>
-                <Ionicons name="log-out-outline" size={16} color="#ef4444" />
-                <Text style={styles.logoutText}>Sair do sistema</Text>
-              </Pressable>
+              <View style={styles.footerActionsRow}>
+                <Pressable style={styles.redefinirButton} onPress={handleConfirmarRedefinicao}>
+                  <Ionicons name="qr-code-outline" size={16} color="#94a3b8" />
+                  <Text style={styles.redefinirText}>Redefinir ativação</Text>
+                </Pressable>
+
+                <Pressable style={styles.logoutButton} onPress={onLogout}>
+                  <Ionicons name="log-out-outline" size={16} color="#ef4444" />
+                  <Text style={styles.logoutText}>Sair do sistema</Text>
+                </Pressable>
+              </View>
             </View>
           </Animated.View>
         </View>
@@ -1138,6 +1165,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
+  footerActionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
   drawerHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -1266,13 +1299,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    width: "100%",
+    width: "49%",
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
     gap: 8,
   },
   logoutText: { color: "#ef4444", fontSize: 14, fontWeight: "500" },
+  redefinirButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 10, paddingHorizontal: 12, width: "49%" },
+  redefinirText: { color: "#94a3b8", fontSize: 13, fontWeight: "500" },
 
   notifTitleWrap: { flexDirection: "row", alignItems: "center", gap: 8 },
   notifTitle: { color: "#1e293b", fontSize: 17, fontWeight: "800" },

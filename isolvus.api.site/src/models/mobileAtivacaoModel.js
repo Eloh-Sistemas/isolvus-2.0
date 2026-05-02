@@ -106,16 +106,32 @@ export async function revogarAtivacaoMobile({ id_ativacao, id_usuario }) {
        SET STATUS = 'R',
            DT_ALTERACAO = SYSDATE,
            ID_USUARIO_ALTERACAO = :id_usuario
-     WHERE ID_ATIVACAO = :id_ativacao
-       AND STATUS = 'P'
+     WHERE ID_ATIVACAO = TO_NUMBER(:id_ativacao)
+       AND TRIM(UPPER(STATUS)) = 'P'
   `;
 
   const result = await executeQuery(ssql, {
-    id_ativacao: Number(id_ativacao || 0),
+    id_ativacao: String(id_ativacao || "0"),
     id_usuario: id_usuario != null ? Number(id_usuario) : null,
   }, true);
 
-  return Number(result?.rowsAffected || 0);
+  const rowsAffected = Number(result?.rowsAffected || 0);
+
+  const consultaSql = `
+    SELECT STATUS, DT_ALTERACAO
+      FROM BSTAB_MOBILE_ATIVACAO
+     WHERE ID_ATIVACAO = TO_NUMBER(:id_ativacao)
+  `;
+
+  const consulta = await executeQuery(consultaSql, {
+    id_ativacao: String(id_ativacao || "0"),
+  });
+
+  return {
+    rowsAffected,
+    statusAtual: consulta?.[0]?.status || null,
+    dtAlteracao: consulta?.[0]?.dt_alteracao || null,
+  };
 }
 
 export async function validarAtivacaoMobile({ token_ativacao, dispositivo, ip_utilizacao, id_usuario_ativacao }) {
@@ -163,17 +179,48 @@ export async function validarAtivacaoMobile({ token_ativacao, dispositivo, ip_ut
 
   const ssqlRetorno = `
     SELECT
-      ID_EMPRESA,
-      RAZAOSOCIAL,
-      API_BASE_URL,
-      CODIGO_ATIVACAO,
-      DT_EXPIRACAO
-    FROM BSTAB_MOBILE_ATIVACAO
-    WHERE TOKEN_HASH = :token_hash
+      A.ID_EMPRESA,
+      A.RAZAOSOCIAL,
+      A.API_BASE_URL,
+      A.CODIGO_ATIVACAO,
+      A.DT_EXPIRACAO,
+      A.ID_USUARIO_DESTINO,
+      U.ID_USUARIO,
+      U.ID_USUARIO_ERP,
+      U.NOME,
+      UPPER(U.EMAIL)         AS USUARIO,
+      U.ID_GRUPO_EMPRESA,
+      U.ID_SETOR_ERP,
+      ST.SETOR,
+      LPAD(E.ID_ERP, 4, 0)  AS ID_EMPRESA_ERP_PADDED
+    FROM BSTAB_MOBILE_ATIVACAO A
+    LEFT JOIN BSTAB_USUSARIOS U
+           ON U.ID_USUARIO = A.ID_USUARIO_DESTINO
+    LEFT JOIN BSTAB_EMPRESAS E
+           ON E.ID_ERP         = U.ID_EMPRESA_ERP
+          AND E.ID_GRUPO_EMPRESA = U.ID_GRUPO_EMPRESA
+    LEFT JOIN BSTAB_USUARIO_SETOR ST
+           ON ST.ID_SETOR_ERP     = U.ID_SETOR_ERP
+          AND ST.ID_GRUPO_EMPRESA  = U.ID_GRUPO_EMPRESA
+    WHERE A.TOKEN_HASH = :token_hash
   `;
 
   const dados = await executeQuery(ssqlRetorno, { token_hash });
   const atual = dados[0] || {};
+
+  const usuarioDados = atual.id_usuario_destino
+    ? {
+        id_usuario: atual.id_usuario,
+        id_usuario_erp: atual.id_usuario_erp,
+        nome: atual.nome,
+        usuario: atual.usuario,
+        id_grupo_empresa: atual.id_grupo_empresa,
+        id_setor_erp: atual.id_setor_erp,
+        setor: atual.setor,
+        id_empresa: atual.id_empresa_erp_padded || atual.id_empresa,
+        razaosocial: atual.razaosocial,
+      }
+    : null;
 
   return {
     ok: true,
@@ -183,6 +230,7 @@ export async function validarAtivacaoMobile({ token_ativacao, dispositivo, ip_ut
       api_base_url: atual.api_base_url,
       codigo_ativacao: atual.codigo_ativacao,
       dt_expiracao: atual.dt_expiracao,
+      usuario: usuarioDados,
     },
   };
 }

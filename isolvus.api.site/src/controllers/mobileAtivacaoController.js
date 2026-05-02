@@ -76,12 +76,74 @@ export async function RevogarAtivacao(req, res) {
       return res.status(400).json({ error: "id_ativacao é obrigatório." });
     }
 
-    const linhas = await revogarAtivacaoMobile({ id_ativacao, id_usuario: id_usuario || null });
-    if (!linhas) {
-      return res.status(404).json({ error: "Ativação não encontrada ou já finalizada." });
+    const resultado = await revogarAtivacaoMobile({ id_ativacao, id_usuario: id_usuario || null });
+
+    // Log temporario para auditoria de revogacao no ambiente.
+    console.log("[mobile-ativacao:revogar]", {
+      id_ativacao: Number(id_ativacao || 0),
+      id_usuario: id_usuario || null,
+      rowsAffected: resultado.rowsAffected,
+      statusAtual: resultado.statusAtual,
+      dtAlteracao: resultado.dtAlteracao,
+      ip: req.ip,
+      ts: new Date().toISOString(),
+    });
+
+    if (!resultado.rowsAffected) {
+      return res.status(404).json({
+        error: "Ativação não encontrada ou já finalizada.",
+        status_atual: resultado.statusAtual,
+      });
     }
 
-    return res.json({ sucesso: true });
+    return res.json({
+      sucesso: true,
+      status: resultado.statusAtual || "R",
+      dt_alteracao: resultado.dtAlteracao,
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message || "Erro ao revogar ativação mobile." });
+  }
+}
+
+export async function RevogarAtivacaoPorId(req, res) {
+
+  
+
+  try {
+    const { id_ativacao } = req.params || {};
+    const { id_usuario } = req.body || {};
+
+    console.log(req.params, req.body);
+
+    if (!id_ativacao) {
+      return res.status(400).json({ error: "id_ativacao é obrigatório." });
+    }
+
+    const resultado = await revogarAtivacaoMobile({ id_ativacao, id_usuario: id_usuario || null });
+
+    console.log("[mobile-ativacao:revogar:param]", {
+      id_ativacao: Number(id_ativacao || 0),
+      id_usuario: id_usuario || null,
+      rowsAffected: resultado.rowsAffected,
+      statusAtual: resultado.statusAtual,
+      dtAlteracao: resultado.dtAlteracao,
+      ip: req.ip,
+      ts: new Date().toISOString(),
+    });
+
+    if (!resultado.rowsAffected) {
+      return res.status(404).json({
+        error: "Ativação não encontrada ou já finalizada.",
+        status_atual: resultado.statusAtual,
+      });
+    }
+
+    return res.json({
+      sucesso: true,
+      status: resultado.statusAtual || "R",
+      dt_alteracao: resultado.dtAlteracao,
+    });
   } catch (error) {
     return res.status(500).json({ error: error.message || "Erro ao revogar ativação mobile." });
   }

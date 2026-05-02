@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
+import Swal from "sweetalert2";
 import Menu from "../../../componentes/Menu/Menu";
 import api from "../../../servidor/api";
 import "./MobileAtivacao.css";
@@ -22,6 +23,7 @@ export default function MobileAtivacao() {
   const [validadeMinutos, setValidadeMinutos] = useState(10);
   const [loadingGerar, setLoadingGerar] = useState(false);
   const [loadingLista, setLoadingLista] = useState(false);
+  const [revogandoId, setRevogandoId] = useState(null);
   const [tokenAtual, setTokenAtual] = useState(null);
   const [qrDataUrl, setQrDataUrl] = useState("");
   const [ativacoes, setAtivacoes] = useState([]);
@@ -127,20 +129,57 @@ export default function MobileAtivacao() {
   }
 
   async function revogarAtivacao(item) {
+
     if (!item?.id_ativacao) return;
 
-    const confirmado = window.confirm("Deseja revogar esta ativação?");
-    if (!confirmado) return;
+    const confirmacao = await Swal.fire({
+      title: "Revogar ativação?",
+      text: "Essa ação irá invalidar o QR Code e não poderá ser desfeita.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sim, revogar",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+    });
+
+    if (!confirmacao.isConfirmed) return;
 
     try {
-      await api.post("/v1/mobile/ativacao/revogar", {
-        id_ativacao: item.id_ativacao,
-        id_usuario: empresaInfo.id_usuario,
-      });
+      setRevogandoId(item.id_ativacao);
+      let data;
+      try {
+        // Rota nova (com ID no path)
+        const response = await api.post(`/v1/mobile/ativacao/${item.id_ativacao}/revogar`, {
+          id_usuario: empresaInfo.id_usuario,
+        });;
+
+        console.log(response.data);
+        data = response?.data;
+      } catch (errorNovaRota) {
+        // Fallback para rota legada já usada em produção
+        console.log(errorNovaRota);
+        if (errorNovaRota?.response?.status === 404) {
+          const responseLegada = await api.post("/v1/mobile/ativacao/revogar", {
+            id_ativacao: item.id_ativacao,
+            id_usuario: empresaInfo.id_usuario,
+          });
+          data = responseLegada?.data;
+          
+        } else {
+          throw errorNovaRota;
+        }
+      }
+
+      if (String(data?.status || "") !== "R") {
+        throw new Error("A API não confirmou status revogado.");
+      }
+
       await carregarAtivacoes();
     } catch (error) {
       console.log("Erro ao revogar ativação mobile:", error);
-      alert("Não foi possível revogar a ativação.");
+      alert(error?.response?.data?.error || "Não foi possível revogar a ativação.");
+    } finally {
+      setRevogandoId(null);
     }
   }
 
@@ -299,8 +338,9 @@ export default function MobileAtivacao() {
                                   type="button"
                                   className="btn btn-outline-danger btn-sm"
                                   onClick={() => revogarAtivacao(item)}
+                                  disabled={revogandoId === item.id_ativacao}
                                 >
-                                  Revogar
+                                  {revogandoId === item.id_ativacao ? "Revogando..." : "Revogar"}
                                 </button>
                               ) : (
                                 <span className="text-muted">-</span>
