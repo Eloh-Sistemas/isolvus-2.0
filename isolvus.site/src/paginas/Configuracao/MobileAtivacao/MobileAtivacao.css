@@ -35,14 +35,24 @@
 }
 
 .mobile-ativacao-table-card {
-  overflow: hidden;
+  overflow: visible;
   padding: 0;
+}
+
+.mobile-ativacao-table-card .card-body {
+  overflow: visible;
+}
+
+.mobile-ativacao-table-card .table-responsive {
+  overflow-x: auto;
+  overflow-y: visible;
+  position: relative;
 }
 
 .mobile-ativacao-table thead th {
   background: #f8fafd;
   color: #64748b;
-  font-size: 0.72rem;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -53,6 +63,7 @@
 }
 
 .mobile-ativacao-table tbody td {
+  font-size: 12px;
   padding: 0.55rem 0.75rem;
   border-bottom: 1px solid #f1f5f9;
   vertical-align: middle;
@@ -71,6 +82,10 @@
 .mobile-acao-menu {
   position: relative;
   display: inline-block;
+}
+
+.mobile-acao-menu[open] {
+  z-index: 9998;
 }
 
 .mobile-acao-trigger {
@@ -94,7 +109,7 @@
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  z-index: 20;
+  z-index: 9999;
   min-width: 190px;
   background: #ffffff;
   border: 1px solid #dbe3ef;
@@ -173,7 +188,7 @@
   min-width: 88px;
   border-radius: 999px;
   padding: 3px 10px;
-  font-size: 0.74rem;
+  font-size: 12px;
   font-weight: 700;
 }
 

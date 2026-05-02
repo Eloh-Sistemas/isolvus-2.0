@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import Swal from "sweetalert2";
 import Menu from "../../../componentes/Menu/Menu";
@@ -73,11 +73,11 @@ function obterBateria(item) {
           <text x="12" y="11" fontSize="9" fill="#fff" fontWeight="bold" textAnchor="middle">⚡</text>
         )}
       </svg>
-      <span style={{ color: fillColor, fontWeight: 600, fontSize: 13 }}>
+      <span style={{ color: fillColor, fontWeight: 600, fontSize: "inherit" }}>
         {pct}%
       </span>
       {lowPower && (
-        <span title="Modo economia ativo" style={{ fontSize: 11, color: "#f59e0b" }}>🔋</span>
+        <span title="Modo economia ativo" style={{ fontSize: "inherit", color: "#f59e0b" }}>🔋</span>
       )}
     </span>
   );
@@ -116,17 +116,17 @@ function obterRede(item) {
   const internetColor = internet === true ? "#22c55e" : internet === false ? "#ef4444" : "#94a3b8";
 
   return (
-    <span style={{ display: "inline-flex", flexDirection: "column", gap: 2, fontSize: 11, whiteSpace: "nowrap" }}>
+    <span style={{ display: "inline-flex", flexDirection: "column", gap: 2, fontSize: "inherit", whiteSpace: "nowrap" }}>
       <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
         <span style={{ color: tipoColor, fontWeight: 700 }}>{tipoLabel}</span>
         <span
           title={internet === true ? "Internet OK" : internet === false ? "Sem internet" : "Internet desconhecida"}
-          style={{ color: internetColor, fontSize: 10, fontWeight: 700 }}
+          style={{ color: internetColor, fontSize: "inherit", fontWeight: 700 }}
         >
           {internet === true ? "● online" : internet === false ? "● offline" : "● ?"}
         </span>
       </span>
-      {ip && <span style={{ color: "#64748b", fontSize: 10 }}>{ip}</span>}
+      {ip && <span style={{ color: "#64748b", fontSize: "inherit" }}>{ip}</span>}
     </span>
   );
 }
@@ -158,7 +158,7 @@ function obterStorage(item) {
   else if (usedPct >= 50) color = "#f59e0b";
 
   return (
-    <span style={{ whiteSpace: "nowrap", fontSize: 12 }}>
+    <span style={{ whiteSpace: "nowrap", fontSize: "inherit" }}>
       <span style={{ color, fontWeight: 600 }}>{freeGB} GB</span>
       <span className="text-muted"> / {totalGB} GB</span>
     </span>
@@ -176,10 +176,10 @@ function obterVersaoApp(item) {
   const stateColor = state === "active" ? "#22c55e" : state === "background" ? "#f59e0b" : "#94a3b8";
 
   return (
-    <span style={{ whiteSpace: "nowrap", fontSize: 12 }}>
+    <span style={{ whiteSpace: "nowrap", fontSize: "inherit" }}>
       v{version}
       {build ? <span className="text-muted"> ({build})</span> : null}
-      {state ? <span style={{ marginLeft: 4, color: stateColor, fontSize: 10, fontWeight: 600 }}>● {state}</span> : null}
+      {state ? <span style={{ marginLeft: 4, color: stateColor, fontSize: "inherit", fontWeight: 600 }}>● {state}</span> : null}
     </span>
   );
 }
@@ -188,14 +188,14 @@ function obterMemoria(item) {
   const info = parseDispositivoInfo(item?.dispositivo_info_json);
   const bytes = info?.hardware?.total_memory_bytes;
   if (typeof bytes !== "number") return <span className="text-muted">-</span>;
-  return <span style={{ whiteSpace: "nowrap", fontSize: 12 }}>{(bytes / 1e9).toFixed(1)} GB</span>;
+  return <span style={{ whiteSpace: "nowrap", fontSize: "inherit" }}>{(bytes / 1e9).toFixed(1)} GB</span>;
 }
 
 function obterCpu(item) {
   const info = parseDispositivoInfo(item?.dispositivo_info_json);
   const archs = info?.hardware?.cpu_architectures;
   if (!Array.isArray(archs) || archs.length === 0) return <span className="text-muted">-</span>;
-  return <span style={{ fontSize: 11, whiteSpace: "nowrap" }} title={archs.join(", ")}>{archs[0]}</span>;
+  return <span style={{ fontSize: "inherit", whiteSpace: "nowrap" }} title={archs.join(", ")}>{archs[0]}</span>;
 }
 
 function obterSeguranca(item) {
@@ -205,8 +205,8 @@ function obterSeguranca(item) {
   if (isRooted === null || isRooted === undefined) return <span className="text-muted">-</span>;
 
   return isRooted
-    ? <span style={{ color: "#ef4444", fontWeight: 600, fontSize: 12 }} title="Dispositivo com root/jailbreak">⚠ Root</span>
-    : <span style={{ color: "#22c55e", fontSize: 12 }}>✓ OK</span>;
+    ? <span style={{ color: "#ef4444", fontWeight: 600, fontSize: "inherit" }} title="Dispositivo com root/jailbreak">⚠ Root</span>
+    : <span style={{ color: "#22c55e", fontSize: "inherit" }}>✓ OK</span>;
 }
 
 const PERM_LABELS = {
@@ -237,7 +237,7 @@ function obterPermissoes(item) {
             key={key}
             title={`${label}: ${statusPt}`}
             style={{
-              fontSize: 10,
+              fontSize: "inherit",
               fontWeight: 700,
               color,
               background: bg,
@@ -272,6 +272,8 @@ export default function MobileAtivacao() {
   const [espelhoModalAberto, setEspelhoModalAberto] = useState(false);
   const [espelhoAtivacaoId, setEspelhoAtivacaoId] = useState(null);
   const [espelhoDispositivo, setEspelhoDispositivo] = useState("");
+  const interagindoTabelaRef = useRef(false);
+  const tabelaContainerRef = useRef(null);
 
   const empresaInfo = useMemo(() => ({
     id_empresa: String(localStorage.getItem("id_empresa") || ""),
@@ -280,8 +282,8 @@ export default function MobileAtivacao() {
     id_grupo_empresa: String(localStorage.getItem("id_grupo_empresa") || ""),
   }), []);
 
-  async function carregarAtivacoes() {
-    setLoadingLista(true);
+  async function carregarAtivacoes({ silencioso = false } = {}) {
+    if (!silencioso) setLoadingLista(true);
     try {
       const { data } = await api.get("/v1/mobile/ativacao/listar", {
         params: { id_empresa: empresaInfo.id_empresa || undefined },
@@ -291,7 +293,7 @@ export default function MobileAtivacao() {
       console.log("Erro ao listar ativações mobile:", error);
       alert("Não foi possível consultar as ativações mobile.");
     } finally {
-      setLoadingLista(false);
+      if (!silencioso) setLoadingLista(false);
     }
   }
 
@@ -299,7 +301,11 @@ export default function MobileAtivacao() {
     carregarAtivacoes();
 
     const timer = setInterval(() => {
-      carregarAtivacoes();
+      const tabela = tabelaContainerRef.current;
+      const existeMenuAberto = Boolean(tabela?.querySelector("details[open]"));
+
+      if (interagindoTabelaRef.current || existeMenuAberto) return;
+      carregarAtivacoes({ silencioso: true });
     }, 30000);
 
     return () => clearInterval(timer);
@@ -613,7 +619,27 @@ export default function MobileAtivacao() {
                 ) : ativacoes.length === 0 ? (
                   <p className="text-muted mb-0">Nenhuma ativação encontrada.</p>
                 ) : (
-                  <div className="table-responsive">
+                  <div
+                    className="table-responsive"
+                    ref={tabelaContainerRef}
+                    onMouseEnter={() => {
+                      interagindoTabelaRef.current = true;
+                    }}
+                    onMouseLeave={() => {
+                      interagindoTabelaRef.current = false;
+                    }}
+                    onFocusCapture={() => {
+                      interagindoTabelaRef.current = true;
+                    }}
+                    onBlurCapture={() => {
+                      setTimeout(() => {
+                        const ativo = document.activeElement;
+                        if (!tabelaContainerRef.current?.contains(ativo)) {
+                          interagindoTabelaRef.current = false;
+                        }
+                      }, 0);
+                    }}
+                  >
                     <table className="table table-sm table-hover align-middle mb-0 mobile-ativacao-table">
                       <thead>
                         <tr>
