@@ -99,6 +99,37 @@ function obterLocalizacao(item) {
   return "Indisponível";
 }
 
+function obterRede(item) {
+  const info = parseDispositivoInfo(item?.dispositivo_info_json);
+  const net = info?.network;
+  if (!net) return <span className="text-muted">-</span>;
+
+  const tipo = String(net.type || "").toUpperCase();
+  const ip = net.ip_local || null;
+  const internet = net.is_internet_reachable;
+  const conectado = net.is_connected;
+
+  const tipoColor = tipo === "WIFI" ? "#38bdf8" : tipo === "CELLULAR" ? "#a78bfa" : "#94a3b8";
+  const tipoLabel = tipo === "WIFI" ? "WiFi" : tipo === "CELLULAR" ? "Dados" : tipo || "?";
+
+  const internetColor = internet === true ? "#22c55e" : internet === false ? "#ef4444" : "#94a3b8";
+
+  return (
+    <span style={{ display: "inline-flex", flexDirection: "column", gap: 2, fontSize: 11, whiteSpace: "nowrap" }}>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+        <span style={{ color: tipoColor, fontWeight: 700 }}>{tipoLabel}</span>
+        <span
+          title={internet === true ? "Internet OK" : internet === false ? "Sem internet" : "Internet desconhecida"}
+          style={{ color: internetColor, fontSize: 10, fontWeight: 700 }}
+        >
+          {internet === true ? "● online" : internet === false ? "● offline" : "● ?"}
+        </span>
+      </span>
+      {ip && <span style={{ color: "#64748b", fontSize: 10 }}>{ip}</span>}
+    </span>
+  );
+}
+
 function obterUsoApps(item) {
   const info = parseDispositivoInfo(item?.dispositivo_info_json);
   const usage = info?.apps_usage;
@@ -224,7 +255,6 @@ function obterPermissoes(item) {
 }
 
 export default function MobileAtivacao() {
-  const [validadeMinutos, setValidadeMinutos] = useState(10);
   const [loadingGerar, setLoadingGerar] = useState(false);
   const [loadingLista, setLoadingLista] = useState(false);
   const [revogandoId, setRevogandoId] = useState(null);
@@ -311,11 +341,7 @@ export default function MobileAtivacao() {
       return;
     }
 
-    const minutos = Number(validadeMinutos || 0);
-    if (!Number.isFinite(minutos) || minutos < 1) {
-      alert("Informe uma validade em minutos maior ou igual a 1.");
-      return;
-    }
+    const minutos = 10;
 
     setLoadingGerar(true);
     try {
@@ -500,17 +526,6 @@ export default function MobileAtivacao() {
                   )}
                 </div>
 
-                <div className="mb-3">
-                  <label className="form-label">Validade (minutos)</label>
-                  <input
-                    type="number"
-                    min={1}
-                    className="form-control"
-                    value={validadeMinutos}
-                    onChange={(e) => setValidadeMinutos(e.target.value)}
-                  />
-                </div>
-
                 <button
                   type="button"
                   className="btn btn-primary w-100"
@@ -578,6 +593,7 @@ export default function MobileAtivacao() {
                           <th>Nome usuário</th>
                           <th>Dispositivo</th>
                           <th>MAC</th>
+                          <th>Rede</th>
                           <th>Bateria</th>
                           <th>Localização</th>
                           <th>Armazenamento</th>
@@ -607,6 +623,7 @@ export default function MobileAtivacao() {
                             <td>{item.nome_usuario_ativacao || "-"}</td>
                             <td>{item.dispositivo || "-"}</td>
                             <td>{obterMacDispositivo(item)}</td>
+                            <td>{obterRede(item)}</td>
                             <td>{obterBateria(item)}</td>
                             <td>{obterLocalizacao(item)}</td>
                             <td>{obterStorage(item)}</td>
