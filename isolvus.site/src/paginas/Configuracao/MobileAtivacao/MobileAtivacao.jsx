@@ -3,6 +3,7 @@ import QRCode from "qrcode";
 import Swal from "sweetalert2";
 import Menu from "../../../componentes/Menu/Menu";
 import api from "../../../servidor/api";
+import EspelhoScreenModal from "./EspelhoScreenModal";
 import "./MobileAtivacao.css";
 
 function formatarData(value) {
@@ -267,6 +268,11 @@ export default function MobileAtivacao() {
   const [resultadosUsuario, setResultadosUsuario] = useState([]);
   const [loadingUsuario, setLoadingUsuario] = useState(false);
 
+  // States para espelhamento
+  const [espelhoModalAberto, setEspelhoModalAberto] = useState(false);
+  const [espelhoAtivacaoId, setEspelhoAtivacaoId] = useState(null);
+  const [espelhoDispositivo, setEspelhoDispositivo] = useState("");
+
   const empresaInfo = useMemo(() => ({
     id_empresa: String(localStorage.getItem("id_empresa") || ""),
     razaosocial: String(localStorage.getItem("razaosocial") || ""),
@@ -474,20 +480,34 @@ export default function MobileAtivacao() {
     }
   }
 
+  function abrirEspelhoModal(item) {
+    setEspelhoAtivacaoId(item.id_ativacao);
+    setEspelhoDispositivo(item.dispositivo || `Ativação ${item.id_ativacao}`);
+    setEspelhoModalAberto(true);
+  }
+
   return (
     <>
       <Menu />
-      <div className="container-fluid Containe-Tela">
-        <div className="row mb-3">
+      <EspelhoScreenModal
+        isOpen={espelhoModalAberto}
+        onClose={() => setEspelhoModalAberto(false)}
+        id_ativacao={espelhoAtivacaoId}
+        id_usuario={empresaInfo.id_usuario}
+        dispositivo={espelhoDispositivo}
+      />
+      <div className="container-fluid Containe-Tela mobile-ativacao-page">
+        <div className="row text-body-secondary mb-3">
           <h1 className="mb-2 titulo-da-pagina">Configuração - Ativação Mobile por QR Code</h1>
           <p className="text-muted mb-0">
             Gere o QR Code para o usuário vincular o app mobile ao servidor desta empresa.
           </p>
         </div>
 
+        <p className="mobile-ativacao-section-title">Ativação</p>
         <div className="row g-3">
           <div className="col-12 col-lg-5">
-            <div className="card card-ativacao h-100">
+            <div className="card mobile-ativacao-card h-100">
               <div className="card-body">
                 <h5 className="card-title mb-3">Gerar nova ativação</h5>
 
@@ -547,7 +567,7 @@ export default function MobileAtivacao() {
           </div>
 
           <div className="col-12 col-lg-7">
-            <div className="card card-ativacao h-100">
+            <div className="card mobile-ativacao-card h-100">
               <div className="card-body qr-preview-wrap">
                 <h5 className="card-title mb-3">QR Code de ativação</h5>
 
@@ -566,9 +586,20 @@ export default function MobileAtivacao() {
           </div>
         </div>
 
+        <p className="mobile-ativacao-section-title">Aviso</p>
+        <div className="mobile-ativacao-card mobile-ativacao-info-banner d-flex align-items-center">
+          <h6 className="m-0">
+            <span>
+              <i className="bi bi-exclamation-circle-fill text-warning"> </i>
+              Utilize o botão Espelhar para suporte remoto e Permissões para solicitar acessos no dispositivo.
+            </span>
+          </h6>
+        </div>
+
+        <p className="mobile-ativacao-section-title">Resultados</p>
         <div className="row mt-3">
           <div className="col-12">
-            <div className="card card-ativacao">
+            <div className="mobile-ativacao-card mobile-ativacao-table-card">
               <div className="card-body">
                 <div className="d-flex justify-content-between align-items-center mb-3">
                   <h5 className="card-title mb-0">Controle de ativações</h5>
@@ -583,9 +614,10 @@ export default function MobileAtivacao() {
                   <p className="text-muted mb-0">Nenhuma ativação encontrada.</p>
                 ) : (
                   <div className="table-responsive">
-                    <table className="table table-sm table-hover align-middle">
+                    <table className="table table-sm table-hover align-middle mb-0 mobile-ativacao-table">
                       <thead>
                         <tr>
+                          <th className="text-start">Ação</th>
                           <th>ID</th>
                           <th>Código</th>
                           <th>Status</th>
@@ -606,12 +638,48 @@ export default function MobileAtivacao() {
                           <th>Criação</th>
                           <th>Expiração</th>
                           <th>Uso</th>
-                          <th className="text-end">Ação</th>
                         </tr>
                       </thead>
                       <tbody>
                         {ativacoes.map((item) => (
                           <tr key={String(item.id_ativacao)}>
+                            <td className="text-start mobile-acao-col">
+                              <details className="mobile-acao-menu">
+                                <summary className="btn btn-outline-secondary btn-sm mobile-acao-trigger">
+                                  Opções
+                                </summary>
+                                <div className="mobile-acao-dropdown" role="menu" aria-label={`Ações da ativação ${item.id_ativacao}`}>
+                                  <button
+                                    type="button"
+                                    className="mobile-acao-item"
+                                    title="Espelhar tela do dispositivo"
+                                    onClick={() => abrirEspelhoModal(item)}
+                                  >
+                                    📱 Espelhar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="mobile-acao-item"
+                                    title="Solicitar permissão no dispositivo"
+                                    onClick={() => solicitarPermissaoRemota(item)}
+                                  >
+                                    🔐 Permissões
+                                  </button>
+                                  {item.status === "P" ? (
+                                    <button
+                                      type="button"
+                                      className="mobile-acao-item mobile-acao-item-danger"
+                                      onClick={() => revogarAtivacao(item)}
+                                      disabled={revogandoId === item.id_ativacao}
+                                    >
+                                      {revogandoId === item.id_ativacao ? "Revogando..." : "⛔ Revogar"}
+                                    </button>
+                                  ) : (
+                                    <span className="mobile-acao-item-disabled">Revogar indisponível</span>
+                                  )}
+                                </div>
+                              </details>
+                            </td>
                             <td>{item.id_ativacao}</td>
                             <td>{item.codigo_ativacao}</td>
                             <td>
@@ -636,28 +704,6 @@ export default function MobileAtivacao() {
                             <td>{formatarData(item.dt_criacao)}</td>
                             <td>{formatarData(item.dt_expiracao)}</td>
                             <td>{formatarData(item.dt_utilizacao)}</td>
-                            <td className="text-end">
-                              <button
-                                type="button"
-                                className="btn btn-outline-primary btn-sm me-2"
-                                title="Solicitar permissão no dispositivo"
-                                onClick={() => solicitarPermissaoRemota(item)}
-                              >
-                                Permissões
-                              </button>
-                              {item.status === "P" ? (
-                                <button
-                                  type="button"
-                                  className="btn btn-outline-danger btn-sm"
-                                  onClick={() => revogarAtivacao(item)}
-                                  disabled={revogandoId === item.id_ativacao}
-                                >
-                                  {revogandoId === item.id_ativacao ? "Revogando..." : "Revogar"}
-                                </button>
-                              ) : (
-                                <span className="text-muted">-</span>
-                              )}
-                            </td>
                           </tr>
                         ))}
                       </tbody>

@@ -324,6 +324,27 @@ body, html, #root { height: 100%; margin: 0; }
   align-items: baseline;
   gap: .4rem;
 }
+
+.login-card__mirror-indicator {
+  margin-top: .65rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  border: 1px solid #fecaca;
+  background: #fff1f2;
+  color: #b91c1c;
+  border-radius: 999px;
+  padding: .2rem .62rem;
+  font-size: .74rem;
+  font-weight: 700;
+}
+
+.login-card__mirror-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+}
 .login-mobile-header__name {
   font-size: 2rem;
   font-weight: 900;

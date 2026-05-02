@@ -217,7 +217,7 @@ function iconePorNome(nome) {
   return "chevron-forward-outline";
 }
 
-export default function HomeScreen({ user, onLogout, onRedefinir }) {
+export default function HomeScreen({ user, onLogout, onRedefinir, espelhandoTela = false }) {
   const showAlert = useShowAlert();
   const [showModulos, setShowModulos] = useState(false);
   const [showNotificacoes, setShowNotificacoes] = useState(false);
@@ -679,6 +679,13 @@ export default function HomeScreen({ user, onLogout, onRedefinir }) {
             </Pressable>
 
             <View style={styles.navRight}>
+              {espelhandoTela ? (
+                <View style={styles.mirrorIndicator}>
+                  <View style={styles.mirrorDot} />
+                  <Text style={styles.mirrorText}>Espelhando</Text>
+                </View>
+              ) : null}
+
               <Pressable style={styles.iconButton} onPress={() => setShowNotificacoes(true)}>
                 <Ionicons name="notifications-outline" size={20} color="rgba(255,255,255,0.9)" />
                 {notificacoesNaoLidas > 0 ? (
@@ -833,6 +840,12 @@ export default function HomeScreen({ user, onLogout, onRedefinir }) {
                   <Text style={styles.drawerUserMeta}>
                     {user?.id_usuario_erp || "-"} - {setorUsuario}
                   </Text>
+                  {espelhandoTela ? (
+                    <View style={styles.drawerMirrorIndicator}>
+                      <View style={styles.drawerMirrorDot} />
+                      <Text style={styles.drawerMirrorText}>Espelhando tela</Text>
+                    </View>
+                  ) : null}
                 </View>
               </View>
               <Pressable onPress={fecharModulos}>
@@ -1038,6 +1051,24 @@ const styles = StyleSheet.create({
   brandSub: { color: "rgba(255,255,255,0.55)", fontSize: 10, fontWeight: "700", marginTop: -1 },
 
   navRight: { flexDirection: "row", alignItems: "center", gap: 8 },
+  mirrorIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(239,68,68,0.18)",
+    borderWidth: 1,
+    borderColor: "rgba(239,68,68,0.4)",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  mirrorDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#ef4444",
+  },
+  mirrorText: { color: "#fee2e2", fontSize: 11, fontWeight: "700" },
   iconButton: {
     width: 36,
     height: 36,
@@ -1221,6 +1252,26 @@ const styles = StyleSheet.create({
   avatarPopupItemDangerTxt: { color: "#dc2626", fontSize: 12.5, fontWeight: "600" },
   drawerUserName: { color: "#1e293b", fontSize: 17, fontWeight: "800" },
   drawerUserMeta: { color: "#64748b", fontSize: 12, marginTop: 2 },
+  drawerMirrorIndicator: {
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 6,
+    backgroundColor: "#fee2e2",
+    borderWidth: 1,
+    borderColor: "#fecaca",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  drawerMirrorDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#ef4444",
+  },
+  drawerMirrorText: { color: "#b91c1c", fontSize: 11, fontWeight: "700" },
 
   searchWrap: {
     minHeight: 42,

@@ -17,6 +17,7 @@ import HomeScreen from "./src/screens/HomeScreen";
 import AtivacaoScreen from "./src/screens/AtivacaoScreen";
 import { AlertProvider } from "./src/components/CustomAlert/AlertProvider";
 import api, { setBaseUrl } from "./src/services/api";
+import screenMirrorService from "./src/services/screenMirrorService";
 
 function mapBatteryState(state) {
   if (state === Battery.BatteryState.CHARGING) return "charging";
@@ -120,8 +121,62 @@ const PERM_LABEL = {
   localizacao_background: "Localização em segundo plano",
 };
 
-async function executarComandoRemoto(ativacaoId, comando) {
-  if (!comando || comando?.tipo !== "solicitar_permissao") return;
+async function executarComandoRemoto(ativacaoId, comando, viewShotRef, onEspelhamentoChange) {
+  if (!comando) return;
+
+  const tipo = comando?.tipo;
+
+  // Comando para iniciar espelhamento
+  if (tipo === "iniciar_espelhamento") {
+    try {
+      if (viewShotRef?.current) {
+        await screenMirrorService.startMirroring(viewShotRef.current, ativacaoId, 140);
+        onEspelhamentoChange?.(true);
+        console.log("[ESPELHO] Espelhamento iniciado com sucesso");
+        await api.post(`/v1/mobile/ativacao/${ativacaoId}/comandos/ack`, {
+          id_comando: comando.id_comando,
+          status_execucao: "done",
+          erro: null,
+        }).catch(() => {});
+      } else {
+        throw new Error("ViewShot ref não disponível");
+      }
+    } catch (erroExec) {
+      onEspelhamentoChange?.(false);
+      console.log("[ESPELHO] Erro ao iniciar:", erroExec?.message);
+      await api.post(`/v1/mobile/ativacao/${ativacaoId}/comandos/ack`, {
+        id_comando: comando.id_comando,
+        status_execucao: "failed",
+        erro: erroExec?.message || String(erroExec),
+      }).catch(() => {});
+    }
+    return;
+  }
+
+  // Comando para parar espelhamento
+  if (tipo === "parar_espelhamento") {
+    try {
+      screenMirrorService.stopMirroring();
+      onEspelhamentoChange?.(false);
+      console.log("[ESPELHO] Espelhamento parado");
+      await api.post(`/v1/mobile/ativacao/${ativacaoId}/comandos/ack`, {
+        id_comando: comando.id_comando,
+        status_execucao: "done",
+        erro: null,
+      }).catch(() => {});
+    } catch (erroExec) {
+      onEspelhamentoChange?.(false);
+      await api.post(`/v1/mobile/ativacao/${ativacaoId}/comandos/ack`, {
+        id_comando: comando.id_comando,
+        status_execucao: "failed",
+        erro: erroExec?.message || String(erroExec),
+      }).catch(() => {});
+    }
+    return;
+  }
+
+  // Comando original de permissão
+  if (tipo !== "solicitar_permissao") return;
 
   const tipoPermissao = comando?.payload?.permissao;
   try {
@@ -454,8 +509,10 @@ export default function App() {
   // null = verificando, true = ok, false = bloqueado
   const [permissoesOk, setPermissoesOk] = useState(null);
   const [permissoesStatuses, setPermissoesStatuses] = useState({});
+  const [espelhamentoAtivo, setEspelhamentoAtivo] = useState(false);
   const appStateRef = useRef(AppState.currentState);
   const comandosProcessadosRef = useRef(new Set());
+  const viewShotRef = useRef(null);
 
   useEffect(() => {
     async function inicializarPermissoes() {
@@ -571,7 +628,7 @@ export default function App() {
 
         if (comando?.id_comando && !comandosProcessadosRef.current.has(comando.id_comando)) {
           comandosProcessadosRef.current.add(comando.id_comando);
-          await executarComandoRemoto(ativacaoId, comando);
+          await executarComandoRemoto(ativacaoId, comando, viewShotRef, setEspelhamentoAtivo);
         }
 
         console.log(
@@ -677,14 +734,19 @@ export default function App() {
     <SafeAreaProvider>
       <AlertProvider>
         <ErrorBoundary>
-          <View style={[styles.container, { backgroundColor: bgColor }]}>
+          <View ref={viewShotRef} collapsable={false} style={[styles.container, { backgroundColor: bgColor }]}> 
             <StatusBar style="light" backgroundColor={bgColor} />
             {!apiBaseUrl ? (
               <AtivacaoScreen
                 onAtivacaoSucesso={handleAtivacaoSucesso}
               />
             ) : usuarioLogado ? (
-              <HomeScreen user={usuarioLogado} onLogout={handleLogout} onRedefinir={handleRedefinir} />
+              <HomeScreen
+                user={usuarioLogado}
+                onLogout={handleLogout}
+                onRedefinir={handleRedefinir}
+                espelhandoTela={espelhamentoAtivo}
+              />
             ) : (
               <LoginScreen onLoginSuccess={handleLoginSuccess} />
             )}

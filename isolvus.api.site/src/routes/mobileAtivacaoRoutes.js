@@ -13,9 +13,17 @@ import {
   ValidarAtivacao,
   ValidarAtivacaoPorCodigo,
 } from "../controllers/mobileAtivacaoController.js";
+import {
+  ReceberFrameEspelho,
+  ObterFrameAtual,
+  IniciarEspelhamento,
+  PararEspelhamento,
+  ProcessarToque,
+} from "../controllers/mobileEspelhoController.js";
 
 const router = express.Router();
 
+// Rotas de ativação
 router.post("/mobile/ativacao/gerar", GerarAtivacao);
 router.get("/mobile/ativacao/listar", ListarAtivacao);
 router.post("/mobile/ativacao/revogar", RevogarAtivacao);
@@ -28,5 +36,12 @@ router.post("/mobile/ativacao/:id_ativacao/comandos/ack", ConfirmarComandoMobile
 router.post("/mobile/ativacao/:id_ativacao/registrar-erro", RegistrarErroAtivacao);
 router.post("/mobile/ativacao/:id_ativacao/revogar", RevogarAtivacaoPorId);
 router.post("/mobile/ativacao/:id_ativacao/redefinir", RedefinirAtivacao);
+
+// Rotas de espelhamento de tela
+router.post("/mobile/ativacao/:id_ativacao/espelho/frame", ReceberFrameEspelho);
+router.get("/mobile/ativacao/:id_ativacao/espelho/frame-atual", ObterFrameAtual);
+router.post("/mobile/ativacao/:id_ativacao/espelho/iniciar", IniciarEspelhamento);
+router.post("/mobile/ativacao/:id_ativacao/espelho/parar", PararEspelhamento);
+router.post("/mobile/ativacao/:id_ativacao/espelho/toque", ProcessarToque);
 
 export default router;

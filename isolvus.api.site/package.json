@@ -8,6 +8,7 @@
         "start": "node ./src/bootstrap.js",
         "dev": "fuser -k 3011/tcp 2>/dev/null || true && nodemon ./src/bootstrap.js",
         "dev:clean": "fuser -k 3011/tcp 2>/dev/null || true && nodemon ./src/bootstrap.js",
+        "dev:up": "fuser -k 3011/tcp 2>/dev/null || true && nodemon ./src/bootstrap.js",
         "migrate": "node ./src/flywayCli.js",
         "migrate:info": "npm run migrate -- info",
         "migrate:validate": "npm run migrate -- validate"
@@ -35,6 +36,7 @@
         "prom-client": "^15.1.3",
         "swagger-jsdoc": "^6.2.8",
         "swagger-ui-express": "^5.0.1",
+        "ws": "^8.20.0",
         "xlsx": "^0.18.5",
         "zod": "^3.25.76"
     }

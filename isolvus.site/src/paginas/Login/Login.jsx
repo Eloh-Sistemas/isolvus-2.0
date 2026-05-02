@@ -17,7 +17,17 @@ function Login() {
   const [shake, setShake] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
   const [erroCredencial, setErroCredencial] = useState(false);
+  const [espelhamentoAtivo, setEspelhamentoAtivo] = useState(() => localStorage.getItem("espelhamento_ativo") === "1");
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const onStorage = () => {
+      setEspelhamentoAtivo(localStorage.getItem("espelhamento_ativo") === "1");
+    };
+    window.addEventListener("storage", onStorage);
+    onStorage();
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   // --- Palavra rotativa no título ---
   const [wordIndex, setWordIndex] = useState(0);
@@ -140,6 +150,12 @@ function Login() {
 
             <p className="login-card__welcome">Bem-vindo</p>
             <h2 className="login-card__title">Entre na sua conta</h2>
+            {espelhamentoAtivo ? (
+              <div className="login-card__mirror-indicator" title="Existe sessão de espelhamento ativa">
+                <span className="login-card__mirror-dot" />
+                Espelhamento ativo
+              </div>
+            ) : null}
 
             <div className="login-card__field mt-4">
               <label htmlFor="login-user" className="login-card__label">

@@ -40,6 +40,7 @@ import comentarioRoutes from "./routes/comentarioRoutes.js";
 import swaggerRoutes from './routes/swaggerRoutes.js';
 import logIntegracaoRoutes from './routes/logIntegracaoRoutes.js';
 import mobileAtivacaoRoutes from './routes/mobileAtivacaoRoutes.js';
+import { initMirrorWsHub } from './ws/mirrorWsHub.js';
 
 import { errorHandler } from './middlewares/errorHandler.js';
 
@@ -118,6 +119,8 @@ app.use(errorHandler);
 const server = app.listen(portahttp, () => {
   console.log(`Api Rodando em http na porta: ${portahttp}`);
 });
+
+initMirrorWsHub(server);
 
 server.on('error', (error) => {
   if (error.code === 'EADDRINUSE') {
