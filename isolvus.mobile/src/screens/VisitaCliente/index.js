@@ -52,42 +52,8 @@ export default function VisitaClienteScreen({ user }) {
           />
         </View>
       ) : (
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={[
-          styles.scrollContent,
-          (ctx.step === 2 || ctx.step === 3) && { paddingBottom: 16 },
-          ctx.step === 2 && { flexGrow: 1 },
-        ]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        scrollEnabled={ctx.step !== 2 && ctx.step !== 3}
-      >
-        {ctx.step === 1 && (
-          <Step1Selecao
-            clienteBusca={ctx.clienteBusca}
-            setClienteBusca={ctx.setClienteBusca}
-            clientesSugestoes={ctx.clientesSugestoes}
-            setClientesSugestoes={ctx.setClientesSugestoes}
-            loadingClienteBusca={ctx.loadingClienteBusca}
-            clienteSelecionado={ctx.clienteSelecionado}
-            setClienteSelecionado={ctx.setClienteSelecionado}
-            setCgc={ctx.setCgc}
-            setContato={ctx.setContato}
-            setEmail={ctx.setEmail}
-            cgc={ctx.cgc}
-            contato={ctx.contato}
-            email={ctx.email}
-            clienteSearchFocused={ctx.clienteSearchFocused}
-            setClienteSearchFocused={ctx.setClienteSearchFocused}
-            buscarClientes={ctx.buscarClientes}
-            consultarClienteCompleto={ctx.consultarClienteCompleto}
-            promotorDescricao={ctx.promotorDescricao}
-            avancar={ctx.avancar}
-          />
-        )}
-
-        {ctx.step === 2 && (
+      ctx.step === 2 ? (
+        <View style={[styles.scrollContent, { flex: 1, paddingBottom: 16 }]}>
           <Step2Historico
             clienteSelecionado={ctx.clienteSelecionado}
             loadingHistorico={ctx.loadingHistorico}
@@ -97,57 +63,92 @@ export default function VisitaClienteScreen({ user }) {
             setDataCheckin={ctx.setDataCheckin}
             setStep={ctx.setStep}
           />
-        )}
+        </View>
+      ) : (
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={[
+            styles.scrollContent,
+            ctx.step === 3 && { paddingBottom: 16 },
+          ]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          scrollEnabled={ctx.step !== 3}
+        >
+          {ctx.step === 1 && (
+            <Step1Selecao
+              clienteBusca={ctx.clienteBusca}
+              setClienteBusca={ctx.setClienteBusca}
+              clientesSugestoes={ctx.clientesSugestoes}
+              setClientesSugestoes={ctx.setClientesSugestoes}
+              loadingClienteBusca={ctx.loadingClienteBusca}
+              clienteSelecionado={ctx.clienteSelecionado}
+              setClienteSelecionado={ctx.setClienteSelecionado}
+              setCgc={ctx.setCgc}
+              setContato={ctx.setContato}
+              setEmail={ctx.setEmail}
+              cgc={ctx.cgc}
+              contato={ctx.contato}
+              email={ctx.email}
+              clienteSearchFocused={ctx.clienteSearchFocused}
+              setClienteSearchFocused={ctx.setClienteSearchFocused}
+              buscarClientes={ctx.buscarClientes}
+              consultarClienteCompleto={ctx.consultarClienteCompleto}
+              promotorDescricao={ctx.promotorDescricao}
+              avancar={ctx.avancar}
+            />
+          )}
 
-        {ctx.step === 3 && (
-          <Step3Checkin
-            clienteSelecionado={ctx.clienteSelecionado}
-            distancia={ctx.distancia}
-            idJustificativa={ctx.idJustificativa}
-            regionCheckin={ctx.regionCheckin}
-            localizacaoPromotor={ctx.localizacaoPromotor}
-            clienteTemCoordenada={ctx.clienteTemCoordenada}
-            clienteLat={ctx.clienteLat}
-            clienteLng={ctx.clienteLng}
-            gpsAguardando={ctx.gpsAguardando}
-            dataCheckin={ctx.dataCheckin}
-            enderecoPromotor={ctx.enderecoPromotor}
-            enderecoCliente={ctx.enderecoCliente}
-            checkinMapRef={ctx.checkinMapRef}
-            voltar={ctx.voltar}
-            atualizarDadosCheckin={ctx.atualizarDadosCheckin}
-            avancar={ctx.avancar}
-            setShowJustificativaModal={ctx.setShowJustificativaModal}
-          />
-        )}
+          {ctx.step === 3 && (
+            <Step3Checkin
+              clienteSelecionado={ctx.clienteSelecionado}
+              distancia={ctx.distancia}
+              idJustificativa={ctx.idJustificativa}
+              regionCheckin={ctx.regionCheckin}
+              localizacaoPromotor={ctx.localizacaoPromotor}
+              clienteTemCoordenada={ctx.clienteTemCoordenada}
+              clienteLat={ctx.clienteLat}
+              clienteLng={ctx.clienteLng}
+              gpsAguardando={ctx.gpsAguardando}
+              dataCheckin={ctx.dataCheckin}
+              enderecoPromotor={ctx.enderecoPromotor}
+              enderecoCliente={ctx.enderecoCliente}
+              checkinMapRef={ctx.checkinMapRef}
+              voltar={ctx.voltar}
+              atualizarDadosCheckin={ctx.atualizarDadosCheckin}
+              avancar={ctx.avancar}
+              setShowJustificativaModal={ctx.setShowJustificativaModal}
+            />
+          )}
 
-        {ctx.step === 4 && !ctx.showAtividadeModal && (
-          <Step4Atividades
-            idVisita={ctx.idVisita}
-            clienteSelecionado={ctx.clienteSelecionado}
-            loadingAtividades={ctx.loadingAtividades}
-            atividades={ctx.atividades}
-            voltar={ctx.voltar}
-            avancar={ctx.avancar}
-            abrirModalAtividade={ctx.abrirModalAtividade}
-          />
-        )}
+          {ctx.step === 4 && !ctx.showAtividadeModal && (
+            <Step4Atividades
+              idVisita={ctx.idVisita}
+              clienteSelecionado={ctx.clienteSelecionado}
+              loadingAtividades={ctx.loadingAtividades}
+              atividades={ctx.atividades}
+              voltar={ctx.voltar}
+              avancar={ctx.avancar}
+              abrirModalAtividade={ctx.abrirModalAtividade}
+            />
+          )}
 
-        {ctx.step === 5 && (
-          <Step5Checkout
-            loadingCheckout={ctx.loadingCheckout}
-            regionCheckout={ctx.regionCheckout}
-            pontoCheckout={ctx.pontoCheckout}
-            dataCheckin={ctx.dataCheckin}
-            dataCheckout={ctx.dataCheckout}
-            tempoAtendimento={ctx.tempoAtendimento}
-            atividadeRealizadaTexto={ctx.atividadeRealizadaTexto}
-            localizacaoCheckout={ctx.localizacaoCheckout}
-            voltar={ctx.voltar}
-            fazerCheckout={ctx.fazerCheckout}
-          />
-        )}
-      </ScrollView>
+          {ctx.step === 5 && (
+            <Step5Checkout
+              loadingCheckout={ctx.loadingCheckout}
+              regionCheckout={ctx.regionCheckout}
+              pontoCheckout={ctx.pontoCheckout}
+              dataCheckin={ctx.dataCheckin}
+              dataCheckout={ctx.dataCheckout}
+              tempoAtendimento={ctx.tempoAtendimento}
+              atividadeRealizadaTexto={ctx.atividadeRealizadaTexto}
+              localizacaoCheckout={ctx.localizacaoCheckout}
+              voltar={ctx.voltar}
+              fazerCheckout={ctx.fazerCheckout}
+            />
+          )}
+        </ScrollView>
+      )
       )}
 
       {/* Botão fixo Nova Visita no step 2 */}
@@ -167,6 +168,15 @@ export default function VisitaClienteScreen({ user }) {
           <ActivityIndicator size="large" color="#fff" />
           <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>Capturando localização</Text>
           <Text style={{ color: "#94a3b8", fontSize: 13 }}>Aguarde, buscando alta precisão...</Text>
+        </View>
+      </Modal>
+
+      {/* Overlay GPS Checkout */}
+      <Modal visible={ctx.gpsAguardandoCheckout} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: "rgba(2,6,23,0.72)", alignItems: "center", justifyContent: "center", gap: 16 }}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>Carregando dados do checkout</Text>
+          <Text style={{ color: "#94a3b8", fontSize: 13 }}>Aguarde um instante...</Text>
         </View>
       </Modal>
 

@@ -83,6 +83,7 @@ export function useVisitaCliente(user) {
   const [localizacaoCheckout, setLocalizacaoCheckout] = useState(null);
   const [atividadeRealizadaTexto, setAtividadeRealizadaTexto] = useState("");
   const [loadingCheckout, setLoadingCheckout] = useState(false);
+  const [gpsAguardandoCheckout, setGpsAguardandoCheckout] = useState(false);
 
   const checkinMapRef = useRef(null);
   const clienteDebounceRef = useRef(null);
@@ -135,6 +136,14 @@ export function useVisitaCliente(user) {
     [pontoCheckout]
   );
 
+  const visitaEmAberto = useMemo(() => {
+    if (!Array.isArray(historico) || historico.length === 0) return null;
+    return historico.find((item) => {
+      const status = String(item?.status || "").trim().toUpperCase();
+      return !status || status !== "FINALIZADO";
+    }) || null;
+  }, [historico]);
+
   const limparTela = useCallback(() => {
     setStep(1);
     setClienteBusca("");
@@ -157,6 +166,7 @@ export function useVisitaCliente(user) {
     setDataCheckout(formatDateTime(new Date()));
     setLocalizacaoCheckout(null);
     setAtividadeRealizadaTexto("");
+    setGpsAguardandoCheckout(false);
   }, []);
 
   const consultarClienteCompleto = useCallback(async (idCliente) => {
@@ -623,18 +633,21 @@ export function useVisitaCliente(user) {
   const consultarCheckout = useCallback(async () => {
     if (!idVisita) return;
     setDataCheckout(formatDateTime(new Date()));
-    setLoadingCheckout(true);
     try {
+      setGpsAguardandoCheckout(true);
       const permission = await Location.requestForegroundPermissionsAsync();
       if (permission.status === "granted") {
         const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
         setLocalizacaoCheckout({ lat: pos?.coords?.latitude, lon: pos?.coords?.longitude });
       }
+
+      setLoadingCheckout(true);
       const { data } = await api.post("/v1/promotor/checkoutpercentualrealizado", { idvisita: idVisita });
       setAtividadeRealizadaTexto(`${data?.qtrealizado ?? 0} Atividade`);
     } catch {
       setAtividadeRealizadaTexto("Nao disponivel");
     } finally {
+      setGpsAguardandoCheckout(false);
       setLoadingCheckout(false);
     }
   }, [idVisita]);
@@ -661,10 +674,24 @@ export function useVisitaCliente(user) {
       if (!clienteSelecionado?.idclientevenda) { showAlert({ type: "warning", title: "Validação", message: "Cliente nao informado." }); return; }
       setStep(2); return;
     }
-    if (step === 2) { setStep(3); return; }
+    if (step === 2) {
+      if (visitaEmAberto?.id_visita) {
+        setIdVisita(Number(visitaEmAberto.id_visita));
+        setDataCheckin(String(visitaEmAberto.dtcheckin_texto || visitaEmAberto.dtcheckin || ""));
+        setStep(4);
+        showAlert({
+          type: "warning",
+          title: "Visita em aberto",
+          message: `Ja existe uma visita em aberto (#${visitaEmAberto.id_visita}) para este cliente. Finalize essa visita antes de iniciar outra.`,
+        });
+        return;
+      }
+      setStep(3);
+      return;
+    }
     if (step === 3) { fazerCheckin(); return; }
     if (step === 4) { setStep(5); }
-  }, [clienteSelecionado?.idclientevenda, fazerCheckin, step]);
+  }, [clienteSelecionado?.idclientevenda, fazerCheckin, showAlert, step, visitaEmAberto]);
 
   const voltar = useCallback(() => {
     if (step === 3) { setIdJustificativa(0); setStep(2); return; }
@@ -730,6 +757,7 @@ export function useVisitaCliente(user) {
     promotorDescricao,
     // historico
     historico, loadingHistorico,
+    visitaEmAberto,
     // checkin
     dataCheckin, localizacaoPromotor,
     enderecoPromotor, enderecoCliente,
@@ -780,6 +808,7 @@ export function useVisitaCliente(user) {
     // checkout
     dataCheckout, localizacaoCheckout,
     atividadeRealizadaTexto, loadingCheckout,
+    gpsAguardandoCheckout,
     tempoAtendimento,
     pontoCheckout, regionCheckout,
     fazerCheckout,

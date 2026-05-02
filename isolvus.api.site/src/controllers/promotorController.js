@@ -40,7 +40,8 @@ export async function promotorcheckin(req, res) {
 
     } catch (error) {
         console.log(error);
-        res.status(500).json({error: error.message});
+        const status = Number(error?.statusCode || 500);
+        res.status(status).json({error: error.message});
     } 
 }
 

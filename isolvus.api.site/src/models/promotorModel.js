@@ -47,6 +47,16 @@ export async function GetListarAtividadePromotor(jsonReq) {
 
 export async function setpromotorcheckin(jsonReq) {
 
+        const consultaVisitaEmAberto = `
+         SELECT A.ID_VISITA
+             FROM bstab_visitacliente A
+            WHERE A.ID_PROMOTOR = :id_promotor
+                AND A.ID_GRUPO_EMPRESA = :id_grupo_empresa
+                AND A.ID_CLIENTE = :id_cliente
+                AND A.DTCHECKOUT IS NULL
+            ORDER BY A.DTCHECKIN DESC
+        `;
+
     const consultaProxIdVisita = `    
      SELECT NVL(MAX(A.VALOR)+1 , 1) proximoid FROM bstab_parametrogeral A where A.ID_PARAMENTRO = 2
     `;
@@ -87,6 +97,21 @@ export async function setpromotorcheckin(jsonReq) {
 
     const connection = await getConnection();
     try {
+        const visitaAberta = await connection.execute(
+            consultaVisitaEmAberto,
+            {
+                id_promotor: Number(jsonReq.idpromotor),
+                id_grupo_empresa: Number(jsonReq.idgrupo_empresa),
+                id_cliente: Number(jsonReq.idcliente),
+            },
+            { outFormat: OracleDB.OUT_FORMAT_OBJECT }
+        );
+
+        if (Array.isArray(visitaAberta.rows) && visitaAberta.rows.length > 0) {
+            const erro = new Error(`Ja existe uma visita em aberto para este cliente (visita #${visitaAberta.rows[0].ID_VISITA}). Finalize a visita atual antes de iniciar outra.`);
+            erro.statusCode = 409;
+            throw erro;
+        }
         
 
         const proxnum = await connection.execute(consultaProxIdVisita, {
@@ -124,7 +149,8 @@ export async function setpromotorcheckin(jsonReq) {
 export async function getListarHistoricoDeVisita(jsonReq) {
     const ssqlConsulta =`
             SELECT A.ID_VISITA,
-            A.DTCHECKIN,             
+            A.DTCHECKIN,
+            TO_CHAR(A.DTCHECKIN, 'DD/MM/YYYY HH24:MI:SS') AS DTCHECKIN_TEXTO,
             CASE 
                 WHEN A.DTCHECKOUT IS NULL THEN 'INICIADO'
                 ELSE 'FINALIZADO'

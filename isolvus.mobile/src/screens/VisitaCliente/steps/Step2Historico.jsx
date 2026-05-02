@@ -70,20 +70,27 @@ export default function Step2Historico({
           <Text style={{ fontSize: 12, color: "#94a3b8", fontWeight: "600", marginBottom: 10 }}>
             {historico.length} {historico.length === 1 ? "visita encontrada" : "visitas encontradas"}
           </Text>
-          <View style={[styles.listWrap, { flex: 1 }]}>
+          <View style={[styles.listWrap, { flex: 1, marginBottom: 45, borderRadius: 0, borderWidth: 0, shadowOpacity: 0, elevation: 0 }]}> 
             <ScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ paddingBottom: 2 }}
+              contentContainerStyle={{ paddingBottom: 0 }}
               showsVerticalScrollIndicator={true}
               nestedScrollEnabled
             >
-              {historico.map((item) => (
+              {historico.map((item, idx) => (
                 <Pressable
                   key={String(item.id_visita)}
-                  style={({ pressed }) => [styles.listItem, pressed && { backgroundColor: "#f8fafc" }]}
+                  style={({ pressed }) => [
+                    styles.listItem,
+                    {
+                      borderBottomWidth: idx === historico.length - 1 ? 0 : 1,
+                      borderBottomColor: "#f1f5f9",
+                    },
+                    pressed && { backgroundColor: "#f8fafc" },
+                  ]}
                   onPress={() => {
                     setIdVisita(Number(item.id_visita));
-                    setDataCheckin(String(item.dtcheckin || ""));
+                    setDataCheckin(String(item.dtcheckin_texto || item.dtcheckin || ""));
                     setStep(4);
                   }}
                 >
@@ -101,7 +108,7 @@ export default function Step2Historico({
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.listItemTitle}>Visita #{item.id_visita}</Text>
-                      <Text style={styles.listItemSub}>{formatDateDisplay(item.dtcheckin)}</Text>
+                      <Text style={styles.listItemSub}>{formatDateDisplay(item.dtcheckin_texto || item.dtcheckin)}</Text>
                     </View>
                     <View style={{
                       paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20,
