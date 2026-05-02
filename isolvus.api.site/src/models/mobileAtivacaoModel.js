@@ -14,6 +14,29 @@ function hashToken(tokenBruto) {
   return crypto.createHash("sha256").update(String(tokenBruto || "")).digest("hex");
 }
 
+export async function obterApiBaseUrlPorParametro({ id_grupo_empresa, id_empresa }) {
+  const ssql = `
+    SELECT P.VALOR AS API_BASE_URL
+      FROM BSTAB_PARAMETROPORGRUPOEMPRESA P
+      JOIN BSTAB_EMPRESAS E
+        ON E.ID_GRUPO_EMPRESA = P.ID_GRUPO_EMPRESA
+     WHERE P.ID_PARAMETRO = 1
+       AND (
+            (:id_grupo_empresa IS NOT NULL AND P.ID_GRUPO_EMPRESA = :id_grupo_empresa)
+         OR (:id_grupo_empresa IS NULL AND (TO_CHAR(E.ID_ERP) = :id_empresa OR LPAD(E.ID_ERP, 4, '0') = :id_empresa))
+       )
+       AND P.VALOR IS NOT NULL
+       AND ROWNUM = 1
+  `;
+
+  const dados = await executeQuery(ssql, {
+    id_grupo_empresa: id_grupo_empresa ? Number(id_grupo_empresa) : null,
+    id_empresa: String(id_empresa || ""),
+  });
+
+  return String(dados?.[0]?.api_base_url || "").trim();
+}
+
 export async function gerarAtivacaoMobile({
   id_empresa,
   razaosocial,
@@ -26,6 +49,23 @@ export async function gerarAtivacaoMobile({
   const token_bruto = gerarTokenBruto();
   const token_hash = hashToken(token_bruto);
   const minutos = Number(validade_minutos || 10);
+
+  if (id_usuario_destino) {
+    const ssqlDeleteAnteriores = `
+      DELETE FROM BSTAB_MOBILE_ATIVACAO
+       WHERE ID_EMPRESA = :id_empresa
+         AND ID_USUARIO_DESTINO = :id_usuario_destino
+    `;
+
+    await executeQuery(
+      ssqlDeleteAnteriores,
+      {
+        id_empresa: String(id_empresa || ""),
+        id_usuario_destino: Number(id_usuario_destino),
+      },
+      true
+    );
+  }
 
   const ssql = `
     INSERT INTO BSTAB_MOBILE_ATIVACAO (
@@ -76,23 +116,27 @@ export async function gerarAtivacaoMobile({
 export async function listarAtivacoesMobile({ id_empresa }) {
   const ssql = `
     SELECT
-      ID_ATIVACAO,
-      ID_EMPRESA,
-      RAZAOSOCIAL,
-      ID_USUARIO_CRIACAO,
-      ID_USUARIO_DESTINO,
-      ID_USUARIO_ATIVACAO,
-      API_BASE_URL,
-      CODIGO_ATIVACAO,
-      STATUS,
-      DT_CRIACAO,
-      DT_EXPIRACAO,
-      DT_UTILIZACAO,
-      DISPOSITIVO,
-      IP_UTILIZACAO
-    FROM BSTAB_MOBILE_ATIVACAO
-    WHERE (:id_empresa IS NULL OR ID_EMPRESA = :id_empresa)
-    ORDER BY ID_ATIVACAO DESC
+      A.ID_ATIVACAO,
+      A.ID_EMPRESA,
+      A.RAZAOSOCIAL,
+      A.ID_USUARIO_CRIACAO,
+      A.ID_USUARIO_DESTINO,
+      A.ID_USUARIO_ATIVACAO,
+      UA.NOME AS NOME_USUARIO_ATIVACAO,
+      A.API_BASE_URL,
+      A.CODIGO_ATIVACAO,
+      A.STATUS,
+      A.DT_CRIACAO,
+      A.DT_EXPIRACAO,
+      A.DT_UTILIZACAO,
+      A.DISPOSITIVO,
+      A.DISPOSITIVO_INFO_JSON,
+      A.IP_UTILIZACAO
+    FROM BSTAB_MOBILE_ATIVACAO A
+    LEFT JOIN BSTAB_USUSARIOS UA
+      ON UA.ID_USUARIO = A.ID_USUARIO_ATIVACAO
+    WHERE (:id_empresa IS NULL OR A.ID_EMPRESA = :id_empresa)
+    ORDER BY A.ID_ATIVACAO DESC
   `;
 
   return executeQuery(ssql, {
@@ -134,8 +178,111 @@ export async function revogarAtivacaoMobile({ id_ativacao, id_usuario }) {
   };
 }
 
-export async function validarAtivacaoMobile({ token_ativacao, dispositivo, ip_utilizacao, id_usuario_ativacao }) {
-  const token_hash = hashToken(token_ativacao);
+export async function redefinirAtivacaoMobilePorUsuario({ id_usuario }) {
+  // Redefine a ativação mais recente utilizada pelo usuário (status U ou P)
+  const ssql = `
+    UPDATE BSTAB_MOBILE_ATIVACAO
+       SET STATUS = 'D',
+           DT_ALTERACAO = SYSDATE,
+           ID_USUARIO_ALTERACAO = :id_usuario_alteracao
+     WHERE ID_ATIVACAO = (
+             SELECT MAX(ID_ATIVACAO)
+               FROM BSTAB_MOBILE_ATIVACAO
+              WHERE ID_USUARIO_DESTINO = :id_usuario_destino
+                AND TRIM(UPPER(STATUS)) IN ('P', 'U')
+           )
+  `;
+
+  const result = await executeQuery(ssql, {
+    id_usuario_alteracao: id_usuario != null ? Number(id_usuario) : null,
+    id_usuario_destino: id_usuario != null ? Number(id_usuario) : null,
+  }, true);
+
+  return {
+    rowsAffected: Number(result?.rowsAffected || 0),
+  };
+}
+
+export async function redefinirAtivacaoMobile({ id_ativacao, id_usuario }) {
+  const ssql = `
+    UPDATE BSTAB_MOBILE_ATIVACAO
+       SET STATUS = 'D',
+           DT_ALTERACAO = SYSDATE,
+           ID_USUARIO_ALTERACAO = :id_usuario
+     WHERE ID_ATIVACAO = TO_NUMBER(:id_ativacao)
+       AND TRIM(UPPER(STATUS)) IN ('P', 'U')
+  `;
+
+  const result = await executeQuery(ssql, {
+    id_ativacao: String(id_ativacao || "0"),
+    id_usuario: id_usuario != null ? Number(id_usuario) : null,
+  }, true);
+
+  const rowsAffected = Number(result?.rowsAffected || 0);
+
+  const consultaSql = `
+    SELECT STATUS, DT_ALTERACAO
+      FROM BSTAB_MOBILE_ATIVACAO
+     WHERE ID_ATIVACAO = TO_NUMBER(:id_ativacao)
+  `;
+
+  const consulta = await executeQuery(consultaSql, {
+    id_ativacao: String(id_ativacao || "0"),
+  });
+
+  return {
+    rowsAffected,
+    statusAtual: consulta?.[0]?.status || null,
+    dtAlteracao: consulta?.[0]?.dt_alteracao || null,
+  };
+}
+
+export async function validarAtivacaoPorCodigo({ codigo_ativacao, dispositivo, dispositivo_info, ip_utilizacao, id_usuario_ativacao }) {
+  // Busca o registro com o codigo e status P ainda valido
+  const ssqlBusca = `
+    SELECT ID_ATIVACAO, TOKEN_HASH, STATUS, DT_EXPIRACAO
+      FROM (
+        SELECT ID_ATIVACAO, TOKEN_HASH, STATUS, DT_EXPIRACAO
+          FROM BSTAB_MOBILE_ATIVACAO
+         WHERE CODIGO_ATIVACAO = :codigo_ativacao
+         ORDER BY ID_ATIVACAO DESC
+      )
+     WHERE ROWNUM = 1
+  `;
+
+  const busca = await executeQuery(ssqlBusca, { codigo_ativacao: String(codigo_ativacao || "") });
+
+  if (!busca.length) {
+    return { ok: false, motivo: "TOKEN_INVALIDO" };
+  }
+
+  const registro = busca[0];
+
+  if (String(registro.status || "").trim() !== "P") {
+    return { ok: false, motivo: "TOKEN_JA_UTILIZADO" };
+  }
+
+  const expiracao = new Date(registro.dt_expiracao);
+  if (expiracao < new Date()) {
+    return { ok: false, motivo: "TOKEN_EXPIRADO" };
+  }
+
+  // Reutiliza a validação por token_hash
+  return validarAtivacaoMobile({
+    token_ativacao: null,
+    _token_hash_direto: registro.token_hash,
+    dispositivo,
+    dispositivo_info,
+    ip_utilizacao,
+    id_usuario_ativacao,
+  });
+}
+
+export async function validarAtivacaoMobile({ token_ativacao, _token_hash_direto, dispositivo, dispositivo_info, ip_utilizacao, id_usuario_ativacao }) {
+  const token_hash = _token_hash_direto || hashToken(token_ativacao);
+  const dispositivoInfoJson = dispositivo_info
+    ? JSON.stringify(dispositivo_info)
+    : null;
 
   const updateSql = `
     UPDATE BSTAB_MOBILE_ATIVACAO
@@ -143,6 +290,7 @@ export async function validarAtivacaoMobile({ token_ativacao, dispositivo, ip_ut
            DT_UTILIZACAO = SYSDATE,
            DT_ALTERACAO = SYSDATE,
            DISPOSITIVO = :dispositivo,
+           DISPOSITIVO_INFO_JSON = :dispositivo_info_json,
            IP_UTILIZACAO = :ip_utilizacao,
            ID_USUARIO_ATIVACAO = :id_usuario_ativacao
      WHERE TOKEN_HASH = :token_hash
@@ -152,7 +300,8 @@ export async function validarAtivacaoMobile({ token_ativacao, dispositivo, ip_ut
 
   const updateResult = await executeQuery(updateSql, {
     token_hash,
-    dispositivo: String(dispositivo || "APP-MOBILE"),
+    dispositivo: String(dispositivo || "APP-MOBILE").slice(0, 200),
+    dispositivo_info_json: dispositivoInfoJson,
     ip_utilizacao: String(ip_utilizacao || ""),
     id_usuario_ativacao: id_usuario_ativacao ? Number(id_usuario_ativacao) : null,
   }, true);
@@ -179,6 +328,7 @@ export async function validarAtivacaoMobile({ token_ativacao, dispositivo, ip_ut
 
   const ssqlRetorno = `
     SELECT
+      A.ID_ATIVACAO,
       A.ID_EMPRESA,
       A.RAZAOSOCIAL,
       A.API_BASE_URL,
@@ -225,6 +375,7 @@ export async function validarAtivacaoMobile({ token_ativacao, dispositivo, ip_ut
   return {
     ok: true,
     dados: {
+      id_ativacao: atual.id_ativacao,
       id_empresa: atual.id_empresa,
       razaosocial: atual.razaosocial,
       api_base_url: atual.api_base_url,
@@ -232,5 +383,43 @@ export async function validarAtivacaoMobile({ token_ativacao, dispositivo, ip_ut
       dt_expiracao: atual.dt_expiracao,
       usuario: usuarioDados,
     },
+  };
+}
+
+export async function registrarMonitoramentoAtivacaoMobile({
+  id_ativacao,
+  dispositivo,
+  dispositivo_info,
+  ip_utilizacao,
+}) {
+  const dispositivoInfoJson = dispositivo_info ? JSON.stringify(dispositivo_info) : null;
+
+  const updateSql = `
+    UPDATE BSTAB_MOBILE_ATIVACAO
+       SET DISPOSITIVO = :dispositivo,
+           DISPOSITIVO_INFO_JSON = :dispositivo_info_json,
+           IP_UTILIZACAO = :ip_utilizacao,
+           DT_ALTERACAO = SYSDATE
+     WHERE ID_ATIVACAO = TO_NUMBER(:id_ativacao)
+       AND STATUS = 'U'
+  `;
+
+  const updateResult = await executeQuery(updateSql, {
+    id_ativacao: String(id_ativacao || "0"),
+    dispositivo: String(dispositivo || "APP-MOBILE").slice(0, 200),
+    dispositivo_info_json: dispositivoInfoJson,
+    ip_utilizacao: String(ip_utilizacao || ""),
+  }, true);
+
+  const rowsAffected = Number(updateResult?.rowsAffected || 0);
+
+  const consulta = await executeQuery(
+    `SELECT STATUS FROM BSTAB_MOBILE_ATIVACAO WHERE ID_ATIVACAO = TO_NUMBER(:id_ativacao)`,
+    { id_ativacao: String(id_ativacao || "0") }
+  );
+
+  return {
+    rowsAffected,
+    statusAtual: consulta?.[0]?.status || null,
   };
 }

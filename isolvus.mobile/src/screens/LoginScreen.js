@@ -32,6 +32,7 @@ const FRASES = [
 export default function LoginScreen({ onLoginSuccess }) {
   const showAlert = useShowAlert();
   const [user, setUser] = useState("");
+  const [usuarioVinculado, setUsuarioVinculado] = useState(null);
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -81,6 +82,23 @@ export default function LoginScreen({ onLoginSuccess }) {
     loop.start();
     return () => loop.stop();
   }, [scanY]);
+
+  useEffect(() => {
+    AsyncStorage.multiGet(["usuario_vinculado_login", "usuario_vinculado_nome"])
+      .then((items) => {
+        const mapa = Object.fromEntries(items);
+        const loginVinculado = String(mapa.usuario_vinculado_login || "").trim();
+        const nomeVinculado = String(mapa.usuario_vinculado_nome || "").trim();
+
+        if (loginVinculado) {
+          setUser(loginVinculado);
+          setUsuarioVinculado({ login: loginVinculado, nome: nomeVinculado });
+        } else {
+          setUsuarioVinculado(null);
+        }
+      })
+      .catch(() => setUsuarioVinculado(null));
+  }, []);
 
   const buttonLabel = useMemo(() => {
     if (loading) return "Autenticando...";
@@ -211,8 +229,14 @@ export default function LoginScreen({ onLoginSuccess }) {
                     style={styles.input}
                     returnKeyType="next"
                     autoComplete="username"
+                    editable={!usuarioVinculado}
                   />
                 </View>
+                {usuarioVinculado ? (
+                  <Text style={styles.vinculadoHint}>
+                    Aparelho vinculado a {usuarioVinculado.nome || usuarioVinculado.login}. Informe somente a senha.
+                  </Text>
+                ) : null}
               </View>
 
               <Text style={styles.fieldLabel}>Senha</Text>
@@ -348,6 +372,7 @@ const styles = StyleSheet.create({
   inputShell: { minHeight: 48, width: "100%", borderRadius: 10, backgroundColor: "#f3f6fc", borderWidth: 1.2, borderColor: "#e5e9f2", paddingHorizontal: 14, flexDirection: "row", alignItems: "center" },
   inputShellFocused: { borderColor: "#3f6cf6", backgroundColor: "#f0f4ff" },
   input: { flex: 1, color: "#111827", fontSize: 14, paddingVertical: 10 },
+  vinculadoHint: { color: "#64748b", fontSize: 12, marginTop: 6 },
   eyeBtn: { width: 28, height: 28, alignItems: "center", justifyContent: "center", marginLeft: 6 },
   rememberRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
   checkboxWrap: { flexDirection: "row", alignItems: "center", gap: 8 },
