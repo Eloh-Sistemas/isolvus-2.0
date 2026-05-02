@@ -307,12 +307,23 @@
   flex-direction: column;
 }
 
+.localizacao-map-shell {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+}
+
 .localizacao-modal-body .localizacao-map-iframe {
   flex: 1 1 0;
   width: 100%;
   height: 100%;
   border: 0;
   display: block;
+}
+
+.localizacao-leaflet-map {
+  width: 100%;
+  height: 100%;
 }
 
 .localizacao-modal-body .espelho-frame-placeholder {
@@ -335,11 +346,108 @@
   border: 0;
 }
 
+.localizacao-popup .leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.18);
+}
+
+.localizacao-popup .leaflet-popup-content {
+  margin: 12px 14px;
+  min-width: 240px;
+}
+
+.localizacao-popup-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #334155;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.localizacao-popup-title {
+  font-weight: 700;
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.localizacao-popup-line {
+  word-break: break-word;
+}
+
+.localizacao-popup-poi .leaflet-popup-content-wrapper {
+  background: #fff7ed;
+}
+
+.localizacao-popup-poi .localizacao-popup-title {
+  color: #9a3412;
+}
+
+@media (max-width: 768px) {
+  .localizacao-popup .leaflet-popup-content {
+    min-width: 200px;
+  }
+}
+
 .localizacao-maps-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   text-align: center;
+}
+
+.localizacao-footer {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 10px 16px 12px;
+}
+
+.localizacao-footer-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+
+.localizacao-footer-acoes {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.localizacao-info-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.localizacao-endereco-chip {
+  background: #eff6ff;
+  color: #1e40af;
+  border-color: #bfdbfe;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.localizacao-info-chip-btn {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.localizacao-info-chip-btn:hover {
+  background: #e2e8f0;
 }
 
 .espelho-frame-placeholder {

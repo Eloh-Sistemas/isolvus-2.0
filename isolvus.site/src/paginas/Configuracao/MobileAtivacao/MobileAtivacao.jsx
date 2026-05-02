@@ -1,11 +1,77 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MapPin, Smartphone, ShieldCheck, XCircle } from "lucide-react";
+import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import iconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
+import iconUrl from "leaflet/dist/images/marker-icon.png";
+import shadowUrl from "leaflet/dist/images/marker-shadow.png";
+import { MapPin, Smartphone, ShieldCheck, XCircle, Copy, CheckCheck, RefreshCw } from "lucide-react";
 import QRCode from "qrcode";
 import Swal from "sweetalert2";
 import Menu from "../../../componentes/Menu/Menu";
 import api from "../../../servidor/api";
 import EspelhoScreenModal from "./EspelhoScreenModal";
 import "./MobileAtivacao.css";
+
+const deviceLocationIcon = L.icon({
+  iconRetinaUrl,
+  iconUrl,
+  shadowUrl,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
+function createNearbyPlaceIcon(color) {
+  return new L.Icon({
+    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${color}.png`,
+    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41],
+  });
+}
+
+const nearbyPlaceIcon = createNearbyPlaceIcon("violet");
+
+function traduzirTipoLocal(item) {
+  const amenity = item?.tags?.amenity;
+  const shop = item?.tags?.shop;
+  const tourism = item?.tags?.tourism;
+  const healthcare = item?.tags?.healthcare;
+  const leisure = item?.tags?.leisure;
+  const office = item?.tags?.office;
+
+  const tipo = amenity || healthcare || shop || tourism || leisure || office || "local";
+
+  const mapa = {
+    hospital: "Hospital",
+    clinic: "Clinica",
+    pharmacy: "Farmacia",
+    doctors: "Consultorio",
+    school: "Escola",
+    restaurant: "Restaurante",
+    cafe: "Cafeteria",
+    fast_food: "Lanchonete",
+    fuel: "Posto",
+    bank: "Banco",
+    atm: "Caixa eletronico",
+    supermarket: "Supermercado",
+    convenience: "Conveniência",
+    bakery: "Padaria",
+    clothes: "Loja de roupas",
+    mall: "Shopping",
+    hotel: "Hotel",
+    guest_house: "Hospedagem",
+    attraction: "Ponto turistico",
+    park: "Parque",
+    company: "Empresa",
+  };
+
+  return mapa[tipo] || String(tipo).replace(/_/g, " ");
+}
 
 function formatarData(value) {
   if (!value) return "-";
@@ -264,6 +330,20 @@ function obterPermissoes(item) {
   );
 }
 
+function LocalizacaoMapaController({ latitude, longitude, markerRef }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (typeof latitude !== "number" || typeof longitude !== "number") return;
+    map.setView([latitude, longitude], 16, { animate: false });
+    if (markerRef.current) {
+      markerRef.current.openPopup();
+    }
+  }, [latitude, longitude, map, markerRef]);
+
+  return null;
+}
+
 export default function MobileAtivacao() {
   const [loadingGerar, setLoadingGerar] = useState(false);
   const [loadingLista, setLoadingLista] = useState(false);
@@ -293,6 +373,12 @@ export default function MobileAtivacao() {
   const interagindoTabelaRef = useRef(false);
   const tabelaContainerRef = useRef(null);
   const menuAcaoRef = useRef(null);
+  const localizacaoMarkerRef = useRef(null);
+  const [localizacaoEndereco, setLocalizacaoEndereco] = useState(null);
+  const [loadingEndereco, setLoadingEndereco] = useState(false);
+  const [locaisProximos, setLocaisProximos] = useState([]);
+  const [loadingLocaisProximos, setLoadingLocaisProximos] = useState(false);
+  const [copiado, setCopiado] = useState(false);
 
   const empresaInfo = useMemo(() => ({
     id_empresa: String(localStorage.getItem("id_empresa") || ""),
@@ -545,13 +631,23 @@ export default function MobileAtivacao() {
     const latitude = info?.location?.latitude;
     const longitude = info?.location?.longitude;
     const permissao = info?.location?.permission || "unknown";
+    const accuracy = info?.location?.accuracy ?? null;
+    const altitude = info?.location?.altitude ?? null;
+    const speed = info?.location?.speed ?? null;
+    const timestamp = info?.location?.timestamp || info?.location?.last_updated || null;
 
+    setLocalizacaoEndereco(null);
+    setLocaisProximos([]);
     setLocalizacaoAtual({
       idAtivacao: item?.id_ativacao,
       dispositivo: item?.dispositivo || `Ativação ${item?.id_ativacao || ""}`,
       latitude,
       longitude,
       permissao,
+      accuracy,
+      altitude,
+      speed,
+      timestamp,
     });
     setLocalizacaoModalAberto(true);
   }
@@ -616,6 +712,109 @@ export default function MobileAtivacao() {
     };
   }, [menuAcaoAberto.id]);
 
+  useEffect(() => {
+    if (!localizacaoModalAberto || typeof localizacaoAtual?.latitude !== "number") return;
+    let cancelado = false;
+    setLoadingEndereco(true);
+    setLocalizacaoEndereco(null);
+    fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${localizacaoAtual.latitude}&lon=${localizacaoAtual.longitude}`,
+      { headers: { "Accept-Language": "pt-BR,pt;q=0.9" } }
+    )
+      .then((r) => r.json())
+      .then((data) => { if (!cancelado) setLocalizacaoEndereco(data?.display_name || null); })
+      .catch(() => { if (!cancelado) setLocalizacaoEndereco(null); })
+      .finally(() => { if (!cancelado) setLoadingEndereco(false); });
+    return () => { cancelado = true; };
+  }, [localizacaoModalAberto, localizacaoAtual?.latitude, localizacaoAtual?.longitude]);
+
+  useEffect(() => {
+    if (!localizacaoModalAberto || typeof localizacaoAtual?.latitude !== "number" || typeof localizacaoAtual?.longitude !== "number") return;
+
+    let cancelado = false;
+    setLoadingLocaisProximos(true);
+    setLocaisProximos([]);
+
+    const query = `
+      [out:json][timeout:20];
+      (
+        node(around:700,${localizacaoAtual.latitude},${localizacaoAtual.longitude})[amenity];
+        node(around:700,${localizacaoAtual.latitude},${localizacaoAtual.longitude})[shop];
+        node(around:700,${localizacaoAtual.latitude},${localizacaoAtual.longitude})[tourism];
+        node(around:700,${localizacaoAtual.latitude},${localizacaoAtual.longitude})[healthcare];
+        node(around:700,${localizacaoAtual.latitude},${localizacaoAtual.longitude})[office];
+      );
+      out body 20;
+    `;
+
+    fetch("https://overpass-api.de/api/interpreter", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=UTF-8" },
+      body: query,
+    })
+      .then((resposta) => resposta.json())
+      .then((data) => {
+        if (cancelado) return;
+
+        const elementos = Array.isArray(data?.elements) ? data.elements : [];
+        const itens = elementos
+          .filter((item) => typeof item?.lat === "number" && typeof item?.lon === "number")
+          .map((item) => ({
+            id: item.id,
+            latitude: item.lat,
+            longitude: item.lon,
+            nome: item?.tags?.name || traduzirTipoLocal(item),
+            tipo: traduzirTipoLocal(item),
+            endereco: [item?.tags?.addr_street, item?.tags?.addr_housenumber].filter(Boolean).join(", "),
+          }))
+          .slice(0, 20);
+
+        setLocaisProximos(itens);
+      })
+      .catch(() => {
+        if (!cancelado) setLocaisProximos([]);
+      })
+      .finally(() => {
+        if (!cancelado) setLoadingLocaisProximos(false);
+      });
+
+    return () => {
+      cancelado = true;
+    };
+  }, [localizacaoModalAberto, localizacaoAtual?.latitude, localizacaoAtual?.longitude]);
+
+  async function copiarCoordenadas() {
+    const texto = `${localizacaoAtual.latitude.toFixed(6)}, ${localizacaoAtual.longitude.toFixed(6)}`;
+    try {
+      await navigator.clipboard.writeText(texto);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    } catch {
+      // fallback silencioso
+    }
+  }
+
+  async function solicitarAtualizacaoLocalizacao() {
+    try {
+      await api.post(`/v1/mobile/ativacao/${localizacaoAtual.idAtivacao}/comandos/solicitar-localizacao`, {
+        id_usuario: empresaInfo.id_usuario,
+      });
+      await Swal.fire({
+        icon: "success",
+        title: "Comando enviado",
+        text: "O dispositivo irá reportar a localização no próximo heartbeat.",
+        timer: 2500,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      await Swal.fire({
+        icon: "error",
+        title: "Falha ao enviar comando",
+        text: error?.response?.data?.error || "Não foi possível solicitar atualização de localização.",
+      });
+    }
+  }
+
   return (
     <>
       <Menu />
@@ -650,12 +849,83 @@ export default function MobileAtivacao() {
 
               <div className="modal-body p-0 espelho-modal-body localizacao-modal-body">
                 {typeof localizacaoAtual?.latitude === "number" && typeof localizacaoAtual?.longitude === "number" ? (
-                  <iframe
-                    title="Mapa da localizacao do dispositivo"
-                    className="localizacao-map-iframe"
-                    loading="lazy"
-                    src={`https://www.google.com/maps?q=${encodeURIComponent(`${localizacaoAtual.latitude},${localizacaoAtual.longitude}`)}&z=16&output=embed`}
-                  />
+                  <div className="localizacao-map-shell">
+                    <MapContainer
+                      className="localizacao-leaflet-map"
+                      center={[localizacaoAtual.latitude, localizacaoAtual.longitude]}
+                      zoom={16}
+                      scrollWheelZoom
+                    >
+                      <TileLayer
+                        attribution='&copy; OpenStreetMap contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      <LocalizacaoMapaController
+                        latitude={localizacaoAtual.latitude}
+                        longitude={localizacaoAtual.longitude}
+                        markerRef={localizacaoMarkerRef}
+                      />
+                      <Marker
+                        position={[localizacaoAtual.latitude, localizacaoAtual.longitude]}
+                        icon={deviceLocationIcon}
+                        ref={localizacaoMarkerRef}
+                      >
+                        <Popup autoPan className="localizacao-popup">
+                          <div className="localizacao-popup-content">
+                            <div className="localizacao-popup-title">
+                              {localizacaoAtual?.dispositivo || "Dispositivo"}
+                            </div>
+                            <div className="localizacao-popup-line">
+                              {loadingEndereco ? "Buscando endereço..." : (localizacaoEndereco || "Endereço não disponível")}
+                            </div>
+                            <div className="localizacao-popup-line">
+                              Coordenadas: {localizacaoAtual.latitude.toFixed(6)}, {localizacaoAtual.longitude.toFixed(6)}
+                            </div>
+                            <div className="localizacao-popup-line">
+                              Permissão: {localizacaoAtual?.permissao || "unknown"}
+                            </div>
+                            {typeof localizacaoAtual.accuracy === "number" && (
+                              <div className="localizacao-popup-line">
+                                Precisão: ± {localizacaoAtual.accuracy.toFixed(0)} m
+                              </div>
+                            )}
+                            {typeof localizacaoAtual.altitude === "number" && (
+                              <div className="localizacao-popup-line">
+                                Altitude: {localizacaoAtual.altitude.toFixed(0)} m
+                              </div>
+                            )}
+                            {typeof localizacaoAtual.speed === "number" && localizacaoAtual.speed >= 0 && (
+                              <div className="localizacao-popup-line">
+                                Velocidade: {(localizacaoAtual.speed * 3.6).toFixed(1)} km/h
+                              </div>
+                            )}
+                            {localizacaoAtual.timestamp && (
+                              <div className="localizacao-popup-line">
+                                Atualizado em: {formatarData(localizacaoAtual.timestamp)}
+                              </div>
+                            )}
+                          </div>
+                        </Popup>
+                      </Marker>
+                      {locaisProximos.map((local) => (
+                        <Marker
+                          key={String(local.id)}
+                          position={[local.latitude, local.longitude]}
+                          icon={nearbyPlaceIcon}
+                        >
+                          <Popup className="localizacao-popup localizacao-popup-poi">
+                            <div className="localizacao-popup-content">
+                              <div className="localizacao-popup-title">{local.nome}</div>
+                              <div className="localizacao-popup-line">Tipo: {local.tipo}</div>
+                              {local.endereco && (
+                                <div className="localizacao-popup-line">Endereco: {local.endereco}</div>
+                              )}
+                            </div>
+                          </Popup>
+                        </Marker>
+                      ))}
+                    </MapContainer>
+                  </div>
                 ) : (
                   <div className="espelho-frame-placeholder">
                     <div className="text-center">
@@ -669,25 +939,78 @@ export default function MobileAtivacao() {
                 )}
               </div>
 
-              <div className="modal-footer espelho-modal-footer">
-                <small className="text-muted me-auto">
-                  {typeof localizacaoAtual?.latitude === "number" && typeof localizacaoAtual?.longitude === "number"
-                    ? `Coordenadas: ${localizacaoAtual.latitude.toFixed(6)}, ${localizacaoAtual.longitude.toFixed(6)}`
-                    : "Sem coordenadas para exibicao"}
-                </small>
+              <div className="modal-footer espelho-modal-footer localizacao-footer">
                 {typeof localizacaoAtual?.latitude === "number" && typeof localizacaoAtual?.longitude === "number" ? (
-                  <a
-                    className="btn btn-outline-primary localizacao-maps-btn"
-                    href={`https://www.google.com/maps?q=${encodeURIComponent(`${localizacaoAtual.latitude},${localizacaoAtual.longitude}`)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Abrir no Google Maps
-                  </a>
-                ) : null}
-                <button type="button" className="btn btn-secondary" onClick={() => setLocalizacaoModalAberto(false)}>
-                  Fechar
-                </button>
+                  <div className="localizacao-footer-info">
+                    {loadingEndereco && (
+                      <span className="localizacao-info-chip">
+                        <span className="spinner-border spinner-border-sm" style={{ width: 10, height: 10, borderWidth: 1.5 }} /> Buscando endereço...
+                      </span>
+                    )}
+                    {!loadingEndereco && localizacaoEndereco && (
+                      <span className="localizacao-info-chip localizacao-endereco-chip" title={localizacaoEndereco}>
+                        📍 {localizacaoEndereco.length > 70 ? localizacaoEndereco.slice(0, 70) + "…" : localizacaoEndereco}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      className="localizacao-info-chip localizacao-info-chip-btn"
+                      onClick={copiarCoordenadas}
+                      title="Copiar coordenadas"
+                    >
+                      {copiado ? <CheckCheck size={11} strokeWidth={2.5} /> : <Copy size={11} strokeWidth={2} />}
+                      {localizacaoAtual.latitude.toFixed(6)}, {localizacaoAtual.longitude.toFixed(6)}
+                    </button>
+                    {typeof localizacaoAtual.accuracy === "number" && (
+                      <span className="localizacao-info-chip" title="Precisão do GPS">± {localizacaoAtual.accuracy.toFixed(0)} m</span>
+                    )}
+                    {loadingLocaisProximos && (
+                      <span className="localizacao-info-chip">Buscando locais próximos...</span>
+                    )}
+                    {!loadingLocaisProximos && locaisProximos.length > 0 && (
+                      <span className="localizacao-info-chip" title="Quantidade de locais próximos mapeados">
+                        {locaisProximos.length} locais próximos
+                      </span>
+                    )}
+                    {typeof localizacaoAtual.altitude === "number" && (
+                      <span className="localizacao-info-chip" title="Altitude">↑ {localizacaoAtual.altitude.toFixed(0)} m alt</span>
+                    )}
+                    {typeof localizacaoAtual.speed === "number" && localizacaoAtual.speed >= 0 && (
+                      <span className="localizacao-info-chip" title="Velocidade">{(localizacaoAtual.speed * 3.6).toFixed(1)} km/h</span>
+                    )}
+                    {localizacaoAtual.timestamp && (
+                      <span className="localizacao-info-chip" title="Última atualização">🕐 {formatarData(localizacaoAtual.timestamp)}</span>
+                    )}
+                  </div>
+                ) : (
+                  <small className="text-muted">Sem coordenadas para exibição</small>
+                )}
+                <div className="localizacao-footer-acoes">
+                  {typeof localizacaoAtual?.latitude === "number" && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary btn-sm"
+                      onClick={solicitarAtualizacaoLocalizacao}
+                      title="Solicitar atualização de localização no dispositivo"
+                      style={{ display: "inline-flex", alignItems: "center", gap: 5 }}
+                    >
+                      <RefreshCw size={13} strokeWidth={2} /> Atualizar
+                    </button>
+                  )}
+                  {typeof localizacaoAtual?.latitude === "number" && (
+                    <a
+                      className="btn btn-outline-primary btn-sm localizacao-maps-btn"
+                      href={`https://www.google.com/maps?q=${encodeURIComponent(`${localizacaoAtual.latitude},${localizacaoAtual.longitude}`)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Abrir no Maps
+                    </a>
+                  )}
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setLocalizacaoModalAberto(false)}>
+                    Fechar
+                  </button>
+                </div>
               </div>
             </div>
           </div>

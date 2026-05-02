@@ -1,6 +1,7 @@
 import express from "express";
 import {
   ConfirmarComandoMobile,
+  EnviarComandoLocalizacao,
   EnviarComandoPermissao,
   GerarAtivacao,
   ListarAtivacao,
@@ -32,6 +33,7 @@ router.post("/mobile/ativacao/validar", ValidarAtivacao);
 router.post("/mobile/ativacao/validar-por-codigo", ValidarAtivacaoPorCodigo);
 router.post("/mobile/ativacao/:id_ativacao/monitorar", MonitorarAtivacao);
 router.post("/mobile/ativacao/:id_ativacao/comandos/solicitar-permissao", EnviarComandoPermissao);
+router.post("/mobile/ativacao/:id_ativacao/comandos/solicitar-localizacao", EnviarComandoLocalizacao);
 router.post("/mobile/ativacao/:id_ativacao/comandos/ack", ConfirmarComandoMobile);
 router.post("/mobile/ativacao/:id_ativacao/registrar-erro", RegistrarErroAtivacao);
 router.post("/mobile/ativacao/:id_ativacao/revogar", RevogarAtivacaoPorId);

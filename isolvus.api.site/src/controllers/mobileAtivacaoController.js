@@ -342,6 +342,34 @@ export async function MonitorarAtivacao(req, res) {
   }
 }
 
+export async function EnviarComandoLocalizacao(req, res) {
+  try {
+    const { id_ativacao } = req.params || {};
+
+    if (!id_ativacao) {
+      return res.status(400).json({ error: "id_ativacao é obrigatório." });
+    }
+
+    const resultado = await enfileirarComandoAtivacaoMobile({
+      id_ativacao,
+      tipo_comando: "solicitar_localizacao",
+      payload: {},
+      id_usuario_criacao: req.body?.id_usuario || null,
+    });
+
+    if (!resultado.ok) {
+      return res.status(409).json({
+        error: "Somente ativações com status U podem receber comandos.",
+        status_atual: resultado.statusAtivacao,
+      });
+    }
+
+    return res.json({ sucesso: true, comando: resultado.comando });
+  } catch (error) {
+    return res.status(500).json({ error: error.message || "Erro ao enviar comando para dispositivo." });
+  }
+}
+
 export async function EnviarComandoPermissao(req, res) {
   try {
     const { id_ativacao } = req.params || {};
