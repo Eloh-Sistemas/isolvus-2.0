@@ -13,14 +13,33 @@
       "**/*"
     ],
     "android": {
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION"
+      ],
       "package": "br.com.isolvus.mobile"
     },
     "ios": {
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "location"
+        ]
+      },
       "bundleIdentifier": "br.com.isolvus.mobile"
     },
     "plugins": [
       "expo-asset",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Permita o acesso a localizacao para monitoramento durante o uso do app.",
+          "locationAlwaysAndWhenInUsePermission": "Permita localizacao em segundo plano para monitoramento continuo.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ]
     ]
   }
 }

@@ -9,7 +9,7 @@ import * as Location from "expo-location";
 import * as Battery from "expo-battery";
 import { Paths } from "expo-file-system";
 import * as Application from "expo-application";
-import { getCameraPermissionsAsync, requestCameraPermissionsAsync } from "expo-camera";
+import { Camera } from "expo-camera";
 import * as Notifications from "expo-notifications";
 import { Audio } from "expo-av";
 import LoginScreen from "./src/screens/LoginScreen";
@@ -25,12 +25,21 @@ function mapBatteryState(state) {
   return "unknown";
 }
 
+function normalizarStatusPermissao(resp) {
+  if (!resp) return "unknown";
+  if (typeof resp.status === "string") return resp.status;
+  if (typeof resp.granted === "boolean") return resp.granted ? "granted" : "denied";
+  return "unknown";
+}
+
 // Solicitar todas as permissões necessárias
 async function solicitarPermissoes() {
   // Câmera
   try {
-    const cam = await getCameraPermissionsAsync();
-    if (cam.status !== "granted") await requestCameraPermissionsAsync();
+    const cam = await Camera.getCameraPermissionsAsync();
+    if (normalizarStatusPermissao(cam) !== "granted") {
+      await Camera.requestCameraPermissionsAsync();
+    }
   } catch {}
 
   // Microfone
@@ -44,11 +53,26 @@ async function solicitarPermissoes() {
   try {
     const locFg = await Location.requestForegroundPermissionsAsync();
     fgConcedido = locFg?.status === "granted";
+    console.log("[PERMISSOES] localizacao_foreground:", normalizarStatusPermissao(locFg));
   } catch {}
 
   // Localização background (só pede se foreground foi concedido)
   if (fgConcedido) {
-    try { await Location.requestBackgroundPermissionsAsync(); } catch {}
+    try {
+      const bgAtual = await Location.getBackgroundPermissionsAsync();
+      const bgAtualStatus = normalizarStatusPermissao(bgAtual);
+      console.log("[PERMISSOES] localizacao_background (antes):", bgAtualStatus);
+
+      if (bgAtualStatus !== "granted" && bgAtual?.canAskAgain !== false) {
+        const bgSolicitada = await Location.requestBackgroundPermissionsAsync();
+        console.log("[PERMISSOES] localizacao_background (solicitada):", normalizarStatusPermissao(bgSolicitada));
+      }
+
+      const bgFinal = await Location.getBackgroundPermissionsAsync();
+      console.log("[PERMISSOES] localizacao_background (final):", normalizarStatusPermissao(bgFinal));
+    } catch {}
+  } else {
+    console.log("[PERMISSOES] localizacao_background: nao solicitada (foreground negada)");
   }
 }
 
@@ -164,18 +188,18 @@ async function montarPayloadHeartbeat() {
 
   // Coletar status das permissões
   const [permCamera, permNotif, permMic, permLocBg] = await Promise.all([
-    (typeof getCameraPermissionsAsync === "function" ? getCameraPermissionsAsync() : Promise.resolve(null)).catch(() => null),
+    Camera.getCameraPermissionsAsync().catch(() => null),
     Notifications.getPermissionsAsync().catch(() => null),
-    (typeof Audio?.getPermissionsAsync === "function" ? Audio.getPermissionsAsync() : Promise.resolve(null)).catch(() => null),
+    Audio.getPermissionsAsync().catch(() => null),
     Location.getBackgroundPermissionsAsync().catch(() => null),
   ]);
 
   const permissoes = {
-    camera: permCamera?.status ?? "unknown",
-    notificacoes: permNotif?.status ?? "unknown",
-    microfone: permMic?.status ?? "unknown",
-    localizacao_foreground: locationInfo.permission,
-    localizacao_background: permLocBg?.status ?? "unknown",
+    camera: normalizarStatusPermissao(permCamera),
+    notificacoes: normalizarStatusPermissao(permNotif),
+    microfone: normalizarStatusPermissao(permMic),
+    localizacao_foreground: locationInfo.permission || "unknown",
+    localizacao_background: normalizarStatusPermissao(permLocBg),
   };
 
   return {
@@ -407,17 +431,19 @@ export default function App() {
       <AlertProvider>
         <ErrorBoundary>
           <View style={[styles.container, { backgroundColor: bgColor }]}>
-          <StatusBar style="light" backgroundColor={bgColor} />
-          {!apiBaseUrl ? (
-            <AtivacaoScreen
-              onAtivacaoSucesso={handleAtivacaoSucesso}
-            />
-          ) : usuarioLogado ? (
-            <HomeScreen user={usuarioLogado} onLogout={handleLogout} onRedefinir={handleRedefinir} />
-          ) : (
-            <LoginScreen onLoginSuccess={handleLoginSuccess} />
-          )}
-        </View>        </ErrorBoundary>      </AlertProvider>
+            <StatusBar style="light" backgroundColor={bgColor} />
+            {!apiBaseUrl ? (
+              <AtivacaoScreen
+                onAtivacaoSucesso={handleAtivacaoSucesso}
+              />
+            ) : usuarioLogado ? (
+              <HomeScreen user={usuarioLogado} onLogout={handleLogout} onRedefinir={handleRedefinir} />
+            ) : (
+              <LoginScreen onLoginSuccess={handleLoginSuccess} />
+            )}
+          </View>
+        </ErrorBoundary>
+      </AlertProvider>
     </SafeAreaProvider>
   );
 }
