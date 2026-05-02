@@ -65,14 +65,6 @@ export default function Step4Atividades({
       {/* Contador resumido */}
       {!loadingAtividades && atividades.length > 0 && (
         <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
-          <View style={{ flex: 1, backgroundColor: "#f0fdf4", borderRadius: 10, borderWidth: 1, borderColor: "#bbf7d0", padding: 10, alignItems: "center" }}>
-            <Text style={{ fontSize: 18, fontWeight: "800", color: "#16a34a" }}>{realizadas}</Text>
-            <Text style={{ fontSize: 10, color: "#166534", fontWeight: "600" }}>CONCLUÍDAS</Text>
-          </View>
-          <View style={{ flex: 1, backgroundColor: "#fef2f2", borderRadius: 10, borderWidth: 1, borderColor: "#fecaca", padding: 10, alignItems: "center" }}>
-            <Text style={{ fontSize: 18, fontWeight: "800", color: "#dc2626" }}>{atividades.length - realizadas}</Text>
-            <Text style={{ fontSize: 10, color: "#991b1b", fontWeight: "600" }}>PENDENTES</Text>
-          </View>
           <View style={{ flex: 1, backgroundColor: "#eff6ff", borderRadius: 10, borderWidth: 1, borderColor: "#bfdbfe", padding: 10, alignItems: "center" }}>
             <Text style={{ fontSize: 18, fontWeight: "800", color: colors.accent }}>{atividades.length}</Text>
             <Text style={{ fontSize: 10, color: "#1e40af", fontWeight: "600" }}>TOTAL</Text>
