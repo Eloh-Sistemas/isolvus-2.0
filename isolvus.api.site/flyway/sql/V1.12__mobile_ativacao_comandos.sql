@@ -1,0 +1,59 @@
+-- =============================================================================
+-- V1.12 - COMANDOS REMOTOS PARA ATIVACAO MOBILE
+-- Cria fila persistente de comandos enviados do Web para o App Mobile
+-- =============================================================================
+
+DECLARE
+  v_exists NUMBER := 0;
+BEGIN
+  SELECT COUNT(*)
+    INTO v_exists
+    FROM USER_TABLES
+   WHERE TABLE_NAME = 'BSTAB_MOBILE_ATIVACAO_CMD';
+
+  IF v_exists = 0 THEN
+    EXECUTE IMMEDIATE '
+      CREATE TABLE BSTAB_MOBILE_ATIVACAO_CMD (
+        ID_COMANDO          NUMBER(18)      NOT NULL,
+        ID_ATIVACAO         NUMBER(18)      NOT NULL,
+        TIPO_COMANDO        VARCHAR2(50)    NOT NULL,
+        PAYLOAD_JSON        CLOB,
+        STATUS              VARCHAR2(20)    DEFAULT ''P'' NOT NULL,
+        ERRO_EXECUCAO       VARCHAR2(500),
+        DT_CRIACAO          DATE            DEFAULT SYSDATE NOT NULL,
+        DT_EXECUCAO         DATE,
+        ID_USUARIO_CRIACAO  NUMBER(18),
+        CONSTRAINT PK_BSTAB_MOBILE_ATV_CMD PRIMARY KEY (ID_COMANDO)
+      )
+    ';
+  END IF;
+END;
+/
+
+DECLARE
+  v_exists NUMBER := 0;
+BEGIN
+  SELECT COUNT(*)
+    INTO v_exists
+    FROM USER_SEQUENCES
+   WHERE SEQUENCE_NAME = 'SEQ_BSTAB_MOBILE_ATIVACAO_CMD';
+
+  IF v_exists = 0 THEN
+    EXECUTE IMMEDIATE 'CREATE SEQUENCE SEQ_BSTAB_MOBILE_ATIVACAO_CMD INCREMENT BY 1 MINVALUE 1 NOCYCLE NOCACHE NOORDER';
+  END IF;
+END;
+/
+
+DECLARE
+  v_exists NUMBER := 0;
+BEGIN
+  SELECT COUNT(*)
+    INTO v_exists
+    FROM USER_INDEXES
+   WHERE INDEX_NAME = 'IDX_BSTAB_MOBILE_ATV_CMD1';
+
+  IF v_exists = 0 THEN
+    EXECUTE IMMEDIATE 'CREATE INDEX IDX_BSTAB_MOBILE_ATV_CMD1 ON BSTAB_MOBILE_ATIVACAO_CMD (ID_ATIVACAO, STATUS, DT_CRIACAO)';
+  END IF;
+END;
+/

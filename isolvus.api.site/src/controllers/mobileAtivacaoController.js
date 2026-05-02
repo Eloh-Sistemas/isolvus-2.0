@@ -1,6 +1,9 @@
 import {
+  atualizarStatusComandoAtivacaoMobile,
+  enfileirarComandoAtivacaoMobile,
   gerarAtivacaoMobile,
   listarAtivacoesMobile,
+  obterProximoComandoPendenteAtivacaoMobile,
   obterApiBaseUrlPorParametro,
   registrarMonitoramentoAtivacaoMobile,
   redefinirAtivacaoMobile,
@@ -332,9 +335,77 @@ export async function MonitorarAtivacao(req, res) {
       return res.status(404).json({ error: "Ativação não encontrada." });
     }
 
-    return res.json({ sucesso: true });
+    const comando = await obterProximoComandoPendenteAtivacaoMobile({ id_ativacao });
+    return res.json({ sucesso: true, comando });
   } catch (error) {
     return res.status(500).json({ error: error.message || "Erro ao registrar monitoramento do dispositivo." });
+  }
+}
+
+export async function EnviarComandoPermissao(req, res) {
+  try {
+    const { id_ativacao } = req.params || {};
+    const { permissao } = req.body || {};
+
+    if (!id_ativacao) {
+      return res.status(400).json({ error: "id_ativacao é obrigatório." });
+    }
+
+    const permissoesPermitidas = new Set([
+      "camera",
+      "microfone",
+      "notificacoes",
+      "localizacao_foreground",
+      "localizacao_background",
+    ]);
+
+    if (!permissoesPermitidas.has(String(permissao || ""))) {
+      return res.status(400).json({ error: "Permissão inválida." });
+    }
+
+    const resultado = await enfileirarComandoAtivacaoMobile({
+      id_ativacao,
+      tipo_comando: "solicitar_permissao",
+      payload: { permissao: String(permissao) },
+      id_usuario_criacao: req.body?.id_usuario || null,
+    });
+
+    if (!resultado.ok) {
+      return res.status(409).json({
+        error: "Somente ativações com status U podem receber comandos.",
+        status_atual: resultado.statusAtivacao,
+      });
+    }
+
+    return res.json({ sucesso: true, comando: resultado.comando });
+  } catch (error) {
+    return res.status(500).json({ error: error.message || "Erro ao enviar comando para dispositivo." });
+  }
+}
+
+export async function ConfirmarComandoMobile(req, res) {
+  try {
+    const { id_ativacao } = req.params || {};
+    const { id_comando, status_execucao, erro } = req.body || {};
+
+    if (!id_ativacao || !id_comando) {
+      return res.status(400).json({ error: "id_ativacao e id_comando são obrigatórios." });
+    }
+
+    const ok = await atualizarStatusComandoAtivacaoMobile({
+      id_ativacao,
+      id_comando,
+      status_execucao: status_execucao || "done",
+      erro_execucao: erro,
+    });
+
+    if (!ok) {
+      return res.status(404).json({ error: "Comando não encontrado para esta ativação." });
+    }
+
+    return res.json({ sucesso: true });
+  } catch (error) {
+    return res.status(500).json({ error: error.message || "Erro ao confirmar execução de comando." });
   }
 }
 

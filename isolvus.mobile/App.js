@@ -1,6 +1,6 @@
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { View, StyleSheet, Platform, AppState, Text, Pressable } from "react-native";
+import { View, StyleSheet, Platform, AppState, Text, Pressable, Alert, Linking } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Device from "expo-device";
@@ -73,6 +73,98 @@ async function solicitarPermissoes() {
     } catch {}
   } else {
     console.log("[PERMISSOES] localizacao_background: nao solicitada (foreground negada)");
+  }
+}
+
+async function checarPermissoesCriticas() {
+  const [permCam, permMic, permNotif, permLocFg] = await Promise.all([
+    Camera.getCameraPermissionsAsync().catch(() => null),
+    Audio.getPermissionsAsync().catch(() => null),
+    Notifications.getPermissionsAsync().catch(() => null),
+    Location.getForegroundPermissionsAsync().catch(() => null),
+  ]);
+  const statuses = {
+    camera: normalizarStatusPermissao(permCam),
+    microfone: normalizarStatusPermissao(permMic),
+    notificacoes: normalizarStatusPermissao(permNotif),
+    localizacao: normalizarStatusPermissao(permLocFg),
+  };
+  const todasOk = Object.values(statuses).every((s) => s === "granted");
+  return { ok: todasOk, statuses };
+}
+
+async function solicitarPermissaoPorTipo(tipoPermissao) {
+  if (tipoPermissao === "camera") {
+    return Camera.requestCameraPermissionsAsync();
+  }
+  if (tipoPermissao === "microfone") {
+    return Audio.requestPermissionsAsync();
+  }
+  if (tipoPermissao === "notificacoes") {
+    return Notifications.requestPermissionsAsync();
+  }
+  if (tipoPermissao === "localizacao_foreground") {
+    return Location.requestForegroundPermissionsAsync();
+  }
+  if (tipoPermissao === "localizacao_background") {
+    return Location.requestBackgroundPermissionsAsync();
+  }
+  throw new Error(`Tipo de permissao nao suportado: ${String(tipoPermissao || "")}`);
+}
+
+const PERM_LABEL = {
+  camera: "Câmera",
+  microfone: "Microfone",
+  notificacoes: "Notificações",
+  localizacao_foreground: "Localização",
+  localizacao_background: "Localização em segundo plano",
+};
+
+async function executarComandoRemoto(ativacaoId, comando) {
+  if (!comando || comando?.tipo !== "solicitar_permissao") return;
+
+  const tipoPermissao = comando?.payload?.permissao;
+  try {
+    const resposta = await solicitarPermissaoPorTipo(tipoPermissao);
+    const status = normalizarStatusPermissao(resposta);
+
+    if (status === "granted") {
+      // Permissão já concedida — nada a fazer
+      await api.post(`/v1/mobile/ativacao/${ativacaoId}/comandos/ack`, {
+        id_comando: comando.id_comando,
+        status_execucao: "done",
+        erro: null,
+      }).catch(() => {});
+      return;
+    }
+
+    // Permissão negada ou restrita — iOS não mostra o dialog novamente
+    // Mostrar alerta para o usuário abrir as Configurações manualmente
+    const label = PERM_LABEL[tipoPermissao] || tipoPermissao;
+    Alert.alert(
+      "Permissão necessária",
+      `O administrador solicitou acesso à permissão "${label}".\n\nEssa permissão foi negada anteriormente. Para concedê-la, acesse as Configurações do dispositivo.`,
+      [
+        { text: "Agora não", style: "cancel" },
+        {
+          text: "Abrir Configurações",
+          onPress: () => Linking.openSettings(),
+        },
+      ],
+      { cancelable: true },
+    );
+
+    await api.post(`/v1/mobile/ativacao/${ativacaoId}/comandos/ack`, {
+      id_comando: comando.id_comando,
+      status_execucao: "done_no_grant",
+      erro: `Permissao retornou status=${status}. Usuario direcionado para Configuracoes.`,
+    }).catch(() => {});
+  } catch (erroExecucao) {
+    await api.post(`/v1/mobile/ativacao/${ativacaoId}/comandos/ack`, {
+      id_comando: comando.id_comando,
+      status_execucao: "failed",
+      erro: erroExecucao?.message || String(erroExecucao),
+    }).catch(() => {});
   }
 }
 
@@ -240,19 +332,151 @@ async function montarPayloadHeartbeat() {
   };
 }
 
+const PERMS_ITENS = [
+  {
+    key: "camera",
+    icone: "📷",
+    titulo: "Câmera",
+    descricao: "Necessária para leitura do QR Code de ativação do dispositivo.",
+  },
+  {
+    key: "microfone",
+    icone: "🎙️",
+    titulo: "Microfone",
+    descricao: "Utilizado para comunicação por voz com a IA, envio de áudios e mensagens de voz.",
+  },
+  {
+    key: "notificacoes",
+    icone: "🔔",
+    titulo: "Notificações",
+    descricao: "Utilizada para o envio de alertas, avisos operacionais e comunicados importantes.",
+  },
+  {
+    key: "localizacao",
+    icone: "📍",
+    titulo: "Localização",
+    descricao: "Requerida para rastreamento, monitoramento de campo e registro de presença.",
+  },
+];
+
+function PermissoesNecessariasScreen({ onVerificar, statuses = {} }) {
+  return (
+    <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 28, backgroundColor: "#050d1a" }}>
+
+      {/* Cabeçalho */}
+      <View style={{ alignItems: "center", marginBottom: 28 }}>
+        <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: "#1e2d4a", justifyContent: "center", alignItems: "center", marginBottom: 16 }}>
+          <Text style={{ fontSize: 26 }}>🔒</Text>
+        </View>
+        <Text style={{ fontSize: 22, fontWeight: "700", color: "#f1f5f9", textAlign: "center", marginBottom: 10 }}>
+          Autorização de Acesso Necessária
+        </Text>
+        <Text style={{ fontSize: 13, color: "#94a3b8", textAlign: "center", lineHeight: 21 }}>
+          Para garantir o pleno funcionamento do sistema, é imprescindível que as permissões abaixo sejam concedidas. Sem elas, o aplicativo não poderá operar corretamente.
+        </Text>
+      </View>
+
+      {/* Lista de permissões */}
+      <View style={{ backgroundColor: "#0c1526", borderRadius: 12, overflow: "hidden", marginBottom: 20 }}>
+        {PERMS_ITENS.map((item, idx) => {
+          const status = statuses[item.key];
+          const concedida = status === "granted";
+          const verificada = !!status;
+          return (
+            <View
+              key={item.key}
+              style={{
+                flexDirection: "row",
+                alignItems: "flex-start",
+                padding: 14,
+                borderTopWidth: idx === 0 ? 0 : 1,
+                borderTopColor: "#1e293b",
+              }}
+            >
+              <Text style={{ fontSize: 20, marginRight: 12, marginTop: 1 }}>{item.icone}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: "#e2e8f0", marginBottom: 3 }}>{item.titulo}</Text>
+                <Text style={{ fontSize: 12, color: "#64748b", lineHeight: 18 }}>{item.descricao}</Text>
+              </View>
+              {verificada && (
+                <View style={{
+                  marginLeft: 10,
+                  marginTop: 2,
+                  width: 26,
+                  height: 26,
+                  borderRadius: 13,
+                  backgroundColor: concedida ? "#052e16" : "#2d0a0a",
+                  borderWidth: 1,
+                  borderColor: concedida ? "#22c55e" : "#ef4444",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}>
+                  <Text style={{ fontSize: 13, color: concedida ? "#22c55e" : "#ef4444", fontWeight: "700" }}>
+                    {concedida ? "✓" : "✗"}
+                  </Text>
+                </View>
+              )}
+            </View>
+          );
+        })}
+      </View>
+
+      {/* Instrução */}
+      <View style={{ backgroundColor: "#1a1f2e", borderRadius: 10, padding: 14, marginBottom: 24, borderLeftWidth: 3, borderLeftColor: "#f59e0b" }}>
+        <Text style={{ fontSize: 12, color: "#94a3b8", lineHeight: 19 }}>
+          <Text style={{ fontWeight: "700", color: "#f59e0b" }}>Como conceder: </Text>
+          Acesse <Text style={{ fontWeight: "600", color: "#cbd5e1" }}>Ajustes → {Platform.OS === "ios" ? "Expo Go" : "Aplicativos → ISOLVUS"} → Permissões</Text> e habilite cada item listado acima.
+        </Text>
+      </View>
+
+      {/* Botões */}
+      <Pressable
+        style={{ backgroundColor: "#3f6cf6", borderRadius: 8, paddingVertical: 14, alignItems: "center", marginBottom: 10 }}
+        onPress={() => Linking.openSettings()}
+      >
+        <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Abrir Configurações</Text>
+      </Pressable>
+      <Pressable
+        style={{ borderWidth: 1, borderColor: "#334155", borderRadius: 8, paddingVertical: 12, alignItems: "center" }}
+        onPress={onVerificar}
+      >
+        <Text style={{ color: "#94a3b8", fontWeight: "600", fontSize: 14 }}>Já concedi as permissões — Verificar</Text>
+      </Pressable>
+
+    </View>
+  );
+}
+
 export default function App() {
   const [usuarioLogado, setUsuarioLogado] = useState(null);
   // null = carregando, false = sem URL (precisa ativar), string = URL ok
   const [apiBaseUrl, setApiBaseUrl] = useState(null);
+  // null = verificando, true = ok, false = bloqueado
+  const [permissoesOk, setPermissoesOk] = useState(null);
+  const [permissoesStatuses, setPermissoesStatuses] = useState({});
   const appStateRef = useRef(AppState.currentState);
+  const comandosProcessadosRef = useRef(new Set());
 
   useEffect(() => {
-    solicitarPermissoes();
+    async function inicializarPermissoes() {
+      await solicitarPermissoes();
+      const { ok, statuses } = await checarPermissoesCriticas();
+      setPermissoesStatuses(statuses);
+      setPermissoesOk(ok);
+    }
+    inicializarPermissoes();
   }, []);
 
   useEffect(() => {
-    const sub = AppState.addEventListener("change", (nextState) => {
+    const sub = AppState.addEventListener("change", async (nextState) => {
+      const anterior = appStateRef.current;
       appStateRef.current = nextState;
+      // Re-verifica permissões ao retornar de Configurações
+      if (nextState === "active" && anterior !== "active") {
+        const { ok, statuses } = await checarPermissoesCriticas();
+        setPermissoesStatuses(statuses);
+        setPermissoesOk(ok);
+      }
     });
     return () => sub.remove();
   }, []);
@@ -343,6 +567,13 @@ export default function App() {
         const payload = await montarPayloadHeartbeat();
         const resposta = await api.post(`/v1/mobile/ativacao/${ativacaoId}/monitorar`, payload);
         const info = payload.dispositivo_info;
+        const comando = resposta?.data?.comando || null;
+
+        if (comando?.id_comando && !comandosProcessadosRef.current.has(comando.id_comando)) {
+          comandosProcessadosRef.current.add(comando.id_comando);
+          await executarComandoRemoto(ativacaoId, comando);
+        }
+
         console.log(
           `\n[HEARTBEAT ${new Date().toLocaleTimeString("pt-BR")} — motivo: ${motivo}]`,
           JSON.stringify({
@@ -421,8 +652,24 @@ export default function App() {
     };
   }, [apiBaseUrl]);
 
-  // Ainda carregando AsyncStorage
-  if (apiBaseUrl === null) return null;
+  // Ainda carregando AsyncStorage ou verificando permissões
+  if (apiBaseUrl === null || permissoesOk === null) return null;
+
+  // Permissões críticas negadas — bloqueia até que sejam concedidas
+  if (!permissoesOk) {
+    return (
+      <SafeAreaProvider>
+        <PermissoesNecessariasScreen
+          statuses={permissoesStatuses}
+          onVerificar={async () => {
+            const { ok, statuses } = await checarPermissoesCriticas();
+            setPermissoesStatuses(statuses);
+            setPermissoesOk(ok);
+          }}
+        />
+      </SafeAreaProvider>
+    );
+  }
 
   const bgColor = usuarioLogado ? "#0c1526" : "#050d1a";
 

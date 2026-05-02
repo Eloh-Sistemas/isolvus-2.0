@@ -403,6 +403,51 @@ export default function MobileAtivacao() {
     }
   }
 
+  async function solicitarPermissaoRemota(item) {
+    if (!item?.id_ativacao) return;
+
+    const { value: permissao } = await Swal.fire({
+      title: "Solicitar permissão no dispositivo",
+      text: "Selecione a permissão que o app mobile deve solicitar ao usuário.",
+      input: "select",
+      inputOptions: {
+        camera: "Câmera",
+        microfone: "Microfone",
+        notificacoes: "Notificações",
+        localizacao_foreground: "Localização (em uso)",
+        localizacao_background: "Localização em segundo plano (GPS BG)",
+      },
+      inputPlaceholder: "Escolha uma permissão",
+      showCancelButton: true,
+      confirmButtonText: "Enviar solicitação",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+      inputValidator: (value) => (!value ? "Selecione uma permissão" : null),
+    });
+
+    if (!permissao) return;
+
+    try {
+      await api.post(`/v1/mobile/ativacao/${item.id_ativacao}/comandos/solicitar-permissao`, {
+        permissao,
+        id_usuario: empresaInfo.id_usuario,
+      });
+
+      await Swal.fire({
+        icon: "success",
+        title: "Comando enviado",
+        text: "O comando será processado pelo mobile no próximo heartbeat.",
+      });
+    } catch (error) {
+      console.log("Erro ao enviar comando de permissão:", error);
+      await Swal.fire({
+        icon: "error",
+        title: "Falha ao enviar comando",
+        text: error?.response?.data?.error || "Não foi possível enviar a solicitação para o dispositivo.",
+      });
+    }
+  }
+
   return (
     <>
       <Menu />
@@ -575,6 +620,14 @@ export default function MobileAtivacao() {
                             <td>{formatarData(item.dt_expiracao)}</td>
                             <td>{formatarData(item.dt_utilizacao)}</td>
                             <td className="text-end">
+                              <button
+                                type="button"
+                                className="btn btn-outline-primary btn-sm me-2"
+                                title="Solicitar permissão no dispositivo"
+                                onClick={() => solicitarPermissaoRemota(item)}
+                              >
+                                Permissões
+                              </button>
                               {item.status === "P" ? (
                                 <button
                                   type="button"

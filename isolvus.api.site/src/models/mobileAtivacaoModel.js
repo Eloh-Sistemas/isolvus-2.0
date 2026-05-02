@@ -423,3 +423,128 @@ export async function registrarMonitoramentoAtivacaoMobile({
     statusAtual: consulta?.[0]?.status || null,
   };
 }
+
+export async function enfileirarComandoAtivacaoMobile({
+  id_ativacao,
+  tipo_comando,
+  payload,
+  id_usuario_criacao,
+}) {
+  const consultaAtivacao = await executeQuery(
+    `SELECT STATUS FROM BSTAB_MOBILE_ATIVACAO WHERE ID_ATIVACAO = TO_NUMBER(:id_ativacao)`,
+    { id_ativacao: String(id_ativacao || "0") }
+  );
+
+  const statusAtivacao = String(consultaAtivacao?.[0]?.status || "").trim().toUpperCase();
+  if (statusAtivacao !== "U") {
+    return { ok: false, motivo: "ATIVACAO_NAO_UTILIZADA", statusAtivacao };
+  }
+
+  const nextId = await executeQuery(
+    `SELECT SEQ_BSTAB_MOBILE_ATIVACAO_CMD.NEXTVAL AS ID_COMANDO FROM DUAL`
+  );
+  const id_comando = Number(nextId?.[0]?.id_comando || 0);
+
+  await executeQuery(
+    `
+      INSERT INTO BSTAB_MOBILE_ATIVACAO_CMD (
+        ID_COMANDO,
+        ID_ATIVACAO,
+        TIPO_COMANDO,
+        PAYLOAD_JSON,
+        STATUS,
+        DT_CRIACAO,
+        ID_USUARIO_CRIACAO
+      ) VALUES (
+        :id_comando,
+        TO_NUMBER(:id_ativacao),
+        :tipo_comando,
+        :payload_json,
+        'P',
+        SYSDATE,
+        :id_usuario_criacao
+      )
+    `,
+    {
+      id_comando,
+      id_ativacao: String(id_ativacao || "0"),
+      tipo_comando: String(tipo_comando || ""),
+      payload_json: payload ? JSON.stringify(payload) : null,
+      id_usuario_criacao: id_usuario_criacao != null ? Number(id_usuario_criacao) : null,
+    },
+    true
+  );
+
+  return {
+    ok: true,
+    comando: {
+      id_comando,
+      tipo: String(tipo_comando || ""),
+      payload: payload || null,
+      status: "pending",
+      criado_em: new Date().toISOString(),
+    },
+  };
+}
+
+export async function obterProximoComandoPendenteAtivacaoMobile({ id_ativacao }) {
+  const dados = await executeQuery(
+    `
+      SELECT ID_COMANDO, TIPO_COMANDO, PAYLOAD_JSON, STATUS, DT_CRIACAO
+        FROM (
+          SELECT ID_COMANDO, TIPO_COMANDO, PAYLOAD_JSON, STATUS, DT_CRIACAO
+            FROM BSTAB_MOBILE_ATIVACAO_CMD
+           WHERE ID_ATIVACAO = TO_NUMBER(:id_ativacao)
+             AND STATUS = 'P'
+           ORDER BY DT_CRIACAO ASC
+        )
+       WHERE ROWNUM = 1
+    `,
+    { id_ativacao: String(id_ativacao || "0") }
+  );
+
+  if (!dados.length) return null;
+
+  const row = dados[0];
+  let payload = null;
+  try {
+    payload = row.payload_json ? JSON.parse(String(row.payload_json)) : null;
+  } catch {
+    payload = null;
+  }
+
+  return {
+    id_comando: String(row.id_comando),
+    tipo: row.tipo_comando,
+    payload,
+    status: row.status,
+    criado_em: row.dt_criacao,
+  };
+}
+
+export async function atualizarStatusComandoAtivacaoMobile({
+  id_ativacao,
+  id_comando,
+  status_execucao,
+  erro_execucao,
+}) {
+  const result = await executeQuery(
+    `
+      UPDATE BSTAB_MOBILE_ATIVACAO_CMD
+         SET STATUS = :status_execucao,
+             ERRO_EXECUCAO = :erro_execucao,
+             DT_EXECUCAO = SYSDATE
+       WHERE ID_ATIVACAO = TO_NUMBER(:id_ativacao)
+         AND ID_COMANDO = TO_NUMBER(:id_comando)
+    `,
+    {
+      id_ativacao: String(id_ativacao || "0"),
+      id_comando: String(id_comando || "0"),
+      status_execucao: String(status_execucao || "done").slice(0, 20),
+      erro_execucao: erro_execucao ? String(erro_execucao).slice(0, 500) : null,
+    },
+    true
+  );
+
+  return Number(result?.rowsAffected || 0) > 0;
+}
