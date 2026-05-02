@@ -625,60 +625,77 @@ export default function MobileAtivacao() {
         id_usuario={empresaInfo.id_usuario}
         dispositivo={espelhoDispositivo}
       />
-      <div
-        className={`modal ${localizacaoModalAberto ? "show d-block" : ""}`}
-        tabIndex="-1"
-        role="dialog"
-        aria-modal="true"
-        style={{ background: "rgba(15,23,42,.45)" }}
-        onClick={() => setLocalizacaoModalAberto(false)}
-      >
-        <div className="modal-dialog modal-lg modal-dialog-centered" role="document" onClick={(e) => e.stopPropagation()}>
-          <div className="modal-content">
-            <div className="modal-header">
-              <h5 className="modal-title" style={{ fontWeight: 700 }}>Localização do dispositivo</h5>
-              <button type="button" className="btn-close" onClick={() => setLocalizacaoModalAberto(false)} />
-            </div>
-            <div className="modal-body">
-              <p className="mb-2"><strong>Dispositivo:</strong> {localizacaoAtual?.dispositivo || "-"}</p>
-
-              {typeof localizacaoAtual?.latitude === "number" && typeof localizacaoAtual?.longitude === "number" ? (
-                <>
-                  <p className="mb-2">
-                    <strong>Coordenadas:</strong> {localizacaoAtual.latitude.toFixed(6)}, {localizacaoAtual.longitude.toFixed(6)}
-                  </p>
-                  <div style={{ border: "1px solid #e5e7eb", borderRadius: 8, overflow: "hidden" }}>
-                    <iframe
-                      title="Mapa da localização do dispositivo"
-                      width="100%"
-                      height="360"
-                      loading="lazy"
-                      style={{ border: 0 }}
-                      src={`https://www.google.com/maps?q=${encodeURIComponent(`${localizacaoAtual.latitude},${localizacaoAtual.longitude}`)}&z=16&output=embed`}
-                    />
-                  </div>
-                </>
-              ) : (
-                <div className="alert alert-warning mb-0" role="alert">
-                  Localização indisponível no momento. Permissão atual: <strong>{localizacaoAtual?.permissao || "unknown"}</strong>.
+      {localizacaoModalAberto ? (
+        <div
+          className="modal show espelho-modal localizacao-modal"
+          style={{ display: "block" }}
+          onClick={() => setLocalizacaoModalAberto(false)}
+        >
+          <div
+            className="modal-dialog modal-dialog-centered localizacao-modal-dialog"
+            role="document"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-content espelho-modal-content localizacao-modal-content">
+              <div className="modal-header espelho-modal-header">
+                <div>
+                  <h5 className="modal-title mb-0" style={{ fontWeight: 700 }}>
+                    Localizacao do Dispositivo
+                  </h5>
+                  <small className="text-muted">{localizacaoAtual?.dispositivo || "-"}</small>
                 </div>
-              )}
-            </div>
-            {typeof localizacaoAtual?.latitude === "number" && typeof localizacaoAtual?.longitude === "number" ? (
-              <div className="modal-footer">
-                <a
-                  className="btn btn-outline-primary"
-                  href={`https://www.google.com/maps?q=${encodeURIComponent(`${localizacaoAtual.latitude},${localizacaoAtual.longitude}`)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Abrir no Google Maps
-                </a>
+                <button type="button" className="btn-close" onClick={() => setLocalizacaoModalAberto(false)} />
               </div>
-            ) : null}
+
+              <div className="modal-body p-2 p-md-3 espelho-modal-body">
+                {typeof localizacaoAtual?.latitude === "number" && typeof localizacaoAtual?.longitude === "number" ? (
+                  <div className="espelho-frame-wrap">
+                    <div className="localizacao-frame-map">
+                      <iframe
+                        title="Mapa da localizacao do dispositivo"
+                        className="localizacao-map-iframe"
+                        loading="lazy"
+                        src={`https://www.google.com/maps?q=${encodeURIComponent(`${localizacaoAtual.latitude},${localizacaoAtual.longitude}`)}&z=16&output=embed`}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="espelho-frame-placeholder">
+                    <div className="text-center">
+                      <div style={{ fontSize: "48px", marginBottom: "16px" }}>📍</div>
+                      <p className="text-muted mb-1">Localizacao indisponivel no momento</p>
+                      <small className="text-muted">
+                        Permissao atual: {localizacaoAtual?.permissao || "unknown"}
+                      </small>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="modal-footer espelho-modal-footer">
+                <small className="text-muted me-auto">
+                  {typeof localizacaoAtual?.latitude === "number" && typeof localizacaoAtual?.longitude === "number"
+                    ? `Coordenadas: ${localizacaoAtual.latitude.toFixed(6)}, ${localizacaoAtual.longitude.toFixed(6)}`
+                    : "Sem coordenadas para exibicao"}
+                </small>
+                {typeof localizacaoAtual?.latitude === "number" && typeof localizacaoAtual?.longitude === "number" ? (
+                  <a
+                    className="btn btn-outline-primary localizacao-maps-btn"
+                    href={`https://www.google.com/maps?q=${encodeURIComponent(`${localizacaoAtual.latitude},${localizacaoAtual.longitude}`)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Abrir no Google Maps
+                  </a>
+                ) : null}
+                <button type="button" className="btn btn-secondary" onClick={() => setLocalizacaoModalAberto(false)}>
+                  Fechar
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      ) : null}
       <div className="container-fluid Containe-Tela mobile-ativacao-page">
         <div className={`modal ${modalGerarAberto ? "show d-block" : ""}`} tabIndex="-1" role="dialog" aria-modal="true" style={{ background: "rgba(15,23,42,.45)" }}>
           <div className="modal-dialog modal-xl modal-dialog-centered" role="document" onClick={(e) => e.stopPropagation()}>
