@@ -54,25 +54,48 @@ Notifications.setNotificationHandler({
 async function registrarPushNoDispositivo() {
   if (!Device.isDevice) return "";
 
-  if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("default", {
-      name: "default",
-      importance: Notifications.AndroidImportance.DEFAULT,
-    });
+  try {
+    if (Platform.OS === "android") {
+      await Notifications.setNotificationChannelAsync("default", {
+        name: "default",
+        importance: Notifications.AndroidImportance.DEFAULT,
+      });
+    }
+
+    const { status: statusAtual } = await Notifications.getPermissionsAsync();
+    let statusFinal = statusAtual;
+
+    if (statusAtual !== "granted") {
+      const permissao = await Notifications.requestPermissionsAsync();
+      statusFinal = permissao.status;
+    }
+
+    if (statusFinal !== "granted") return "";
+
+    try {
+      const token = await Notifications.getExpoPushTokenAsync();
+      return token?.data || "";
+    } catch (error) {
+      const mensagem = String(error?.message || "").toLowerCase();
+      const pushIndisponivelAndroid =
+        Platform.OS === "android" && (
+          mensagem.includes("default firebaseapp is not initialized") ||
+          mensagem.includes("projectid") ||
+          mensagem.includes("expo go") ||
+          mensagem.includes("fcm")
+        );
+
+      if (pushIndisponivelAndroid) {
+        console.log("[PUSH] Push remoto indisponivel no Android atual. App seguira sem token de push.");
+        return "";
+      }
+
+      throw error;
+    }
+  } catch (error) {
+    console.log("[PUSH] Falha ao registrar push no dispositivo:", error?.message || error);
+    return "";
   }
-
-  const { status: statusAtual } = await Notifications.getPermissionsAsync();
-  let statusFinal = statusAtual;
-
-  if (statusAtual !== "granted") {
-    const permissao = await Notifications.requestPermissionsAsync();
-    statusFinal = permissao.status;
-  }
-
-  if (statusFinal !== "granted") return "";
-
-  const token = await Notifications.getExpoPushTokenAsync();
-  return token?.data || "";
 }
 
 function iniciais(nome) {
@@ -217,7 +240,17 @@ function iconePorNome(nome) {
   return "chevron-forward-outline";
 }
 
-export default function HomeScreen({ user, onLogout, onRedefinir, espelhandoTela = false }) {
+function limitarNomeDoisPrimeiros(nome) {
+  const partes = String(nome || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (!partes.length) return "Usuario";
+  return partes.slice(0, 2).join(" ");
+}
+
+export default function HomeScreen({ user, onLogout, espelhandoTela = false }) {
   const showAlert = useShowAlert();
   const [showModulos, setShowModulos] = useState(false);
   const [showNotificacoes, setShowNotificacoes] = useState(false);
@@ -246,29 +279,11 @@ export default function HomeScreen({ user, onLogout, onRedefinir, espelhandoTela
   const notifAnim = useRef(new Animated.Value(400)).current;
 
   const idUsuario = Number(user?.id_usuario ?? 0);
-  const nomeUsuario = user?.nome || user?.usuario || "Usuario";
+  const nomeUsuarioCompleto = user?.nome || user?.usuario || "Usuario";
+  const nomeUsuario = useMemo(() => limitarNomeDoisPrimeiros(nomeUsuarioCompleto), [nomeUsuarioCompleto]);
   const setorUsuario = user?.setor || "Setor";
   const drawerAberto = showModulos || showNotificacoes;
   const screenAtiva = toSlug(rotaAtiva?.screen || "");
-
-  const handleConfirmarRedefinicao = useCallback(() => {
-    Alert.alert(
-      "Redefinir ativação?",
-      "Esta ação vai remover a ativação atual deste app, encerrar sua sessão e exigir um novo QR Code para acessar novamente.",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Redefinir",
-          style: "destructive",
-          onPress: () => {
-            if (typeof onRedefinir === "function") {
-              onRedefinir();
-            }
-          },
-        },
-      ]
-    );
-  }, [onRedefinir]);
 
   const avatarUsuario = fotoUsuario || normalizarFotoUrl(user?.foto || user?.foto_usuario || "");
 
@@ -836,8 +851,10 @@ export default function HomeScreen({ user, onLogout, onRedefinir, espelhandoTela
                 </View>
 
                 <View>
-                  <Text style={styles.drawerUserName}>{nomeUsuario}</Text>
-                  <Text style={styles.drawerUserMeta}>
+                  <Text style={styles.drawerUserName} numberOfLines={1}>
+                    {nomeUsuario}
+                  </Text>
+                  <Text style={styles.drawerUserMeta} numberOfLines={1}>
                     {user?.id_usuario_erp || "-"} - {setorUsuario}
                   </Text>
                   {espelhandoTela ? (
@@ -848,8 +865,8 @@ export default function HomeScreen({ user, onLogout, onRedefinir, espelhandoTela
                   ) : null}
                 </View>
               </View>
-              <Pressable onPress={fecharModulos}>
-                <Ionicons name="close" size={24} color="#64748b" />
+              <Pressable style={styles.drawerCloseButton} onPress={fecharModulos}>
+                <Ionicons name="close" size={22} color="#334155" />
               </Pressable>
             </View>
 
@@ -926,11 +943,6 @@ export default function HomeScreen({ user, onLogout, onRedefinir, espelhandoTela
 
             <View style={[styles.drawerFooter, { paddingBottom: 22 }]}>
               <View style={styles.footerActionsRow}>
-                <Pressable style={styles.redefinirButton} onPress={handleConfirmarRedefinicao}>
-                  <Ionicons name="qr-code-outline" size={16} color="#94a3b8" />
-                  <Text style={styles.redefinirText}>Redefinir ativação</Text>
-                </Pressable>
-
                 <Pressable style={styles.logoutButton} onPress={onLogout}>
                   <Ionicons name="log-out-outline" size={16} color="#ef4444" />
                   <Text style={styles.logoutText}>Sair do sistema</Text>
@@ -1203,15 +1215,37 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   drawerHeader: {
+    position: "relative",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    minHeight: 40,
     paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#e2e8f0",
     marginBottom: 12,
   },
-  drawerProfile: { flexDirection: "row", alignItems: "center", gap: 10 },
+  drawerProfile: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingRight: 44,
+  },
+  drawerCloseButton: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f1f5f9",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
   drawerAvatar: {
     width: 56,
     height: 56,
@@ -1250,8 +1284,8 @@ const styles = StyleSheet.create({
   },
   avatarPopupItemTxt: { color: "#334155", fontSize: 12.5, fontWeight: "600" },
   avatarPopupItemDangerTxt: { color: "#dc2626", fontSize: 12.5, fontWeight: "600" },
-  drawerUserName: { color: "#1e293b", fontSize: 17, fontWeight: "800" },
-  drawerUserMeta: { color: "#64748b", fontSize: 12, marginTop: 2 },
+  drawerUserName: { color: "#1e293b", fontSize: 17, fontWeight: "800", flexShrink: 1 },
+  drawerUserMeta: { color: "#64748b", fontSize: 12, marginTop: 2, flexShrink: 1 },
   drawerMirrorIndicator: {
     marginTop: 8,
     flexDirection: "row",
@@ -1350,15 +1384,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    width: "49%",
+    width: "100%",
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
     gap: 8,
   },
   logoutText: { color: "#ef4444", fontSize: 14, fontWeight: "500" },
-  redefinirButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 10, paddingHorizontal: 12, width: "49%" },
-  redefinirText: { color: "#94a3b8", fontSize: 13, fontWeight: "500" },
 
   notifTitleWrap: { flexDirection: "row", alignItems: "center", gap: 8 },
   notifTitle: { color: "#1e293b", fontSize: 17, fontWeight: "800" },

@@ -297,7 +297,10 @@ export default function AtivacaoScreen({ onAtivacaoSucesso }) {
         });
       }
     } catch (error) {
-      const msg = error?.response?.data?.error || error?.message || "Erro ao validar ativação.";
+      const erroAxios = String(error?.message || "").toLowerCase();
+      const msg = erroAxios.includes("network error")
+        ? "Falha de rede ao validar ativação. Verifique se o celular está na mesma rede da API e se a URL do QR está acessível."
+        : (error?.response?.data?.error || error?.message || "Erro ao validar ativação.");
       showAlert({ type: "error", title: "Erro na ativação", message: msg });
       jaLeuRef.current = false;
       setProcessando(false);

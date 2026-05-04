@@ -37,6 +37,37 @@ export async function obterApiBaseUrlPorParametro({ id_grupo_empresa, id_empresa
   return String(dados?.[0]?.api_base_url || "").trim();
 }
 
+export async function obterPoliticaAtualizacaoMobilePorPlataforma({ plataforma }) {
+  const plataformaNormalizada = String(plataforma || "android").trim().toLowerCase();
+
+  const ssql = `
+    SELECT plataforma, min_build, store_url, mensagem
+      FROM (
+        SELECT
+          LOWER(TRIM(PLATAFORMA)) AS plataforma,
+          MIN_BUILD,
+          STORE_URL,
+          MENSAGEM,
+          CASE
+            WHEN LOWER(TRIM(PLATAFORMA)) = :plataforma THEN 0
+            WHEN LOWER(TRIM(PLATAFORMA)) = 'all' THEN 1
+            ELSE 2
+          END AS ordem
+          FROM BSTAB_MOBILE_UPDATE_CONFIG
+         WHERE UPPER(TRIM(ATIVO)) = 'S'
+           AND LOWER(TRIM(PLATAFORMA)) IN (:plataforma, 'all')
+         ORDER BY ordem
+      )
+     WHERE ROWNUM = 1
+  `;
+
+  const dados = await executeQuery(ssql, {
+    plataforma: plataformaNormalizada,
+  });
+
+  return dados?.[0] || null;
+}
+
 export async function gerarAtivacaoMobile({
   id_empresa,
   razaosocial,
@@ -49,17 +80,16 @@ export async function gerarAtivacaoMobile({
   const token_bruto = gerarTokenBruto();
   const token_hash = hashToken(token_bruto);
   const minutos = Number(validade_minutos || 10);
-  let ativacoesAtivasParaDesativar = [];
+  let idAtivacaoPrincipal = null;
 
   if (id_usuario_destino) {
-    // Captura ativações em uso para enviar comando remoto antes de deletar.
-    ativacoesAtivasParaDesativar = await executeQuery(
+    const ativacoesExistentes = await executeQuery(
       `
         SELECT ID_ATIVACAO
           FROM BSTAB_MOBILE_ATIVACAO
          WHERE ID_EMPRESA = :id_empresa
            AND ID_USUARIO_DESTINO = :id_usuario_destino
-           AND TRIM(UPPER(STATUS)) = 'U'
+         ORDER BY ID_ATIVACAO DESC
       `,
       {
         id_empresa: String(id_empresa || ""),
@@ -67,118 +97,113 @@ export async function gerarAtivacaoMobile({
       }
     );
 
-    // Remove todos os comandos pendentes das ativações antigas (FK: CMD → ATIVACAO).
-    await executeQuery(
-      `
-        DELETE FROM BSTAB_MOBILE_ATIVACAO_CMD
-         WHERE ID_ATIVACAO IN (
-           SELECT ID_ATIVACAO
-             FROM BSTAB_MOBILE_ATIVACAO
-            WHERE ID_EMPRESA = :id_empresa
-              AND ID_USUARIO_DESTINO = :id_usuario_destino
-         )
-      `,
-      {
-        id_empresa: String(id_empresa || ""),
-        id_usuario_destino: Number(id_usuario_destino),
-      },
-      true
-    );
+    idAtivacaoPrincipal = Number(ativacoesExistentes?.[0]?.id_ativacao || 0) || null;
+    const idsDuplicados = ativacoesExistentes
+      .slice(1)
+      .map((item) => Number(item?.id_ativacao || 0))
+      .filter((id) => Number.isFinite(id) && id > 0);
 
-    // Deleta todos os registros anteriores do usuário (garante que só haverá uma ativação).
-    await executeQuery(
-      `
-        DELETE FROM BSTAB_MOBILE_ATIVACAO
-         WHERE ID_EMPRESA = :id_empresa
-           AND ID_USUARIO_DESTINO = :id_usuario_destino
-      `,
-      {
-        id_empresa: String(id_empresa || ""),
-        id_usuario_destino: Number(id_usuario_destino),
-      },
-      true
-    );
-  }
-
-  const ssql = `
-    INSERT INTO BSTAB_MOBILE_ATIVACAO (
-      ID_ATIVACAO,
-      ID_EMPRESA,
-      RAZAOSOCIAL,
-      ID_USUARIO_CRIACAO,
-      ID_USUARIO_DESTINO,
-      API_BASE_URL,
-      CODIGO_ATIVACAO,
-      TOKEN_HASH,
-      STATUS,
-      DT_CRIACAO,
-      DT_EXPIRACAO
-    ) VALUES (
-      SEQ_BSTAB_MOBILE_ATIVACAO.NEXTVAL,
-      :id_empresa,
-      :razaosocial,
-      :id_usuario,
-      :id_usuario_destino,
-      :api_base_url,
-      :codigo_ativacao,
-      :token_hash,
-      'P',
-      SYSDATE,
-      SYSDATE + (:minutos / 1440)
-    )
-  `;
-
-  await executeQuery(ssql, {
-    id_empresa: String(id_empresa || ""),
-    razaosocial: String(razaosocial || ""),
-    id_usuario: Number(id_usuario || 0),
-    id_usuario_destino: id_usuario_destino ? Number(id_usuario_destino) : null,
-    api_base_url: String(api_base_url || ""),
-    codigo_ativacao,
-    token_hash,
-    minutos,
-  }, true);
-
-  if (Array.isArray(ativacoesAtivasParaDesativar) && ativacoesAtivasParaDesativar.length > 0) {
-    for (const ativacao of ativacoesAtivasParaDesativar) {
-      const idAtivacaoAntiga = Number(ativacao?.id_ativacao || 0);
-      if (!idAtivacaoAntiga) continue;
-
-      const nextId = await executeQuery(
-        `SELECT SEQ_BSTAB_MOBILE_ATIVACAO_CMD.NEXTVAL AS ID_COMANDO FROM DUAL`
-      );
-      const id_comando = Number(nextId?.[0]?.id_comando || 0);
-      if (!id_comando) continue;
-
+    if (idAtivacaoPrincipal) {
       await executeQuery(
         `
-          INSERT INTO BSTAB_MOBILE_ATIVACAO_CMD (
-            ID_COMANDO,
-            ID_ATIVACAO,
-            TIPO_COMANDO,
-            PAYLOAD_JSON,
-            STATUS,
-            DT_CRIACAO,
-            ID_USUARIO_CRIACAO
-          ) VALUES (
-            :id_comando,
-            :id_ativacao,
-            'redefinir_ativacao',
-            :payload_json,
-            'P',
-            SYSDATE,
-            :id_usuario_criacao
-          )
+          DELETE FROM BSTAB_MOBILE_ATIVACAO_CMD
+           WHERE ID_ATIVACAO = :id_ativacao
         `,
-        {
-          id_comando,
-          id_ativacao: idAtivacaoAntiga,
-          payload_json: JSON.stringify({ motivo: "nova_ativacao_gerada" }),
-          id_usuario_criacao: id_usuario != null ? Number(id_usuario) : null,
-        },
+        { id_ativacao: idAtivacaoPrincipal },
         true
       );
     }
+
+    for (const idDuplicado of idsDuplicados) {
+      await executeQuery(
+        `
+          DELETE FROM BSTAB_MOBILE_ATIVACAO_CMD
+           WHERE ID_ATIVACAO = :id_ativacao
+        `,
+        { id_ativacao: idDuplicado },
+        true
+      );
+
+      await executeQuery(
+        `
+          DELETE FROM BSTAB_MOBILE_ATIVACAO
+           WHERE ID_ATIVACAO = :id_ativacao
+        `,
+        { id_ativacao: idDuplicado },
+        true
+      );
+    }
+  }
+
+  if (idAtivacaoPrincipal) {
+    await executeQuery(
+      `
+        UPDATE BSTAB_MOBILE_ATIVACAO
+           SET ID_USUARIO_CRIACAO = :id_usuario,
+               API_BASE_URL = :api_base_url,
+               CODIGO_ATIVACAO = :codigo_ativacao,
+               TOKEN_HASH = :token_hash,
+               STATUS = 'P',
+               DT_CRIACAO = SYSDATE,
+               DT_EXPIRACAO = SYSDATE + (:minutos / 1440),
+               DT_UTILIZACAO = NULL,
+               DT_ALTERACAO = SYSDATE,
+               ID_USUARIO_ALTERACAO = :id_usuario,
+               ID_USUARIO_ATIVACAO = NULL,
+               DISPOSITIVO = NULL,
+               DISPOSITIVO_INFO_JSON = NULL,
+               IP_UTILIZACAO = NULL
+         WHERE ID_ATIVACAO = :id_ativacao
+      `,
+      {
+        id_ativacao: idAtivacaoPrincipal,
+        id_usuario: Number(id_usuario || 0),
+        api_base_url: String(api_base_url || ""),
+        codigo_ativacao,
+        token_hash,
+        minutos,
+      },
+      true
+    );
+  } else {
+    const ssql = `
+      INSERT INTO BSTAB_MOBILE_ATIVACAO (
+        ID_ATIVACAO,
+        ID_EMPRESA,
+        RAZAOSOCIAL,
+        ID_USUARIO_CRIACAO,
+        ID_USUARIO_DESTINO,
+        API_BASE_URL,
+        CODIGO_ATIVACAO,
+        TOKEN_HASH,
+        STATUS,
+        DT_CRIACAO,
+        DT_EXPIRACAO
+      ) VALUES (
+        SEQ_BSTAB_MOBILE_ATIVACAO.NEXTVAL,
+        :id_empresa,
+        :razaosocial,
+        :id_usuario,
+        :id_usuario_destino,
+        :api_base_url,
+        :codigo_ativacao,
+        :token_hash,
+        'P',
+        SYSDATE,
+        SYSDATE + (:minutos / 1440)
+      )
+    `;
+
+    await executeQuery(ssql, {
+      id_empresa: String(id_empresa || ""),
+      razaosocial: String(razaosocial || ""),
+      id_usuario: Number(id_usuario || 0),
+      id_usuario_destino: id_usuario_destino ? Number(id_usuario_destino) : null,
+      api_base_url: String(api_base_url || ""),
+      codigo_ativacao,
+      token_hash,
+      minutos,
+    }, true);
   }
 
   return {
@@ -197,7 +222,7 @@ export async function listarAtivacoesMobile({ id_empresa }) {
       A.ID_USUARIO_CRIACAO,
       A.ID_USUARIO_DESTINO,
       A.ID_USUARIO_ATIVACAO,
-      UA.NOME AS NOME_USUARIO_ATIVACAO,
+      COALESCE(UD.NOME, UA.NOME) AS NOME_USUARIO_ATIVACAO,
       A.API_BASE_URL,
       A.CODIGO_ATIVACAO,
       A.STATUS,
@@ -208,6 +233,8 @@ export async function listarAtivacoesMobile({ id_empresa }) {
       A.DISPOSITIVO_INFO_JSON,
       A.IP_UTILIZACAO
     FROM BSTAB_MOBILE_ATIVACAO A
+    LEFT JOIN BSTAB_USUSARIOS UD
+      ON UD.ID_USUARIO = A.ID_USUARIO_DESTINO
     LEFT JOIN BSTAB_USUSARIOS UA
       ON UA.ID_USUARIO = A.ID_USUARIO_ATIVACAO
     WHERE (:id_empresa IS NULL OR A.ID_EMPRESA = :id_empresa)
@@ -220,13 +247,29 @@ export async function listarAtivacoesMobile({ id_empresa }) {
 }
 
 export async function revogarAtivacaoMobile({ id_ativacao, id_usuario }) {
+  await executeQuery(
+    `
+      DELETE FROM BSTAB_MOBILE_ATIVACAO_CMD
+       WHERE ID_ATIVACAO = TO_NUMBER(:id_ativacao)
+    `,
+    {
+      id_ativacao: String(id_ativacao || "0"),
+    },
+    true
+  );
+
   const ssql = `
     UPDATE BSTAB_MOBILE_ATIVACAO
        SET STATUS = 'R',
            DT_ALTERACAO = SYSDATE,
-           ID_USUARIO_ALTERACAO = :id_usuario
+           ID_USUARIO_ALTERACAO = :id_usuario,
+           DT_UTILIZACAO = NULL,
+           ID_USUARIO_ATIVACAO = NULL,
+           DISPOSITIVO = NULL,
+           DISPOSITIVO_INFO_JSON = NULL,
+           IP_UTILIZACAO = NULL
      WHERE ID_ATIVACAO = TO_NUMBER(:id_ativacao)
-       AND TRIM(UPPER(STATUS)) = 'P'
+       AND TRIM(UPPER(STATUS)) IN ('P', 'U')
   `;
 
   const result = await executeQuery(ssql, {
@@ -309,6 +352,30 @@ export async function redefinirAtivacaoMobile({ id_ativacao, id_usuario }) {
     rowsAffected,
     statusAtual: consulta?.[0]?.status || null,
     dtAlteracao: consulta?.[0]?.dt_alteracao || null,
+  };
+}
+
+export async function excluirAtivacaoMobile({ id_ativacao }) {
+  await executeQuery(
+    `
+      DELETE FROM BSTAB_MOBILE_ATIVACAO_CMD
+       WHERE ID_ATIVACAO = TO_NUMBER(:id_ativacao)
+    `,
+    { id_ativacao: String(id_ativacao || "0") },
+    true
+  );
+
+  const result = await executeQuery(
+    `
+      DELETE FROM BSTAB_MOBILE_ATIVACAO
+       WHERE ID_ATIVACAO = TO_NUMBER(:id_ativacao)
+    `,
+    { id_ativacao: String(id_ativacao || "0") },
+    true
+  );
+
+  return {
+    rowsAffected: Number(result?.rowsAffected || 0),
   };
 }
 

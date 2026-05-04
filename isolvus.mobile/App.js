@@ -12,12 +12,48 @@ import * as Application from "expo-application";
 import { Camera } from "expo-camera";
 import * as Notifications from "expo-notifications";
 import { Audio } from "expo-av";
+import * as TaskManager from "expo-task-manager";
 import LoginScreen from "./src/screens/LoginScreen";
 import HomeScreen from "./src/screens/HomeScreen";
 import AtivacaoScreen from "./src/screens/AtivacaoScreen";
 import { AlertProvider } from "./src/components/CustomAlert/AlertProvider";
 import api, { setBaseUrl } from "./src/services/api";
 import screenMirrorService from "./src/services/screenMirrorService";
+
+// Nome da task de localização em background (deve ser definida fora de qualquer componente)
+const LOCATION_BG_TASK = "isolvus-location-bg";
+const STORAGE_USO_TOTAL_MS = "monitoramento_uso_total_ms";
+
+// Task executada pelo OS mesmo com o app fechado ou após reboot do dispositivo
+TaskManager.defineTask(LOCATION_BG_TASK, async ({ data, error }) => {
+  if (error) return;
+  const posicao = data?.locations?.[0];
+  if (!posicao) return;
+  try {
+    const locationInfo = {
+      latitude: posicao.coords.latitude,
+      longitude: posicao.coords.longitude,
+      accuracy_meters: posicao.coords.accuracy ?? null,
+      captured_at: new Date(posicao.timestamp).toISOString(),
+      source: "background_task",
+    };
+    // Salva localmente — heartbeat usa ao abrir o app
+    await AsyncStorage.setItem("last_known_location", JSON.stringify(locationInfo));
+    // Envia para a API imediatamente, sem esperar o heartbeat
+    const [[, ativacaoId], [, baseUrl]] = await AsyncStorage.multiGet(["ativacao_id", "api_base_url"]);
+    if (ativacaoId && baseUrl) {
+      setBaseUrl(baseUrl);
+      await api.post(`/v1/mobile/ativacao/${ativacaoId}/monitorar`, {
+        dispositivo: "background",
+        dispositivo_info: {
+          captured_at: locationInfo.captured_at,
+          source: "background_task",
+          location: { ...locationInfo, permission: "granted" },
+        },
+      }).catch(() => {});
+    }
+  } catch {}
+});
 
 function mapBatteryState(state) {
   if (state === Battery.BatteryState.CHARGING) return "charging";
@@ -318,13 +354,18 @@ class ErrorBoundary extends React.Component {
 }
 
 // Payload enxuto — enviado a cada heartbeat (bateria + localização + rede + timestamp)
-async function montarPayloadHeartbeat() {
+async function montarPayloadHeartbeat(locationCached = null, usageStats = null) {
   const getIpPromise = typeof Network.getIpAddressAsync === "function"
     ? Network.getIpAddressAsync().catch(() => null)
     : Promise.resolve(null);
 
-  const [ipLocalRaw, networkState, batteryLevel, batteryState, lowPowerMode] = await Promise.all([
+  const getMacPromise = typeof Network.getMacAddressAsync === "function"
+    ? Network.getMacAddressAsync().catch(() => null)
+    : Promise.resolve(null);
+
+  const [ipLocalRaw, macRaw, networkState, batteryLevel, batteryState, lowPowerMode] = await Promise.all([
     getIpPromise,
+    getMacPromise,
     Network.getNetworkStateAsync().catch(() => null),
     Battery.getBatteryLevelAsync().catch(() => null),
     Battery.getBatteryStateAsync().catch(() => null),
@@ -338,16 +379,20 @@ async function montarPayloadHeartbeat() {
     locationInfo.permission = permissao.status;
 
     if (permissao.status === "granted") {
-      const posicao = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      locationInfo = {
-        permission: permissao.status,
-        latitude: posicao?.coords?.latitude ?? null,
-        longitude: posicao?.coords?.longitude ?? null,
-        accuracy_meters: posicao?.coords?.accuracy ?? null,
-        captured_at: posicao?.timestamp ? new Date(posicao.timestamp).toISOString() : null,
-      };
+      if (locationCached && locationCached.latitude != null) {
+        locationInfo = { ...locationCached, permission: permissao.status };
+      } else {
+        const posicao = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        locationInfo = {
+          permission: permissao.status,
+          latitude: posicao?.coords?.latitude ?? null,
+          longitude: posicao?.coords?.longitude ?? null,
+          accuracy_meters: posicao?.coords?.accuracy ?? null,
+          captured_at: posicao?.timestamp ? new Date(posicao.timestamp).toISOString() : null,
+        };
+      }
     }
   } catch {
     locationInfo = { permission: "error", latitude: null, longitude: null };
@@ -377,7 +422,9 @@ async function montarPayloadHeartbeat() {
     dispositivo_info: {
       captured_at: new Date().toISOString(),
       source: "heartbeat",
+      usage: usageStats,
       network: {
+        mac_address: macRaw ? String(macRaw).trim().toUpperCase() : null,
         ip_local: ipLocalRaw ? String(ipLocalRaw) : null,
         type: networkState?.type || null,
         is_connected: Boolean(networkState?.isConnected),
@@ -396,6 +443,7 @@ async function montarPayloadHeartbeat() {
       app: {
         version: Application.nativeApplicationVersion || null,
         build: Application.nativeBuildVersion || null,
+        platform: Platform.OS,
         state: AppState.currentState,
       },
       security: {
@@ -404,6 +452,9 @@ async function montarPayloadHeartbeat() {
       hardware: {
         total_memory_bytes: Device.totalMemory ?? null,
         cpu_architectures: Device.supportedCpuArchitectures ?? null,
+        device_id: Platform.OS === "android"
+          ? (Application.androidId || null)
+          : await Application.getIosIdForVendorAsync().catch(() => null),
       },
       permissoes,
     },
@@ -525,17 +576,107 @@ function PermissoesNecessariasScreen({ onVerificar, statuses = {} }) {
   );
 }
 
+function AtualizacaoObrigatoriaScreen({ dados, onVerificar }) {
+  const plataforma = dados?.plataforma === "ios" ? "App Store" : "Play Store";
+  const urlPadraoLoja = dados?.plataforma === "ios"
+    ? "https://apps.apple.com/"
+    : "https://play.google.com/store/apps";
+
+  return (
+    <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 28, backgroundColor: "#050d1a" }}>
+      <View style={{ alignItems: "center", marginBottom: 28 }}>
+        <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: "#1e2d4a", justifyContent: "center", alignItems: "center", marginBottom: 16 }}>
+          <Text style={{ fontSize: 26 }}>⬆️</Text>
+        </View>
+        <Text style={{ fontSize: 22, fontWeight: "700", color: "#f1f5f9", textAlign: "center", marginBottom: 10 }}>
+          Atualizacao obrigatoria
+        </Text>
+        <Text style={{ fontSize: 13, color: "#94a3b8", textAlign: "center", lineHeight: 21 }}>
+          {dados?.mensagem || "Uma nova versao do aplicativo e obrigatoria para continuar o uso."}
+        </Text>
+      </View>
+
+      <View style={{ backgroundColor: "#0c1526", borderRadius: 12, padding: 14, marginBottom: 22, borderWidth: 1, borderColor: "#1e293b" }}>
+        <Text style={{ color: "#cbd5e1", fontSize: 13, marginBottom: 6 }}>
+          Versao atual (build): <Text style={{ fontWeight: "700" }}>{dados?.build_atual ?? "-"}</Text>
+        </Text>
+        <Text style={{ color: "#cbd5e1", fontSize: 13 }}>
+          Build minimo exigido: <Text style={{ fontWeight: "700" }}>{dados?.min_build ?? "-"}</Text>
+        </Text>
+      </View>
+
+      <Pressable
+        style={{ backgroundColor: "#3f6cf6", borderRadius: 8, paddingVertical: 14, alignItems: "center", marginBottom: 10 }}
+        onPress={() => {
+          const urlDestino = String(dados?.store_url || urlPadraoLoja);
+          Linking.openURL(urlDestino).catch(() => {
+            Alert.alert("Falha ao abrir loja", `Nao foi possivel abrir a ${plataforma}.`);
+          });
+        }}
+      >
+        <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Atualizar agora</Text>
+      </Pressable>
+
+      <Pressable
+        style={{ borderWidth: 1, borderColor: "#334155", borderRadius: 8, paddingVertical: 12, alignItems: "center" }}
+        onPress={onVerificar}
+      >
+        <Text style={{ color: "#94a3b8", fontWeight: "600", fontSize: 14 }}>Ja atualizei - Verificar novamente</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 export default function App() {
   const [usuarioLogado, setUsuarioLogado] = useState(null);
   // null = carregando, false = sem URL (precisa ativar), string = URL ok
   const [apiBaseUrl, setApiBaseUrl] = useState(null);
+  // null = validando vínculo, true = vínculo confirmado, false = sem vínculo
+  const [vinculoConfirmado, setVinculoConfirmado] = useState(null);
   // null = verificando, true = ok, false = bloqueado
   const [permissoesOk, setPermissoesOk] = useState(null);
   const [permissoesStatuses, setPermissoesStatuses] = useState({});
+  const [atualizacaoObrigatoria, setAtualizacaoObrigatoria] = useState(null);
   const [espelhamentoAtivo, setEspelhamentoAtivo] = useState(false);
   const appStateRef = useRef(AppState.currentState);
   const comandosProcessadosRef = useRef(new Set());
   const viewShotRef = useRef(null);
+  const locationCacheRef = useRef(null);
+  const locationWatcherRef = useRef(null);
+  const usoSessaoMsRef = useRef(0);
+  const usoTotalMsRef = useRef(0);
+  const usoAtivoDesdeRef = useRef(AppState.currentState === "active" ? Date.now() : null);
+
+  const iniciarUsoAtivo = useCallback(() => {
+    if (usoAtivoDesdeRef.current == null) {
+      usoAtivoDesdeRef.current = Date.now();
+    }
+  }, []);
+
+  const consolidarUsoAtivo = useCallback(async () => {
+    if (usoAtivoDesdeRef.current == null) return;
+    const deltaMs = Math.max(0, Date.now() - usoAtivoDesdeRef.current);
+    usoAtivoDesdeRef.current = null;
+    if (deltaMs <= 0) return;
+    usoSessaoMsRef.current += deltaMs;
+    usoTotalMsRef.current += deltaMs;
+    await AsyncStorage.setItem(STORAGE_USO_TOTAL_MS, String(usoTotalMsRef.current)).catch(() => {});
+  }, []);
+
+  const obterResumoUso = useCallback(() => {
+    const emAndamentoMs = usoAtivoDesdeRef.current != null
+      ? Math.max(0, Date.now() - usoAtivoDesdeRef.current)
+      : 0;
+    const sessaoMs = usoSessaoMsRef.current + emAndamentoMs;
+    const totalMs = usoTotalMsRef.current + emAndamentoMs;
+    return {
+      active_now: usoAtivoDesdeRef.current != null,
+      session_ms: sessaoMs,
+      session_seconds: Math.floor(sessaoMs / 1000),
+      total_ms: totalMs,
+      total_seconds: Math.floor(totalMs / 1000),
+    };
+  }, []);
 
   useEffect(() => {
     async function inicializarPermissoes() {
@@ -548,9 +689,88 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    AsyncStorage.getItem(STORAGE_USO_TOTAL_MS)
+      .then((valor) => {
+        const n = Number(valor || 0);
+        usoTotalMsRef.current = Number.isFinite(n) && n > 0 ? n : 0;
+      })
+      .catch(() => {});
+  }, []);
+
+  // Carrega última posição conhecida (salva pela task de background) ao iniciar
+  useEffect(() => {
+    AsyncStorage.getItem("last_known_location").then((json) => {
+      if (json) {
+        try { locationCacheRef.current = JSON.parse(json); } catch {}
+      }
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    async function iniciarWatcherLocalizacao() {
+      try {
+        const perm = await Location.getForegroundPermissionsAsync();
+        if (perm.status !== "granted") return;
+
+        // watchPositionAsync: atualiza cache em tempo real quando app está aberto
+        locationWatcherRef.current = await Location.watchPositionAsync(
+          { accuracy: Location.Accuracy.Balanced, distanceInterval: 10 },
+          (posicao) => {
+            const loc = {
+              latitude: posicao?.coords?.latitude ?? null,
+              longitude: posicao?.coords?.longitude ?? null,
+              accuracy_meters: posicao?.coords?.accuracy ?? null,
+              captured_at: posicao?.timestamp ? new Date(posicao.timestamp).toISOString() : null,
+            };
+            locationCacheRef.current = loc;
+            // Persiste também para background
+            AsyncStorage.setItem("last_known_location", JSON.stringify(loc)).catch(() => {});
+          }
+        );
+
+        // startLocationUpdatesAsync: continua rodando com app fechado e após reboot
+        const bgPerm = await Location.getBackgroundPermissionsAsync();
+        if (bgPerm.status === "granted") {
+          const jaAtiva = await Location.hasStartedLocationUpdatesAsync(LOCATION_BG_TASK).catch(() => false);
+          if (!jaAtiva) {
+            await Location.startLocationUpdatesAsync(LOCATION_BG_TASK, {
+              accuracy: Location.Accuracy.Balanced,
+              distanceInterval: 50,
+              timeInterval: 60000,
+              foregroundService: {
+                notificationTitle: "ISOLVUS Monitoramento",
+                notificationBody: "Monitorando localização do dispositivo.",
+                notificationColor: "#3f6cf6",
+              },
+              pausesUpdatesAutomatically: false,
+            });
+          }
+        }
+      } catch {}
+    }
+
+    if (permissoesOk) iniciarWatcherLocalizacao();
+
+    return () => {
+      locationWatcherRef.current?.remove();
+      locationWatcherRef.current = null;
+      // Não para a task de background no cleanup — ela precisa continuar rodando
+    };
+  }, [permissoesOk]);
+
+  useEffect(() => {
     const sub = AppState.addEventListener("change", async (nextState) => {
       const anterior = appStateRef.current;
       appStateRef.current = nextState;
+
+      if (anterior === "active" && nextState !== "active") {
+        await consolidarUsoAtivo();
+      }
+
+      if (nextState === "active" && anterior !== "active") {
+        iniciarUsoAtivo();
+      }
+
       // Re-verifica permissões ao retornar de Configurações
       if (nextState === "active" && anterior !== "active") {
         const { ok, statuses } = await checarPermissoesCriticas();
@@ -559,7 +779,13 @@ export default function App() {
       }
     });
     return () => sub.remove();
-  }, []);
+  }, [consolidarUsoAtivo, iniciarUsoAtivo]);
+
+  useEffect(() => {
+    return () => {
+      consolidarUsoAtivo();
+    };
+  }, [consolidarUsoAtivo]);
 
   // Registrar erro global não capturado
   useEffect(() => {
@@ -607,39 +833,63 @@ export default function App() {
       "usuario_vinculado_login",
       "usuario_vinculado_nome",
     ]);
+    // Para a task de background ao desativar o dispositivo
+    await Location.hasStartedLocationUpdatesAsync(LOCATION_BG_TASK)
+      .then((ativa) => ativa ? Location.stopLocationUpdatesAsync(LOCATION_BG_TASK) : null)
+      .catch(() => {});
+    await AsyncStorage.removeItem("last_known_location").catch(() => {});
     comandosProcessadosRef.current.clear();
     setEspelhamentoAtivo(false);
     setUsuarioLogado(null);
     setApiBaseUrl(false);
+    setVinculoConfirmado(false);
   }, []);
 
-  const handleRedefinir = useCallback(async () => {
-    try {
-      const [[, ativacaoId], [, idUsuarioStorage]] = await AsyncStorage.multiGet([
-        "ativacao_id",
-        "id_usuario",
-      ]);
-
-      const idUsuarioAtual = Number(usuarioLogado?.id_usuario || idUsuarioStorage || 0) || null;
-
-      if (ativacaoId) {
-        // Caso principal: temos o ID da ativação salvo
-        await api.post(`/v1/mobile/ativacao/${ativacaoId}/redefinir`, {
-          id_usuario: idUsuarioAtual,
-        });
-      } else if (idUsuarioAtual) {
-        // Fallback: não temos o ID salvo (device ativado antes do recurso), usa endpoint por usuário
-        await api.post("/v1/mobile/ativacao/redefinir-por-usuario", {
-          id_usuario: idUsuarioAtual,
-        });
-      }
-    } catch (error) {
-      // Mesmo com falha de rede/API, ainda permite reset local.
-      console.log("Falha ao redefinir ativação:", error?.message || error);
+  const validarVinculoNaApi = useCallback(async () => {
+    if (!apiBaseUrl) {
+      setVinculoConfirmado(false);
+      return;
     }
 
-    await limparAtivacaoLocal();
-  }, [usuarioLogado, limparAtivacaoLocal]);
+    setVinculoConfirmado(null);
+
+    try {
+      const ativacaoId = await AsyncStorage.getItem("ativacao_id");
+
+      // Sem id de ativacao local nao pode usar o app.
+      if (!ativacaoId) {
+        await limparAtivacaoLocal();
+        return;
+      }
+
+      const payload = await montarPayloadHeartbeat(locationCacheRef.current, obterResumoUso());
+      const resposta = await api.post(`/v1/mobile/ativacao/${ativacaoId}/monitorar`, payload);
+      const atualizacao = resposta?.data?.atualizacao || null;
+
+      setAtualizacaoObrigatoria(atualizacao?.obrigatoria ? atualizacao : null);
+      setVinculoConfirmado(true);
+    } catch (error) {
+      const status = Number(error?.response?.status || 0);
+
+      // Sem vinculo ativo no backend: bloqueia e volta para ativacao.
+      if (status === 404 || status === 409) {
+        await limparAtivacaoLocal();
+        return;
+      }
+
+      // Em falha de rede/API, nao derruba sessao automaticamente.
+      setVinculoConfirmado(true);
+    }
+  }, [apiBaseUrl, limparAtivacaoLocal, obterResumoUso]);
+
+  useEffect(() => {
+    if (!apiBaseUrl) {
+      if (apiBaseUrl === false) setVinculoConfirmado(false);
+      return;
+    }
+
+    validarVinculoNaApi();
+  }, [apiBaseUrl, validarVinculoNaApi]);
 
   useEffect(() => {
     let intervalHeartbeat;
@@ -651,10 +901,18 @@ export default function App() {
         const ativacaoId = await AsyncStorage.getItem("ativacao_id");
         if (!ativacaoId || !apiBaseUrl) return;
 
-        const payload = await montarPayloadHeartbeat();
+        const payload = await montarPayloadHeartbeat(locationCacheRef.current, obterResumoUso());
         const resposta = await api.post(`/v1/mobile/ativacao/${ativacaoId}/monitorar`, payload);
         const info = payload.dispositivo_info;
         const comando = resposta?.data?.comando || null;
+        const atualizacao = resposta?.data?.atualizacao || null;
+
+        if (atualizacao?.obrigatoria) {
+          setAtualizacaoObrigatoria(atualizacao);
+          return;
+        }
+
+        setAtualizacaoObrigatoria(null);
 
         if (comando?.id_comando && !comandosProcessadosRef.current.has(comando.id_comando)) {
           comandosProcessadosRef.current.add(comando.id_comando);
@@ -699,6 +957,7 @@ export default function App() {
               build: info.app.build,
               estado: info.app.state,
             },
+            uso: info.usage ?? null,
             seguranca: {
               rooted: info.security.is_rooted,
             },
@@ -714,7 +973,7 @@ export default function App() {
       } catch (error) {
         console.log(`[HEARTBEAT ERRO ${new Date().toLocaleTimeString("pt-BR")}]`, error?.message || error);
         // Se a ativação foi deletada no servidor, resetar o app para a tela de QR.
-        if (error?.response?.status === 404) {
+        if (error?.response?.status === 404 || error?.response?.status === 409) {
           console.log("[HEARTBEAT] Ativação não encontrada no servidor. Resetando dispositivo.");
           await limparAtivacaoLocal();
         }
@@ -737,7 +996,7 @@ export default function App() {
       }
     }
 
-    if (apiBaseUrl) {
+    if (apiBaseUrl && vinculoConfirmado === true) {
       enviarHeartbeat("inicio");
       intervalHeartbeat = setInterval(() => enviarHeartbeat("intervalo"), 10000);
       // Verifica bateria a cada 10s para detectar mudança de 1%
@@ -748,10 +1007,13 @@ export default function App() {
       if (intervalHeartbeat) clearInterval(intervalHeartbeat);
       if (intervalBateria) clearInterval(intervalBateria);
     };
-  }, [apiBaseUrl]);
+  }, [apiBaseUrl, vinculoConfirmado, limparAtivacaoLocal, obterResumoUso]);
 
   // Ainda carregando AsyncStorage ou verificando permissões
   if (apiBaseUrl === null || permissoesOk === null) return null;
+
+  // Com API ativa, so libera o uso apos validar vinculo no backend.
+  if (apiBaseUrl && vinculoConfirmado === null) return null;
 
   // Permissões críticas negadas — bloqueia até que sejam concedidas
   if (!permissoesOk) {
@@ -763,6 +1025,29 @@ export default function App() {
             const { ok, statuses } = await checarPermissoesCriticas();
             setPermissoesStatuses(statuses);
             setPermissoesOk(ok);
+          }}
+        />
+      </SafeAreaProvider>
+    );
+  }
+
+  if (atualizacaoObrigatoria?.obrigatoria) {
+    return (
+      <SafeAreaProvider>
+        <AtualizacaoObrigatoriaScreen
+          dados={atualizacaoObrigatoria}
+          onVerificar={async () => {
+            try {
+              const ativacaoId = await AsyncStorage.getItem("ativacao_id");
+              if (!ativacaoId || !apiBaseUrl) return;
+
+              const payload = await montarPayloadHeartbeat(locationCacheRef.current, obterResumoUso());
+              const resposta = await api.post(`/v1/mobile/ativacao/${ativacaoId}/monitorar`, payload);
+              const atualizacao = resposta?.data?.atualizacao || null;
+              setAtualizacaoObrigatoria(atualizacao?.obrigatoria ? atualizacao : null);
+            } catch {
+              // Mantem bloqueado em caso de falha de rede
+            }
           }}
         />
       </SafeAreaProvider>
@@ -785,7 +1070,6 @@ export default function App() {
               <HomeScreen
                 user={usuarioLogado}
                 onLogout={handleLogout}
-                onRedefinir={handleRedefinir}
                 espelhandoTela={espelhamentoAtivo}
               />
             ) : (

@@ -1,14 +1,15 @@
 import {
   atualizarStatusComandoAtivacaoMobile,
   enfileirarComandoAtivacaoMobile,
+  excluirAtivacaoMobile,
   gerarAtivacaoMobile,
   listarAtivacoesMobile,
+  obterPoliticaAtualizacaoMobilePorPlataforma,
   obterProximoComandoPendenteAtivacaoMobile,
   obterApiBaseUrlPorParametro,
   registrarMonitoramentoAtivacaoMobile,
   redefinirAtivacaoMobile,
   redefinirAtivacaoMobilePorUsuario,
-  revogarAtivacaoMobile,
   validarAtivacaoPorCodigo,
   validarAtivacaoMobile,
 } from "../models/mobileAtivacaoModel.js";
@@ -17,6 +18,54 @@ function obterBaseUrl(req) {
   const header = req.headers["x-forwarded-proto"];
   const protocolo = (header ? String(header).split(",")[0] : req.protocol) || "http";
   return `${protocolo}://${req.get("host")}`;
+}
+
+function toBuildNumber(valor) {
+  if (valor == null) return null;
+  const apenasDigitos = String(valor).replace(/\D/g, "");
+  if (!apenasDigitos) return null;
+  const numero = Number(apenasDigitos);
+  return Number.isFinite(numero) ? numero : null;
+}
+
+async function avaliarPoliticaAtualizacaoObrigatoria(dispositivo_info) {
+  const plataforma = String(dispositivo_info?.plataforma || dispositivo_info?.app?.platform || "").toLowerCase();
+  const plataformaAtual = plataforma || "android";
+  const buildAtual = toBuildNumber(dispositivo_info?.app?.build);
+
+  const politica = await obterPoliticaAtualizacaoMobilePorPlataforma({
+    plataforma: plataformaAtual,
+  }).catch(() => null);
+
+  const minBuild = toBuildNumber(politica?.min_build);
+  const storeUrl = politica?.store_url || null;
+
+  const mensagemPadrao = "Uma nova versao obrigatoria do aplicativo esta disponivel. Atualize para continuar.";
+  const mensagem = String(politica?.mensagem || mensagemPadrao).trim();
+
+  if (!minBuild || !buildAtual) {
+    return {
+      obrigatoria: false,
+      motivo: null,
+      plataforma: plataformaAtual,
+      build_atual: buildAtual,
+      min_build: minBuild,
+      store_url: storeUrl,
+      mensagem,
+    };
+  }
+
+  const obrigatoria = buildAtual < minBuild;
+
+  return {
+    obrigatoria,
+    motivo: obrigatoria ? "build_abaixo_minimo" : null,
+    plataforma: plataformaAtual,
+    build_atual: buildAtual,
+    min_build: minBuild,
+    store_url: storeUrl,
+    mensagem,
+  };
 }
 
 export async function GerarAtivacao(req, res) {
@@ -87,105 +136,6 @@ export async function ListarAtivacao(req, res) {
   }
 }
 
-export async function RevogarAtivacao(req, res) {
-  try {
-    const { id_ativacao, id_usuario } = req.body || {};
-
-    if (!id_ativacao) {
-      return res.status(400).json({ error: "id_ativacao é obrigatório." });
-    }
-
-    const resultado = await revogarAtivacaoMobile({ id_ativacao, id_usuario: id_usuario || null });
-
-    // Log temporario para auditoria de revogacao no ambiente.
-    console.log("[mobile-ativacao:revogar]", {
-      id_ativacao: Number(id_ativacao || 0),
-      id_usuario: id_usuario || null,
-      rowsAffected: resultado.rowsAffected,
-      statusAtual: resultado.statusAtual,
-      dtAlteracao: resultado.dtAlteracao,
-      ip: req.ip,
-      ts: new Date().toISOString(),
-    });
-
-    if (!resultado.rowsAffected) {
-      const statusAtual = String(resultado.statusAtual || "").trim().toUpperCase();
-
-      if (statusAtual === "U") {
-        return res.status(409).json({
-          error: "Ativação já utilizada. Revogação só é permitida antes da utilização.",
-          status_atual: resultado.statusAtual,
-        });
-      }
-
-      return res.status(404).json({
-        error: "Ativação não encontrada ou não está pendente para revogação.",
-        status_atual: resultado.statusAtual,
-      });
-    }
-
-    return res.json({
-      sucesso: true,
-      status: resultado.statusAtual || "R",
-      dt_alteracao: resultado.dtAlteracao,
-    });
-  } catch (error) {
-    return res.status(500).json({ error: error.message || "Erro ao revogar ativação mobile." });
-  }
-}
-
-export async function RevogarAtivacaoPorId(req, res) {
-
-  
-
-  try {
-    const { id_ativacao } = req.params || {};
-    const { id_usuario } = req.body || {};
-
-    console.log(req.params, req.body);
-
-    if (!id_ativacao) {
-      return res.status(400).json({ error: "id_ativacao é obrigatório." });
-    }
-
-    const resultado = await revogarAtivacaoMobile({ id_ativacao, id_usuario: id_usuario || null });
-
-    console.log("[mobile-ativacao:revogar:param]", {
-      id_ativacao: Number(id_ativacao || 0),
-      id_usuario: id_usuario || null,
-      rowsAffected: resultado.rowsAffected,
-      statusAtual: resultado.statusAtual,
-      dtAlteracao: resultado.dtAlteracao,
-      ip: req.ip,
-      ts: new Date().toISOString(),
-    });
-
-    if (!resultado.rowsAffected) {
-      const statusAtual = String(resultado.statusAtual || "").trim().toUpperCase();
-
-      if (statusAtual === "U") {
-        return res.status(409).json({
-          error: "Ativação já utilizada. Revogação só é permitida antes da utilização.",
-          status_atual: resultado.statusAtual,
-        });
-      }
-
-      return res.status(404).json({
-        error: "Ativação não encontrada ou não está pendente para revogação.",
-        status_atual: resultado.statusAtual,
-      });
-    }
-
-    return res.json({
-      sucesso: true,
-      status: resultado.statusAtual || "R",
-      dt_alteracao: resultado.dtAlteracao,
-    });
-  } catch (error) {
-    return res.status(500).json({ error: error.message || "Erro ao revogar ativação mobile." });
-  }
-}
-
 export async function RedefinirAtivacaoPorUsuario(req, res) {
   try {
     const { id_usuario } = req.body || {};
@@ -240,6 +190,29 @@ export async function RedefinirAtivacao(req, res) {
     });
   } catch (error) {
     return res.status(500).json({ error: error.message || "Erro ao redefinir ativação mobile." });
+  }
+}
+
+export async function ExcluirAtivacao(req, res) {
+  try {
+    const { id_ativacao } = req.params || {};
+
+    if (!id_ativacao) {
+      return res.status(400).json({ error: "id_ativacao é obrigatório." });
+    }
+
+    const resultado = await excluirAtivacaoMobile({ id_ativacao });
+
+    if (!resultado.rowsAffected) {
+      return res.status(404).json({ error: "Ativação não encontrada para exclusão." });
+    }
+
+    return res.json({
+      sucesso: true,
+      excluido: true,
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message || "Erro ao excluir ativação mobile." });
   }
 }
 
@@ -336,7 +309,13 @@ export async function MonitorarAtivacao(req, res) {
     }
 
     const comando = await obterProximoComandoPendenteAtivacaoMobile({ id_ativacao });
-    return res.json({ sucesso: true, comando });
+    const atualizacao = await avaliarPoliticaAtualizacaoObrigatoria(dispositivo_info || {});
+
+    return res.json({
+      sucesso: true,
+      comando,
+      atualizacao,
+    });
   } catch (error) {
     return res.status(500).json({ error: error.message || "Erro ao registrar monitoramento do dispositivo." });
   }

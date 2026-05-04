@@ -52,6 +52,20 @@ function formatarData(value) {
   return dt.toLocaleString("pt-BR");
 }
 
+function formatarDuracao(segundos) {
+  const s = Number(segundos || 0);
+  if (!Number.isFinite(s) || s <= 0) return "0s";
+
+  const total = Math.floor(s);
+  const horas = Math.floor(total / 3600);
+  const minutos = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+
+  if (horas > 0) return `${horas}h ${minutos}m`;
+  if (minutos > 0) return `${minutos}m ${secs}s`;
+  return `${secs}s`;
+}
+
 function statusTag(status) {
   if (status === "P") return "Pendente";
   if (status === "U") return "Utilizado";
@@ -70,12 +84,21 @@ function parseDispositivoInfo(infoJson) {
   }
 }
 
-function obterMacDispositivo(item) {
+function obterDeviceId(item) {
   const info = parseDispositivoInfo(item?.dispositivo_info_json);
-  const mac = info?.network?.mac_address || info?.device?.mac_address || "";
+  const deviceId = info?.hardware?.device_id || null;
 
-  if (mac) return String(mac).toUpperCase();
-  return "Indisponível";
+  if (!deviceId) return <span className="text-muted">-</span>;
+
+  const resumo = String(deviceId).slice(0, 12) + (deviceId.length > 12 ? "…" : "");
+  return (
+    <span
+      title={deviceId}
+      style={{ fontFamily: "monospace", fontSize: "11px", whiteSpace: "nowrap", cursor: "default" }}
+    >
+      {resumo}
+    </span>
+  );
 }
 
 function obterBateria(item) {
@@ -248,6 +271,60 @@ function obterSeguranca(item) {
     : <span style={{ color: "#22c55e", fontSize: "inherit" }}>✓ OK</span>;
 }
 
+function obterTempoUso(item) {
+  const info = parseDispositivoInfo(item?.dispositivo_info_json);
+  const usage = info?.usage;
+  const sessao = usage?.session_seconds;
+  const total = usage?.total_seconds;
+
+  const source = String(info?.source || "");
+  const appState = String(info?.app?.state || "");
+  const capturedAt = info?.captured_at ? new Date(info.captured_at) : null;
+  const now = Date.now();
+  const staleMs = capturedAt && !Number.isNaN(capturedAt.getTime())
+    ? now - capturedAt.getTime()
+    : Number.POSITIVE_INFINITY;
+
+  // Heartbeat normal acontece a cada ~10s; acima disso já consideramos que não está mais em uso ativo.
+  const emUsoJanelaMs = 25000;
+  const semAtualizacaoJanelaMs = 180000;
+
+  let statusLabel = "Inativo";
+  let statusColor = "#94a3b8";
+
+  if (staleMs > semAtualizacaoJanelaMs) {
+    statusLabel = "Sem atualização";
+    statusColor = "#ef4444";
+  } else if (source === "background_task" || appState === "background" || appState === "inactive") {
+    statusLabel = "Fora do app";
+    statusColor = "#f59e0b";
+  } else if ((usage?.active_now === true || appState === "active") && staleMs <= emUsoJanelaMs) {
+    statusLabel = "Em uso";
+    statusColor = "#22c55e";
+  } else {
+    statusLabel = "Fora do app";
+    statusColor = "#f59e0b";
+  }
+
+  if (!usage && !info?.app && !info?.source) {
+    return <span className="text-muted">-</span>;
+  }
+
+  return (
+    <span style={{ display: "inline-flex", flexDirection: "column", gap: 2, whiteSpace: "nowrap" }}>
+      <span title="Tempo de uso da sessão atual" style={{ fontSize: "inherit" }}>
+        Sessao: <strong>{formatarDuracao(sessao)}</strong>
+      </span>
+      <span title="Tempo total acumulado de uso do app" style={{ fontSize: "inherit" }}>
+        Total: <strong>{formatarDuracao(total)}</strong>
+      </span>
+      <span style={{ color: statusColor, fontSize: "11px", fontWeight: 600 }}>
+        ● {statusLabel}
+      </span>
+    </span>
+  );
+}
+
 const PERM_LABELS = {
   camera: "Cam",
   notificacoes: "Notif",
@@ -305,7 +382,6 @@ function obterPermissoes(item) {
 export default function MobileAtivacao() {
   const [loadingGerar, setLoadingGerar] = useState(false);
   const [loadingLista, setLoadingLista] = useState(false);
-  const [revogandoId, setRevogandoId] = useState(null);
   const [modalGerarAberto, setModalGerarAberto] = useState(false);
   const [tokenAtual, setTokenAtual] = useState(null);
   const [qrDataUrl, setQrDataUrl] = useState("");
@@ -484,59 +560,52 @@ export default function MobileAtivacao() {
     }
   }
 
-  async function revogarAtivacao(item) {
-
-    if (!item?.id_ativacao) return;
-
-    const confirmacao = await Swal.fire({
-      title: "Revogar ativação?",
-      text: "Essa ação irá invalidar o QR Code e não poderá ser desfeita.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Sim, revogar",
-      cancelButtonText: "Cancelar",
-      reverseButtons: true,
-    });
-
-    if (!confirmacao.isConfirmed) return;
-
-    try {
-      setRevogandoId(item.id_ativacao);
-      let data;
-      try {
-        // Rota nova (com ID no path)
-        const response = await api.post(`/v1/mobile/ativacao/${item.id_ativacao}/revogar`, {
-          id_usuario: empresaInfo.id_usuario,
-        });;
-
-        console.log(response.data);
-        data = response?.data;
-      } catch (errorNovaRota) {
-        // Fallback para rota legada já usada em produção
-        console.log(errorNovaRota);
-        if (errorNovaRota?.response?.status === 404) {
-          const responseLegada = await api.post("/v1/mobile/ativacao/revogar", {
-            id_ativacao: item.id_ativacao,
-            id_usuario: empresaInfo.id_usuario,
-          });
-          data = responseLegada?.data;
-          
-        } else {
-          throw errorNovaRota;
-        }
-      }
-
-      if (!["R", "D"].includes(String(data?.status || ""))) {
-        throw new Error("A API não confirmou status revogado.");
-      }
-
-      await carregarAtivacoes();
-    } catch (error) {
-      console.log("Erro ao revogar ativação mobile:", error);
-      alert(error?.response?.data?.error || "Não foi possível revogar a ativação.");
-    } finally {
-      setRevogandoId(null);
+  function abrirModalReativacao(item) {
+    const idUsuarioDestino = Number(item?.id_usuario_destino || 0);
+    if (!idUsuarioDestino) {
+      Swal.fire({
+        icon: "warning",
+        title: "Usuário não vinculado",
+        text: "Não foi possível reativar: a ativação não possui usuário destino vinculado.",
+      });
+      return;
     }
+
+    const nomeUsuario = String(item?.nome_usuario_ativacao || `Usuário ${idUsuarioDestino}`);
+
+    setTokenAtual(null);
+    setQrDataUrl("");
+    setResultadosUsuario([]);
+    setUsuarioSelecionado({
+      codigo: idUsuarioDestino,
+      descricao: nomeUsuario,
+    });
+    setBuscaUsuario(nomeUsuario);
+    setModalGerarAberto(true);
+  }
+
+  function abrirModalGerarNovoQr(item) {
+    const idUsuarioDestino = Number(item?.id_usuario_destino || 0);
+    if (!idUsuarioDestino) {
+      Swal.fire({
+        icon: "warning",
+        title: "Usuário não vinculado",
+        text: "Não foi possível gerar novo QR Code: a ativação não possui usuário destino vinculado.",
+      });
+      return;
+    }
+
+    const nomeUsuario = String(item?.nome_usuario_ativacao || `Usuário ${idUsuarioDestino}`);
+
+    setTokenAtual(null);
+    setQrDataUrl("");
+    setResultadosUsuario([]);
+    setUsuarioSelecionado({
+      codigo: idUsuarioDestino,
+      descricao: nomeUsuario,
+    });
+    setBuscaUsuario(nomeUsuario);
+    setModalGerarAberto(true);
   }
 
   async function solicitarPermissaoRemota(item) {
@@ -584,12 +653,12 @@ export default function MobileAtivacao() {
     }
   }
 
-  async function inativarDispositivoRemoto(item) {
+  async function inativarDispositivo(item) {
     if (!item?.id_ativacao) return;
 
     const confirmacao = await Swal.fire({
       title: "Inativar dispositivo?",
-      text: "O app mobile será bloqueado e voltará para a tela de leitura de QR Code no próximo heartbeat.",
+      text: "O dispositivo será inativado. O histórico será mantido para rastreamento do aparelho. No próximo heartbeat, o app mobile perderá acesso e voltará para a tela de QR Code.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Sim, inativar",
@@ -600,14 +669,14 @@ export default function MobileAtivacao() {
     if (!confirmacao.isConfirmed) return;
 
     try {
-      await api.post(`/v1/mobile/ativacao/${item.id_ativacao}/comandos/inativar-dispositivo`, {
+      await api.post(`/v1/mobile/ativacao/${item.id_ativacao}/redefinir`, {
         id_usuario: empresaInfo.id_usuario,
       });
 
       await Swal.fire({
         icon: "success",
-        title: "Comando enviado",
-        text: "O dispositivo será inativado remotamente e exigirá novo QR Code.",
+        title: "Dispositivo inativado",
+        text: "O dispositivo foi inativado com sucesso. O histórico foi preservado.",
       });
 
       await carregarAtivacoes({ silencioso: true });
@@ -615,7 +684,7 @@ export default function MobileAtivacao() {
       await Swal.fire({
         icon: "error",
         title: "Falha ao inativar dispositivo",
-        text: error?.response?.data?.error || "Não foi possível enviar o comando de inativação.",
+        text: error?.response?.data?.error || "Não foi possível inativar o dispositivo.",
       });
     }
   }
@@ -671,7 +740,7 @@ export default function MobileAtivacao() {
     const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
     const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
     const larguraMenu = 210;
-    const alturaMenuEstimada = item.status === "P" ? 190 : 160;
+    const alturaMenuEstimada = item.status === "P" ? 230 : 160;
     const margem = 8;
 
     const espacoAbaixo = viewportHeight - rect.bottom;
@@ -1146,8 +1215,9 @@ export default function MobileAtivacao() {
                       <th>Memória RAM</th>
                       <th>CPU</th>
                       <th>Versão app</th>
+                      <th>Tempo de uso</th>
                       <th>Segurança</th>
-                      <th>MAC</th>
+                      <th>ID Dispositivo</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1204,33 +1274,45 @@ export default function MobileAtivacao() {
                               >
                                 <ShieldCheck size={15} strokeWidth={1.8} /> Permissões
                               </button>
-                              {item.status === "U" ? (
+                              {item.status === "P" ? (
+                                <button
+                                  type="button"
+                                  className="mobile-acao-item"
+                                  title="Gerar um novo QR Code para esta ativação"
+                                  onClick={() => {
+                                    fecharMenuAcao();
+                                    abrirModalGerarNovoQr(item);
+                                  }}
+                                >
+                                  <RefreshCw size={15} strokeWidth={1.8} /> Gerar novo QR Code
+                                </button>
+                              ) : null}
+                              {item.status === "U" || item.status === "P" ? (
                                 <button
                                   type="button"
                                   className="mobile-acao-item mobile-acao-item-danger"
-                                  title="Inativar dispositivo remotamente e forçar nova leitura de QR"
+                                  title="Inativar dispositivo (histórico preservado)"
                                   onClick={() => {
                                     fecharMenuAcao();
-                                    inativarDispositivoRemoto(item);
+                                    inativarDispositivo(item);
                                   }}
                                 >
                                   <XCircle size={15} strokeWidth={1.8} /> Inativar dispositivo
                                 </button>
                               ) : null}
-                              {item.status === "P" ? (
+                              {item.status === "D" ? (
                                 <button
                                   type="button"
-                                  className="mobile-acao-item mobile-acao-item-danger"
+                                  className="mobile-acao-item"
                                   onClick={() => {
                                     fecharMenuAcao();
-                                    revogarAtivacao(item);
+                                    abrirModalReativacao(item);
                                   }}
-                                  disabled={revogandoId === item.id_ativacao}
                                 >
-                                  {revogandoId === item.id_ativacao ? "Revogando..." : <><XCircle size={15} strokeWidth={1.8} /> Revogar</>}
+                                  <RefreshCw size={15} strokeWidth={1.8} /> Reativar
                                 </button>
                               ) : (
-                                <span className="mobile-acao-item-disabled">Revogar indisponível</span>
+                                <span className="mobile-acao-item-disabled">Reativar indisponível</span>
                               )}
                               </div>
                             ) : null}
@@ -1256,8 +1338,9 @@ export default function MobileAtivacao() {
                         <td>{obterMemoria(item)}</td>
                         <td>{obterCpu(item)}</td>
                         <td>{obterVersaoApp(item)}</td>
+                        <td>{obterTempoUso(item)}</td>
                         <td>{obterSeguranca(item)}</td>
-                        <td>{obterMacDispositivo(item)}</td>
+                        <td>{obterDeviceId(item)}</td>
                       </tr>
                     ))}
                   </tbody>

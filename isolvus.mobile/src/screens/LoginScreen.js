@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
-  Dimensions,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -10,16 +9,16 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Application from "expo-application";
 import api from "../services/api";
 import { colors } from "../theme/colors";
 import { useShowAlert } from "../components/CustomAlert/AlertProvider";
-
-const { height: SCREEN_H } = Dimensions.get("window");
 
 const FRASES = [
   "Tecnologia que\npotencializa negócios.",
@@ -31,6 +30,7 @@ const FRASES = [
 
 export default function LoginScreen({ onLoginSuccess }) {
   const showAlert = useShowAlert();
+  const { height: screenHeight } = useWindowDimensions();
   const [user, setUser] = useState("");
   const [usuarioVinculado, setUsuarioVinculado] = useState(null);
   const [password, setPassword] = useState("");
@@ -40,11 +40,17 @@ export default function LoginScreen({ onLoginSuccess }) {
   const [campoFocado, setCampoFocado] = useState(null);
   const [fraseIndex, setFraseIndex] = useState(0);
   const [lembrar, setLembrar] = useState(false);
-  const [aba, setAba] = useState("entrar");
+  const [autoLogando, setAutoLogando] = useState(false);
 
   const shakeX = useRef(new Animated.Value(0)).current;
   const fraseOpacity = useRef(new Animated.Value(1)).current;
   const scanY = useRef(new Animated.Value(0)).current;
+  const heroHeight = useMemo(() => Math.max(220, Math.round(screenHeight * 0.28)), [screenHeight]);
+  const versaoLabel = useMemo(() => {
+    const versao = Application.nativeApplicationVersion || "-";
+    const build = Application.nativeBuildVersion || "-";
+    return `Versao ${versao} (${build})`;
+  }, []);
 
   useEffect(() => {
     const intervalo = setInterval(() => {
@@ -68,7 +74,7 @@ export default function LoginScreen({ onLoginSuccess }) {
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(scanY, {
-          toValue: HERO_H,
+          toValue: heroHeight,
           duration: 5000,
           useNativeDriver: true,
         }),
@@ -81,14 +87,21 @@ export default function LoginScreen({ onLoginSuccess }) {
     );
     loop.start();
     return () => loop.stop();
-  }, [scanY]);
+  }, [scanY, heroHeight]);
 
   useEffect(() => {
-    AsyncStorage.multiGet(["usuario_vinculado_login", "usuario_vinculado_nome"])
-      .then((items) => {
+    AsyncStorage.multiGet([
+      "usuario_vinculado_login",
+      "usuario_vinculado_nome",
+      "salvar_login",
+      "salvar_senha",
+    ])
+      .then(async (items) => {
         const mapa = Object.fromEntries(items);
         const loginVinculado = String(mapa.usuario_vinculado_login || "").trim();
         const nomeVinculado = String(mapa.usuario_vinculado_nome || "").trim();
+        const loginSalvo = String(mapa.salvar_login || "").trim();
+        const senhaSalva = String(mapa.salvar_senha || "").trim();
 
         if (loginVinculado) {
           setUser(loginVinculado);
@@ -96,26 +109,32 @@ export default function LoginScreen({ onLoginSuccess }) {
         } else {
           setUsuarioVinculado(null);
         }
+
+        if (loginSalvo && senhaSalva) {
+          setUser(loginSalvo);
+          setPassword(senhaSalva);
+          setLembrar(true);
+          setAutoLogando(true);
+          await acessarComCredenciais(loginSalvo, senhaSalva);
+          setAutoLogando(false);
+        }
       })
       .catch(() => setUsuarioVinculado(null));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const buttonLabel = useMemo(() => {
+    if (autoLogando) return "Entrando automaticamente...";
     if (loading) return "Autenticando...";
     if (erroCredencial) return "Credenciais inválidas";
     return "Entrar";
-  }, [erroCredencial, loading]);
+  }, [autoLogando, erroCredencial, loading]);
 
-  async function acessar() {
-    const credenciais = { user, password };
-    if (!user.trim() || !password.trim()) {
-      showAlert({ type: "warning", title: "Campos obrigatórios", message: "Informe usuário e senha para continuar." });
-      return;
-    }
+  async function acessarComCredenciais(userParam, passwordParam) {
     setErroCredencial(false);
     setLoading(true);
     try {
-      const retorno = await api.post("/v1/logar", credenciais);
+      const retorno = await api.post("/v1/logar", { user: userParam, password: passwordParam });
       const usuario = retorno?.data?.[0];
       if (!usuario) throw new Error("Credenciais invalidas");
       await AsyncStorage.multiSet([
@@ -129,6 +148,14 @@ export default function LoginScreen({ onLoginSuccess }) {
         ["id_empresa", String(usuario.id_empresa ?? "")],
         ["razaosocial", String(usuario.razaosocial ?? "")],
       ]);
+      if (lembrar) {
+        await AsyncStorage.multiSet([
+          ["salvar_login", String(userParam)],
+          ["salvar_senha", String(passwordParam)],
+        ]);
+      } else {
+        await AsyncStorage.multiRemove(["salvar_login", "salvar_senha"]);
+      }
       if (typeof onLoginSuccess === "function") {
         onLoginSuccess(usuario);
       } else {
@@ -148,6 +175,14 @@ export default function LoginScreen({ onLoginSuccess }) {
     }
   }
 
+  async function acessar() {
+    if (!user.trim() || !password.trim()) {
+      showAlert({ type: "warning", title: "Campos obrigatórios", message: "Informe usuário e senha para continuar." });
+      return;
+    }
+    await acessarComCredenciais(user, password);
+  }
+
   return (
     <View style={styles.flex}>
       {/* Fundo azul ocupa a tela toda */}
@@ -159,7 +194,7 @@ export default function LoginScreen({ onLoginSuccess }) {
       />
 
       {/* Hero — branding no topo */}
-      <View style={styles.hero}>
+      <View style={[styles.hero, { minHeight: heroHeight }]}>
         <Animated.View
           pointerEvents="none"
           style={[styles.scanLine, { transform: [{ translateY: scanY }] }]}
@@ -198,20 +233,10 @@ export default function LoginScreen({ onLoginSuccess }) {
           <View style={styles.formArea}>
 
             <View>
-              {/* Tab switcher */}
               <View style={styles.tabRow}>
-                <Pressable
-                  style={[styles.tabButton, aba === "entrar" ? styles.tabButtonActive : null]}
-                  onPress={() => setAba("entrar")}
-                >
-                  <Text style={[styles.tabText, aba === "entrar" ? styles.tabTextActive : null]}>Entrar</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.tabButton, aba === "cadastrar" ? styles.tabButtonActive : null]}
-                  onPress={() => setAba("cadastrar")}
-                >
-                  <Text style={[styles.tabText, aba === "cadastrar" ? styles.tabTextActive : null]}>Cadastrar</Text>
-                </Pressable>
+                <View style={[styles.tabButton, styles.tabButtonActive]}>
+                  <Text style={[styles.tabText, styles.tabTextActive]}>Login</Text>
+                </View>
               </View>
 
               <Text style={styles.fieldLabel}>Usuário</Text>
@@ -268,9 +293,6 @@ export default function LoginScreen({ onLoginSuccess }) {
                   </View>
                   <Text style={styles.checkboxLabel}>Lembrar-me</Text>
                 </Pressable>
-                <Pressable>
-                  <Text style={styles.forgotText}>Esqueceu a senha?</Text>
-                </Pressable>
               </View>
 
               {erroCredencial ? (
@@ -281,9 +303,9 @@ export default function LoginScreen({ onLoginSuccess }) {
               ) : null}
 
               <Pressable
-                style={({ pressed }) => [styles.loginButton, (pressed || loading) ? styles.loginButtonPressed : null]}
+                style={({ pressed }) => [styles.loginButton, (pressed || loading || autoLogando) ? styles.loginButtonPressed : null]}
                 onPress={acessar}
-                disabled={loading}
+                disabled={loading || autoLogando}
               >
                 <LinearGradient
                   colors={erroCredencial ? ["#dc3545", "#b42318"] : ["#3f6cf6", "#2f59d9"]}
@@ -301,12 +323,8 @@ export default function LoginScreen({ onLoginSuccess }) {
               </Pressable>
             </View>
 
-            <View style={styles.signupRow}>
-              <Text style={styles.signupHint}>Não tem uma conta?</Text>
-              <Pressable onPress={() => setAba("cadastrar")}>
-                <Text style={styles.signupAction}> Cadastre-se</Text>
-              </Pressable>
-            </View>
+            <Text style={styles.versaoRodape}>{versaoLabel}</Text>
+
 
           </View>
         </ScrollView>
@@ -315,13 +333,9 @@ export default function LoginScreen({ onLoginSuccess }) {
   );
 }
 
-const CARD_H = SCREEN_H * 0.72;
-const HERO_H = SCREEN_H - CARD_H;
-
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   hero: {
-    height: HERO_H,
     paddingTop: 56,
     paddingHorizontal: 26,
     gap: 8,
@@ -347,7 +361,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 20,
   },
-  cardWrapper: { height: CARD_H },
+  cardWrapper: { flex: 1 },
   card: {
     flex: 1,
     backgroundColor: "#ffffff",
@@ -362,8 +376,22 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
 
   },
-  tabRow: { flexDirection: "row", backgroundColor: "#f0f2f7", borderRadius: 12, padding: 4, marginBottom: 20 },
-  tabButton: { flex: 1, paddingVertical: 9, borderRadius: 9, alignItems: "center" },
+  tabRow: {
+    flexDirection: "row",
+    backgroundColor: "#f3f6fc",
+    borderRadius: 10,
+    borderWidth: 1.2,
+    borderColor: "#e5e9f2",
+    minHeight: 48,
+    marginBottom: 20,
+  },
+  tabButton: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   tabButtonActive: { backgroundColor: "#ffffff", shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
   tabText: { fontSize: 14, fontWeight: "600", color: "#9ca3af" },
   tabTextActive: { color: "#111827" },
@@ -386,6 +414,13 @@ const styles = StyleSheet.create({
   loginButtonGradient: { minHeight: 50, borderRadius: 10, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 10, paddingHorizontal: 14 },
   loginButtonPressed: { opacity: 0.88 },
   loginButtonText: { color: colors.white, fontSize: 15.5, fontWeight: "800" },
+  versaoRodape: {
+    marginTop: 20,
+    textAlign: "center",
+    color: "#94a3b8",
+    fontSize: 12,
+    fontWeight: "600",
+  },
   signupRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", marginTop: 14 },
   signupHint: { color: "#6b7280", fontSize: 13 },
   signupAction: { color: "#3f6cf6", fontSize: 13, fontWeight: "700" },
