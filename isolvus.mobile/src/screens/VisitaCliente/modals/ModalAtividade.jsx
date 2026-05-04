@@ -117,9 +117,10 @@ export default function ModalAtividade({
   const equipeSectionY = useRef(0);
   const qtdePessoaLabelY = useRef(0);
   const observacaoSectionY = useRef(0);
-  const footerKeyboardOffset = keyboardHeight > 0 ? keyboardHeight : 0;
 
-  const handleFocusObservacao = () => scrollToField(observacaoSectionY.current, 0);
+  const handleFocusObservacao = () => {
+    scrollToField(observacaoSectionY.current, 0);
+  };
 
   const CARD_OVERHEAD = 71;
   const scrollToField = (sectionY, fieldY = 0) => {
@@ -181,14 +182,14 @@ export default function ModalAtividade({
   }, []);
 
   useEffect(() => {
-    if (!visible || !isEdicao || keyboardHeight <= 0) return;
+    if (!visible || keyboardHeight <= 0) return;
 
     const timer = setTimeout(() => {
       formScrollRef.current?.scrollToEnd({ animated: true });
     }, 140);
 
     return () => clearTimeout(timer);
-  }, [visible, isEdicao, keyboardHeight]);
+  }, [visible, keyboardHeight]);
 
   const previewPanResponder = useMemo(() => PanResponder.create({
     onMoveShouldSetPanResponder: (_, gesture) => (
@@ -231,7 +232,11 @@ export default function ModalAtividade({
   if (!visible) return null;
 
   return (
-    <View style={{ flex: 1 }}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+    >
     <View style={[styles.section, { flex: 1, paddingHorizontal: 0, paddingBottom: 0, marginBottom: 0 }]}> 
       <View style={{ flex: 1, maxHeight: "100%" }}> 
 
@@ -256,6 +261,32 @@ export default function ModalAtividade({
                 {somenteLeitura ? "Somente visualizacao. Edicao nao permitida." : (isEdicao ? "Atualize os dados do registro selecionado." : "Selecione a atividade e preencha os campos.")}
               </Text>
             </View>
+            <Pressable
+              onPress={() => {
+                if (somenteLeitura) {
+                  fecharModal();
+                  return;
+                }
+                Keyboard.dismiss();
+                salvarEvidencia();
+              }}
+              hitSlop={12}
+              disabled={salvandoEvidencia}
+              style={({ pressed }) => ({
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                backgroundColor: pressed ? "#e2e8f0" : "#f1f5f9",
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: salvandoEvidencia ? 0.7 : 1,
+              })}
+            >
+              {salvandoEvidencia
+                ? <ActivityIndicator size="small" color="#475569" />
+                : <Ionicons name="checkmark-sharp" size={22} color="#475569" />
+              }
+            </Pressable>
           </View>
 
           <ScrollView
@@ -264,7 +295,7 @@ export default function ModalAtividade({
             showsVerticalScrollIndicator
             keyboardShouldPersistTaps="handled"
             nestedScrollEnabled
-            contentContainerStyle={{ paddingBottom: 20 }}
+            contentContainerStyle={{ paddingBottom: keyboardHeight > 0 ? 96 : 24 }}
           >
 
             {/* Tipo de atividade */}
@@ -639,50 +670,6 @@ export default function ModalAtividade({
 
           </ScrollView>
 
-          <View style={{
-            flexDirection: "row",
-            gap: 8,
-            paddingTop: 10,
-            paddingBottom: 16,
-            marginBottom: footerKeyboardOffset,
-            borderTopWidth: 1,
-            borderTopColor: "#e2e8f0",
-            backgroundColor: "#f8fafc",
-          }}>
-            <Pressable style={styles.btnSecondary} onPress={fecharModal}>
-              <Text style={styles.btnSecondaryText}>{somenteLeitura ? "Fechar" : "Cancelar"}</Text>
-            </Pressable>
-
-            {!somenteLeitura && isEdicao && (
-              <Pressable
-                style={[styles.btnDangerSmall, { paddingHorizontal: 16 }]}
-                onPress={() => { Keyboard.dismiss(); excluirEvidencia(); }}
-              >
-                <Ionicons name="trash-outline" size={16} color="#fff" />
-              </Pressable>
-            )}
-
-            {!somenteLeitura && (
-              <Pressable
-                style={{ flex: 1, borderRadius: 12, overflow: "hidden", opacity: salvandoEvidencia ? 0.7 : 1 }}
-                onPress={() => { Keyboard.dismiss(); salvarEvidencia(); }}
-                disabled={salvandoEvidencia}
-              >
-                <LinearGradient
-                  colors={["#3f6cf6", "#2f59d9"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[styles.btnGradient, { minHeight: 46 }]}
-                >
-                  {salvandoEvidencia
-                    ? <ActivityIndicator color="#fff" />
-                    : <Text style={styles.btnPrimaryText}>{isEdicao ? "Salvar alterações" : "Registrar atividade"}</Text>
-                  }
-                </LinearGradient>
-              </Pressable>
-            )}
-          </View>
-
           {/* Preview interno para evitar conflito de múltiplos Modals no Android */}
           {previewFotoUri ? (
             <Animated.View
@@ -834,6 +821,6 @@ export default function ModalAtividade({
           ) : null}
       </View>
     </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }

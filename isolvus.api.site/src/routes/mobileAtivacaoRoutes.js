@@ -7,6 +7,7 @@ import {
   EnviarComandoPermissao,
   GerarAtivacao,
   ListarAtivacao,
+  ListarRotaAtivacao,
   MonitorarAtivacao,
   RedefinirAtivacao,
   RedefinirAtivacaoPorUsuario,
@@ -31,6 +32,7 @@ router.post("/mobile/ativacao/redefinir-por-usuario", RedefinirAtivacaoPorUsuari
 router.post("/mobile/ativacao/validar", ValidarAtivacao);
 router.post("/mobile/ativacao/validar-por-codigo", ValidarAtivacaoPorCodigo);
 router.post("/mobile/ativacao/:id_ativacao/monitorar", MonitorarAtivacao);
+router.get("/mobile/ativacao/:id_ativacao/rota", ListarRotaAtivacao);
 router.post("/mobile/ativacao/:id_ativacao/comandos/solicitar-permissao", EnviarComandoPermissao);
 router.post("/mobile/ativacao/:id_ativacao/comandos/solicitar-localizacao", EnviarComandoLocalizacao);
 router.post("/mobile/ativacao/:id_ativacao/comandos/inativar-dispositivo", EnviarComandoInativarDispositivo);

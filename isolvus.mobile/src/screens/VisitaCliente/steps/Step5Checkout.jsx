@@ -1,7 +1,6 @@
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "../../../theme/colors";
 import { styles } from "../styles";
 import { formatDateDisplay } from "../utils";
@@ -16,7 +15,6 @@ export default function Step5Checkout({
   atividadeRealizadaTexto,
   localizacaoCheckout,
   voltar,
-  fazerCheckout,
 }) {
   const parseDataHoraFlex = (valor) => {
     const txt = String(valor || "").trim();
@@ -86,7 +84,14 @@ export default function Step5Checkout({
       <Text style={styles.label}>Mapa da visita</Text>
       {regionCheckoutZoom ? (
         <View style={styles.mapCard}>
-          <MapView style={styles.map} initialRegion={regionCheckoutZoom}>
+          <MapView
+            style={styles.map}
+            initialRegion={regionCheckoutZoom}
+            scrollEnabled
+            zoomEnabled
+            rotateEnabled
+            pitchEnabled
+          >
             <Marker coordinate={pontoCheckout} title="Voce esta aqui" pinColor="red" />
           </MapView>
           <View style={styles.mapLegendRow}>
@@ -134,19 +139,6 @@ export default function Step5Checkout({
         </View>
       </View>
 
-      <Pressable
-        style={({ pressed }) => [styles.btnPrimaryFull, { marginTop: 16 }, pressed && styles.btnPressed]}
-        onPress={fazerCheckout}
-      >
-        <LinearGradient
-          colors={["#1db96a", "#198754"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.btnGradient}
-        >
-          <Text style={styles.btnPrimaryText}>Fazer CheckOut</Text>
-        </LinearGradient>
-      </Pressable>
     </View>
   );
 }

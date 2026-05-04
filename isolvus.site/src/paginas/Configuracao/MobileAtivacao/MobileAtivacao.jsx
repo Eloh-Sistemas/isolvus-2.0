@@ -7,6 +7,52 @@ import api from "../../../servidor/api";
 import EspelhoScreenModal from "./EspelhoScreenModal";
 import "./MobileAtivacao.css";
 
+let leafletLoaderPromise = null;
+const ROTA_PERIODO_OPCOES = [
+  { label: "Ultimos 30 minutos", value: 30 },
+  { label: "Ultima 1 hora", value: 60 },
+  { label: "Ultimas 3 horas", value: 180 },
+  { label: "Ultimas 6 horas", value: 360 },
+  { label: "Ultimas 12 horas", value: 720 },
+  { label: "Ultimas 24 horas", value: 1440 },
+  { label: "Ultimos 7 dias", value: 10080 },
+];
+
+function carregarLeafletCDN() {
+  if (typeof window === "undefined") return Promise.reject(new Error("window indisponível"));
+  if (window.L) return Promise.resolve(window.L);
+  if (leafletLoaderPromise) return leafletLoaderPromise;
+
+  leafletLoaderPromise = new Promise((resolve, reject) => {
+    const head = document.head || document.getElementsByTagName("head")[0];
+
+    if (!document.getElementById("leaflet-css-cdn")) {
+      const link = document.createElement("link");
+      link.id = "leaflet-css-cdn";
+      link.rel = "stylesheet";
+      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+      head.appendChild(link);
+    }
+
+    const scriptExistente = document.getElementById("leaflet-js-cdn");
+    if (scriptExistente) {
+      scriptExistente.addEventListener("load", () => resolve(window.L));
+      scriptExistente.addEventListener("error", () => reject(new Error("Falha ao carregar Leaflet")));
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = "leaflet-js-cdn";
+    script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+    script.async = true;
+    script.onload = () => resolve(window.L);
+    script.onerror = () => reject(new Error("Falha ao carregar Leaflet"));
+    head.appendChild(script);
+  });
+
+  return leafletLoaderPromise;
+}
+
 
 function traduzirTipoLocal(item) {
   const amenity = item?.tags?.amenity;
@@ -90,13 +136,11 @@ function obterDeviceId(item) {
 
   if (!deviceId) return <span className="text-muted">-</span>;
 
-  const resumo = String(deviceId).slice(0, 12) + (deviceId.length > 12 ? "…" : "");
   return (
     <span
-      title={deviceId}
       style={{ fontFamily: "monospace", fontSize: "11px", whiteSpace: "nowrap", cursor: "default" }}
     >
-      {resumo}
+      {deviceId}
     </span>
   );
 }
@@ -403,10 +447,23 @@ export default function MobileAtivacao() {
   const [espelhoDispositivo, setEspelhoDispositivo] = useState("");
   const [localizacaoModalAberto, setLocalizacaoModalAberto] = useState(false);
   const [localizacaoAtual, setLocalizacaoAtual] = useState(null);
+  const [rotaModalAberto, setRotaModalAberto] = useState(false);
+  const [rotaPontos, setRotaPontos] = useState([]);
+  const [rotaLoading, setRotaLoading] = useState(false);
+  const [rotaDispositivo, setRotaDispositivo] = useState("");
+  const [rotaAtivacaoId, setRotaAtivacaoId] = useState(null);
+  const [rotaPeriodoMinutos, setRotaPeriodoMinutos] = useState(1440);
+  const [mapaTodosModalAberto, setMapaTodosModalAberto] = useState(false);
   const [menuAcaoAberto, setMenuAcaoAberto] = useState({ id: null, top: 0, left: 0, up: false });
   const interagindoTabelaRef = useRef(false);
   const tabelaContainerRef = useRef(null);
   const menuAcaoRef = useRef(null);
+  const mapaTodosRef = useRef(null);
+  const mapaTodosInstanciaRef = useRef(null);
+  const mapaTodosLayerRef = useRef(null);
+  const rotaMapaRef = useRef(null);
+  const rotaMapaInstanciaRef = useRef(null);
+  const rotaMapaLayerRef = useRef(null);
   const [localizacaoEndereco, setLocalizacaoEndereco] = useState(null);
   const [loadingEndereco, setLoadingEndereco] = useState(false);
   const [copiado, setCopiado] = useState(false);
@@ -446,6 +503,26 @@ export default function MobileAtivacao() {
       return true;
     });
   }, [ativacoes, filtroCodigo, filtroStatus, filtroUsuarioTabela, filtroDispositivo]);
+
+  const dispositivosComCoordenadas = useMemo(() => {
+    return ativacoesFiltradas
+      .map((item) => {
+        const info = parseDispositivoInfo(item?.dispositivo_info_json);
+        const latitude = info?.location?.latitude;
+        const longitude = info?.location?.longitude;
+        if (typeof latitude !== "number" || typeof longitude !== "number") return null;
+        return {
+          id: item?.id_ativacao,
+          dispositivo: item?.dispositivo || `Ativação ${item?.id_ativacao || ""}`,
+          usuario: item?.nome_usuario_ativacao || "-",
+          latitude,
+          longitude,
+          status: statusTag(item?.status),
+          atualizadoEm: info?.captured_at || null,
+        };
+      })
+      .filter(Boolean);
+  }, [ativacoesFiltradas]);
 
   async function carregarAtivacoes({ silencioso = false } = {}) {
     if (!silencioso) setLoadingLista(true);
@@ -724,6 +801,64 @@ export default function MobileAtivacao() {
     setLocalizacaoModalAberto(true);
   }
 
+  async function carregarRotaAtivacao(idAtivacao, minutosFiltro) {
+    if (!idAtivacao) return;
+
+    setRotaLoading(true);
+    try {
+      const { data } = await api.get(`/v1/mobile/ativacao/${idAtivacao}/rota`, {
+        params: {
+          minutos: minutosFiltro,
+        },
+      });
+      const pontos = Array.isArray(data?.pontos)
+        ? data.pontos
+          .map((p) => ({
+            latitude: Number(p?.latitude),
+            longitude: Number(p?.longitude),
+            dt_captura: p?.dt_captura || p?.dt_captura?.toString?.() || null,
+            source: p?.source || null,
+            accuracy_meters: p?.accuracy_meters ?? null,
+          }))
+          .filter((p) => Number.isFinite(p.latitude) && Number.isFinite(p.longitude))
+        : [];
+      setRotaPontos(pontos);
+    } catch (error) {
+      setRotaPontos([]);
+      Swal.fire({
+        icon: "error",
+        title: "Falha ao carregar rota",
+        text: error?.response?.data?.error || "Não foi possível consultar o histórico de rota.",
+      });
+    } finally {
+      setRotaLoading(false);
+    }
+  }
+
+  async function abrirRotaModal(item) {
+    if (!item?.id_ativacao) return;
+
+    const periodoPadrao = 1440;
+    setRotaDispositivo(item?.dispositivo || `Ativação ${item?.id_ativacao || ""}`);
+    setRotaAtivacaoId(item.id_ativacao);
+    setRotaPeriodoMinutos(periodoPadrao);
+    setRotaPontos([]);
+    setRotaModalAberto(true);
+    await carregarRotaAtivacao(item.id_ativacao, periodoPadrao);
+  }
+
+  async function onAlterarPeriodoRota(event) {
+    const novoPeriodo = Number(event?.target?.value || 1440);
+    setRotaPeriodoMinutos(novoPeriodo);
+    if (!rotaAtivacaoId) return;
+    await carregarRotaAtivacao(rotaAtivacaoId, novoPeriodo);
+  }
+
+  function fecharRotaModal() {
+    setRotaModalAberto(false);
+    setRotaAtivacaoId(null);
+  }
+
   function fecharMenuAcao() {
     setMenuAcaoAberto({ id: null, top: 0, left: 0, up: false });
   }
@@ -800,6 +935,163 @@ export default function MobileAtivacao() {
     return () => { cancelado = true; };
   }, [localizacaoModalAberto, localizacaoAtual?.latitude, localizacaoAtual?.longitude]);
 
+  useEffect(() => {
+    let cancelado = false;
+
+    async function montarMapaTodos() {
+      if (!mapaTodosModalAberto || !mapaTodosRef.current || !dispositivosComCoordenadas.length) return;
+
+      try {
+        const L = await carregarLeafletCDN();
+        if (cancelado || !mapaTodosRef.current) return;
+
+        if (!mapaTodosInstanciaRef.current) {
+          mapaTodosInstanciaRef.current = L.map(mapaTodosRef.current, {
+            zoomControl: true,
+            attributionControl: true,
+          });
+
+          L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19,
+            attribution: "&copy; OpenStreetMap contributors",
+          }).addTo(mapaTodosInstanciaRef.current);
+
+          mapaTodosLayerRef.current = L.layerGroup().addTo(mapaTodosInstanciaRef.current);
+        }
+
+        // Corrige ícones padrão do Leaflet quando carregado via CDN
+        if (L?.Icon?.Default) {
+          L.Icon.Default.mergeOptions({
+            iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+            iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+            shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+          });
+        }
+
+        mapaTodosLayerRef.current?.clearLayers();
+
+        const bounds = L.latLngBounds([]);
+
+        dispositivosComCoordenadas.forEach((d) => {
+          const marker = L.marker([d.latitude, d.longitude]);
+          marker.bindPopup(`
+            <div style="font-size:12px;line-height:1.35;min-width:180px">
+              <div style="font-weight:700;margin-bottom:4px">${String(d.dispositivo || "Dispositivo")}</div>
+              <div><strong>ID:</strong> ${String(d.id || "-")}</div>
+              <div><strong>Status:</strong> ${String(d.status || "-")}</div>
+              <div><strong>Usuário:</strong> ${String(d.usuario || "-")}</div>
+              <div><strong>Atualizado:</strong> ${formatarData(d.atualizadoEm)}</div>
+            </div>
+          `);
+          marker.addTo(mapaTodosLayerRef.current);
+          bounds.extend([d.latitude, d.longitude]);
+        });
+
+        if (dispositivosComCoordenadas.length === 1) {
+          const unico = dispositivosComCoordenadas[0];
+          mapaTodosInstanciaRef.current.setView([unico.latitude, unico.longitude], 15);
+        } else if (bounds.isValid()) {
+          mapaTodosInstanciaRef.current.fitBounds(bounds.pad(0.2));
+        }
+
+        setTimeout(() => mapaTodosInstanciaRef.current?.invalidateSize(), 30);
+      } catch (erro) {
+        console.log("Falha ao montar mapa de dispositivos:", erro);
+      }
+    }
+
+    montarMapaTodos();
+
+    return () => {
+      cancelado = true;
+      if (!mapaTodosModalAberto && mapaTodosInstanciaRef.current) {
+        mapaTodosInstanciaRef.current.remove();
+        mapaTodosInstanciaRef.current = null;
+        mapaTodosLayerRef.current = null;
+      }
+    };
+  }, [mapaTodosModalAberto, dispositivosComCoordenadas]);
+
+  useEffect(() => {
+    let cancelado = false;
+
+    async function montarMapaRota() {
+      if (!rotaModalAberto || !rotaMapaRef.current || !rotaPontos.length) return;
+      try {
+        const L = await carregarLeafletCDN();
+        if (cancelado || !rotaMapaRef.current) return;
+
+        if (!rotaMapaInstanciaRef.current) {
+          rotaMapaInstanciaRef.current = L.map(rotaMapaRef.current, {
+            zoomControl: true,
+            attributionControl: true,
+          });
+
+          L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19,
+            attribution: "&copy; OpenStreetMap contributors",
+          }).addTo(rotaMapaInstanciaRef.current);
+
+          rotaMapaLayerRef.current = L.layerGroup().addTo(rotaMapaInstanciaRef.current);
+        }
+
+        rotaMapaLayerRef.current?.clearLayers();
+
+        const latLngs = rotaPontos.map((p) => [p.latitude, p.longitude]);
+        const bounds = L.latLngBounds(latLngs);
+
+        const polyline = L.polyline(latLngs, {
+          color: "#2563eb",
+          weight: 4,
+          opacity: 0.85,
+        });
+        polyline.addTo(rotaMapaLayerRef.current);
+
+        const inicio = rotaPontos[0];
+        const fim = rotaPontos[rotaPontos.length - 1];
+
+        L.circleMarker([inicio.latitude, inicio.longitude], {
+          radius: 7,
+          color: "#16a34a",
+          fillColor: "#16a34a",
+          fillOpacity: 0.9,
+          weight: 2,
+        })
+          .bindPopup(`<strong>Início</strong><br/>${formatarData(inicio.dt_captura)}`)
+          .addTo(rotaMapaLayerRef.current);
+
+        L.circleMarker([fim.latitude, fim.longitude], {
+          radius: 7,
+          color: "#dc2626",
+          fillColor: "#dc2626",
+          fillOpacity: 0.9,
+          weight: 2,
+        })
+          .bindPopup(`<strong>Fim</strong><br/>${formatarData(fim.dt_captura)}`)
+          .addTo(rotaMapaLayerRef.current);
+
+        if (bounds.isValid()) {
+          rotaMapaInstanciaRef.current.fitBounds(bounds.pad(0.2));
+        }
+
+        setTimeout(() => rotaMapaInstanciaRef.current?.invalidateSize(), 30);
+      } catch (erro) {
+        console.log("Falha ao montar mapa da rota:", erro);
+      }
+    }
+
+    montarMapaRota();
+
+    return () => {
+      cancelado = true;
+      if (!rotaModalAberto && rotaMapaInstanciaRef.current) {
+        rotaMapaInstanciaRef.current.remove();
+        rotaMapaInstanciaRef.current = null;
+        rotaMapaLayerRef.current = null;
+      }
+    };
+  }, [rotaModalAberto, rotaPontos]);
+
   async function copiarCoordenadas() {
     const texto = `${localizacaoAtual.latitude.toFixed(6)}, ${localizacaoAtual.longitude.toFixed(6)}`;
     try {
@@ -830,6 +1122,18 @@ export default function MobileAtivacao() {
         text: error?.response?.data?.error || "Não foi possível solicitar atualização de localização.",
       });
     }
+  }
+
+  function abrirMapaTodosDispositivos() {
+    if (!dispositivosComCoordenadas.length) {
+      Swal.fire({
+        icon: "info",
+        title: "Sem coordenadas disponíveis",
+        text: "Nenhum dispositivo possui localização válida para exibir no mapa.",
+      });
+      return;
+    }
+    setMapaTodosModalAberto(true);
   }
 
   return (
@@ -985,6 +1289,158 @@ export default function MobileAtivacao() {
                     Fechar
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {rotaModalAberto ? (
+        <div
+          className="modal show espelho-modal localizacao-modal"
+          style={{ display: "block" }}
+          onClick={fecharRotaModal}
+        >
+          <div
+            className="modal-dialog modal-dialog-centered"
+            role="document"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "1400px", width: "98vw" }}
+          >
+            <div className="modal-content espelho-modal-content" style={{ height: "92vh", maxHeight: "92vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+              <div className="modal-header espelho-modal-header">
+                <div>
+                  <h5 className="modal-title mb-0" style={{ fontWeight: 700 }}>Rota do dispositivo</h5>
+                  <small className="text-muted">{rotaDispositivo || "-"}</small>
+                </div>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <select
+                    className="form-select form-select-sm"
+                    value={rotaPeriodoMinutos}
+                    onChange={onAlterarPeriodoRota}
+                    style={{ width: 180 }}
+                    disabled={rotaLoading}
+                  >
+                    {ROTA_PERIODO_OPCOES.map((opcao) => (
+                      <option key={opcao.value} value={opcao.value}>{opcao.label}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary btn-sm"
+                    disabled={rotaLoading || !rotaAtivacaoId}
+                    onClick={() => carregarRotaAtivacao(rotaAtivacaoId, rotaPeriodoMinutos)}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 5 }}
+                    title="Recarregar rota"
+                  >
+                    <RefreshCw size={13} strokeWidth={2} /> Atualizar
+                  </button>
+                  <button type="button" className="btn-close" onClick={fecharRotaModal} />
+                </div>
+              </div>
+
+              <div className="modal-body p-0" style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "grid", gridTemplateColumns: "2.4fr 1fr" }}>
+                <div style={{ borderRight: "1px solid #e2e8f0" }}>
+                  {rotaLoading ? (
+                    <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <span className="text-muted">Carregando rota...</span>
+                    </div>
+                  ) : rotaPontos.length > 0 ? (
+                    <div ref={rotaMapaRef} style={{ width: "100%", height: "100%", minHeight: 0, background: "#e2e8f0" }} />
+                  ) : (
+                    <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+                      <span className="text-muted">Sem histórico de rota para o período selecionado.</span>
+                    </div>
+                  )}
+                </div>
+                <div style={{ overflowY: "auto", background: "#f8fafc" }}>
+                  <div style={{ padding: 12, borderBottom: "1px solid #e2e8f0", fontWeight: 700 }}>
+                    Pontos da rota ({rotaPontos.length})
+                  </div>
+                  {rotaPontos.map((p, idx) => (
+                    <div key={`${idx}-${p.latitude}-${p.longitude}`} style={{ padding: 10, borderBottom: "1px solid #e2e8f0", fontSize: 12, lineHeight: 1.35 }}>
+                      <div style={{ fontWeight: 700 }}>
+                        {idx === 0 ? "Inicio" : idx === rotaPontos.length - 1 ? "Fim" : `Ponto ${idx + 1}`}
+                      </div>
+                      <div>{p.latitude.toFixed(6)}, {p.longitude.toFixed(6)}</div>
+                      <div className="text-muted">{formatarData(p.dt_captura)}</div>
+                      {p.source ? <div className="text-muted">Fonte: {p.source}</div> : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="modal-footer espelho-modal-footer">
+                <button type="button" className="btn btn-secondary btn-sm" onClick={fecharRotaModal}>
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {mapaTodosModalAberto ? (
+        <div
+          className="modal show espelho-modal localizacao-modal"
+          style={{ display: "block" }}
+          onClick={() => setMapaTodosModalAberto(false)}
+        >
+          <div
+            className="modal-dialog modal-dialog-centered"
+            role="document"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "1500px", width: "99vw" }}
+          >
+            <div className="modal-content espelho-modal-content" style={{ height: "94vh", maxHeight: "94vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+              <div className="modal-header espelho-modal-header">
+                <div>
+                  <h5 className="modal-title mb-0" style={{ fontWeight: 700 }}>
+                    Mapa de todos os dispositivos
+                  </h5>
+                  <small className="text-muted">
+                    {dispositivosComCoordenadas.length} dispositivo(s) com localização disponível
+                  </small>
+                </div>
+                <button type="button" className="btn-close" onClick={() => setMapaTodosModalAberto(false)} />
+              </div>
+
+              <div className="modal-body p-0" style={{ display: "grid", gridTemplateColumns: "2.6fr 1fr", flex: 1, minHeight: 0, overflow: "hidden" }}>
+                <div style={{ borderRight: "1px solid #e2e8f0" }}>
+                  <div
+                    ref={mapaTodosRef}
+                    style={{ width: "100%", height: "100%", minHeight: 0, background: "#e2e8f0" }}
+                  />
+                </div>
+                <div style={{ overflowY: "auto", background: "#f8fafc" }}>
+                  <div style={{ padding: 12, borderBottom: "1px solid #e2e8f0", fontWeight: 700 }}>
+                    Dispositivos no mapa
+                  </div>
+                  {dispositivosComCoordenadas.map((d) => (
+                    <div
+                      key={String(d.id)}
+                      style={{ padding: 12, borderBottom: "1px solid #e2e8f0", fontSize: 12, lineHeight: 1.35 }}
+                    >
+                      <div style={{ fontWeight: 700 }}>{d.dispositivo}</div>
+                      <div className="text-muted">ID: {d.id} • Status: {d.status}</div>
+                      <div className="text-muted">Usuário: {d.usuario}</div>
+                      <div>
+                        <a
+                          href={`https://www.google.com/maps?q=${encodeURIComponent(`${d.latitude},${d.longitude}`)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {d.latitude.toFixed(6)}, {d.longitude.toFixed(6)}
+                        </a>
+                      </div>
+                      <div className="text-muted">Atualizado: {formatarData(d.atualizadoEm)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="modal-footer espelho-modal-footer">
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setMapaTodosModalAberto(false)}>
+                  Fechar
+                </button>
               </div>
             </div>
           </div>
@@ -1164,6 +1620,9 @@ export default function MobileAtivacao() {
             <div className="d-flex justify-content-between align-items-center mb-3">
               <h5 className="card-title mb-0">Meus Dispositivos</h5>
               <div className="d-flex align-items-center gap-2">
+                <button type="button" className="btn btn-outline-primary btn-sm" onClick={abrirMapaTodosDispositivos}>
+                  Visualizar todos no mapa
+                </button>
                 <button type="button" className="btn btn-primary btn-sm" onClick={() => setModalGerarAberto(true)}>
                   Nova ativação
                 </button>
@@ -1251,6 +1710,17 @@ export default function MobileAtivacao() {
                                 }}
                               >
                                 <MapPin size={15} strokeWidth={1.8} /> Localizar
+                              </button>
+                              <button
+                                type="button"
+                                className="mobile-acao-item"
+                                title="Visualizar rota do dispositivo"
+                                onClick={() => {
+                                  fecharMenuAcao();
+                                  abrirRotaModal(item);
+                                }}
+                              >
+                                <MapPin size={15} strokeWidth={1.8} /> Rota
                               </button>
                               <button
                                 type="button"

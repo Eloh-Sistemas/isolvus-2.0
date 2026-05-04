@@ -26,13 +26,18 @@ async function enviarPushExpo(notificacoes = []) {
     const tokensUsuario = tokens
       .filter((t) => Number(t.id_usuario) === idUsuario)
       .map((t) => String(t.expo_token || ''))
-      .filter((token) => token.startsWith('ExponentPushToken['));
+      .filter((token) => (
+        token.startsWith('ExponentPushToken[')
+        || token.startsWith('ExpoPushToken[')
+      ));
 
     for (const to of tokensUsuario) {
       mensagens.push({
         to,
         title: String(n?.titulo || 'Nova notificacao'),
         body: String(n?.mensagem || 'Voce recebeu uma nova notificacao.'),
+        priority: 'high',
+        channelId: 'default',
         sound: 'default',
         data: {
           id_usuario: idUsuario,
@@ -44,7 +49,7 @@ async function enviarPushExpo(notificacoes = []) {
   if (!mensagens.length) return;
 
   try {
-    await fetch('https://exp.host/--/api/v2/push/send', {
+    const resposta = await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -53,6 +58,11 @@ async function enviarPushExpo(notificacoes = []) {
       },
       body: JSON.stringify(mensagens),
     });
+
+    if (!resposta.ok) {
+      const corpoErro = await resposta.text().catch(() => '');
+      console.error('[PUSH] Falha no envio Expo:', resposta.status, corpoErro);
+    }
   } catch {
     // Push e complementar; erro nao impede o fluxo principal.
   }

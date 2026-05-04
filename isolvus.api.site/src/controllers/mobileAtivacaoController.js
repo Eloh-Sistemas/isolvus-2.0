@@ -1,9 +1,11 @@
+import os from "os";
 import {
   atualizarStatusComandoAtivacaoMobile,
   enfileirarComandoAtivacaoMobile,
   excluirAtivacaoMobile,
   gerarAtivacaoMobile,
   listarAtivacoesMobile,
+  listarRotaAtivacaoMobile,
   obterPoliticaAtualizacaoMobilePorPlataforma,
   obterProximoComandoPendenteAtivacaoMobile,
   obterApiBaseUrlPorParametro,
@@ -14,10 +16,44 @@ import {
   validarAtivacaoMobile,
 } from "../models/mobileAtivacaoModel.js";
 
+function obterIpLocal() {
+  try {
+    const ifaces = os.networkInterfaces();
+    for (const name of Object.keys(ifaces)) {
+      for (const iface of ifaces[name]) {
+        if (iface.family === "IPv4" && !iface.internal) {
+          return iface.address;
+        }
+      }
+    }
+  } catch {}
+  return null;
+}
+
 function obterBaseUrl(req) {
   const header = req.headers["x-forwarded-proto"];
   const protocolo = (header ? String(header).split(",")[0] : req.protocol) || "http";
-  return `${protocolo}://${req.get("host")}`;
+  const host = req.get("host") || "";
+
+  // Se variável de ambiente API_HOST estiver configurada, usa ela
+  const apiHostEnv = process.env.API_HOST || null;
+  if (apiHostEnv) return `${protocolo}://${apiHostEnv}`;
+
+  // Se o host for localhost/127.0.0.1, substitui pelo IP da rede local
+  // para que o celular consiga alcançar a API
+  const isLocal = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host);
+  if (isLocal) {
+    const porta = host.includes(":") ? host.split(":")[1] : null;
+    const ipLocal = obterIpLocal();
+    if (ipLocal) {
+      const baseComIp = porta ? `${protocolo}://${ipLocal}:${porta}` : `${protocolo}://${ipLocal}`;
+      console.log(`[mobile-ativacao] Host era localhost, substituído por IP local: ${baseComIp}`);
+      return baseComIp;
+    }
+    console.warn("[mobile-ativacao] Não foi possível detectar IP local. Configure API_HOST no .env (ex: API_HOST=192.168.0.9:3011).");
+  }
+
+  return `${protocolo}://${host}`;
 }
 
 function toBuildNumber(valor) {
@@ -99,6 +135,7 @@ export async function GerarAtivacao(req, res) {
     }
 
     const baseUrl = String(urlParametro || obterBaseUrl(req));
+    console.log(`[mobile-ativacao] QR gerado com api_url: ${baseUrl} (parametro_db: "${urlParametro || "(vazio)"}")`);
     const gerado = await gerarAtivacaoMobile({
       id_empresa,
       razaosocial,
@@ -318,6 +355,25 @@ export async function MonitorarAtivacao(req, res) {
     });
   } catch (error) {
     return res.status(500).json({ error: error.message || "Erro ao registrar monitoramento do dispositivo." });
+  }
+}
+
+export async function ListarRotaAtivacao(req, res) {
+  try {
+    const { id_ativacao } = req.params || {};
+    const { minutos, dt_inicio, dt_fim } = req.query || {};
+
+    if (!id_ativacao) {
+      return res.status(400).json({ error: "id_ativacao é obrigatório." });
+    }
+
+    const dados = await listarRotaAtivacaoMobile({ id_ativacao, minutos, dt_inicio, dt_fim });
+    return res.json({
+      sucesso: true,
+      pontos: Array.isArray(dados) ? dados : [],
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message || "Erro ao consultar rota do dispositivo." });
   }
 }
 

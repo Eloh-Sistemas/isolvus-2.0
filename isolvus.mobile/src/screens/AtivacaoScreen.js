@@ -218,7 +218,9 @@ export default function AtivacaoScreen({ onAtivacaoSucesso }) {
         return;
       }
 
-      const { api_url, token_ativacao } = payload;
+      const { api_url: api_url_raw, token_ativacao } = payload;
+      // Remove /v1 trailing para evitar duplicação (ex: banco salvo com /v1 já incluso)
+      const api_url = String(api_url_raw || "").replace(/\/v1\/?$/, "");
       const dispositivoInfo = await getDeviceInfoPayload();
 
       // Busca id_usuario salvo (caso o app já tenha passado pelo login antes)

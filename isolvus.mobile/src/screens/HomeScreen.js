@@ -20,6 +20,7 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Device from "expo-device";
+import Constants from "expo-constants";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Notifications from "expo-notifications";
@@ -54,11 +55,20 @@ Notifications.setNotificationHandler({
 async function registrarPushNoDispositivo() {
   if (!Device.isDevice) return "";
 
+  const isExpoGo = Constants.appOwnership === "expo"
+    || String(Constants.executionEnvironment || "").toLowerCase() === "storeclient";
+  if (isExpoGo) {
+    console.log("[PUSH] Expo Go detectado. Registro de push remoto ignorado.");
+    return "";
+  }
+
   try {
     if (Platform.OS === "android") {
       await Notifications.setNotificationChannelAsync("default", {
         name: "default",
-        importance: Notifications.AndroidImportance.DEFAULT,
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 200, 250],
+        lightColor: "#2563eb",
       });
     }
 
@@ -73,7 +83,20 @@ async function registrarPushNoDispositivo() {
     if (statusFinal !== "granted") return "";
 
     try {
-      const token = await Notifications.getExpoPushTokenAsync();
+      const projectId =
+        Constants?.expoConfig?.extra?.eas?.projectId
+        || Constants?.easConfig?.projectId
+        || null;
+
+      console.log("[PUSH] projectId usado:", projectId);
+      console.log("[PUSH] appOwnership:", Constants.appOwnership);
+      console.log("[PUSH] executionEnvironment:", Constants.executionEnvironment);
+
+      const token = projectId
+        ? await Notifications.getExpoPushTokenAsync({ projectId })
+        : await Notifications.getExpoPushTokenAsync();
+
+      console.log("[PUSH] Token obtido:", token?.data);
       return token?.data || "";
     } catch (error) {
       const mensagem = String(error?.message || "").toLowerCase();
@@ -419,19 +442,25 @@ export default function HomeScreen({ user, onLogout, espelhandoTela = false }) {
 
     async function registrarPush() {
       try {
+        console.log("[PUSH] Iniciando registro. idUsuario:", idUsuario);
         const token = await registrarPushNoDispositivo();
-        if (!token || !ativo || !idUsuario) return;
+        console.log("[PUSH] Token retornado:", token || "(vazio)");
+        if (!token || !ativo || !idUsuario) {
+          console.log("[PUSH] Abortou registro - token vazio, inativo ou sem idUsuario");
+          return;
+        }
 
         await AsyncStorage.setItem("expo_push_token", token);
 
         // Endpoint opcional: se nao existir ainda na API, apenas ignora e segue o app.
-        await api.post("/v1/notificacoes/registrarToken", {
+        const resp = await api.post("/v1/notificacoes/registrarToken", {
           id_usuario: idUsuario,
           token,
           plataforma: Platform.OS,
         });
-      } catch {
-        // notificacao push e complementar ao fluxo atual
+        console.log("[PUSH] Token registrado no backend. Status:", resp?.status);
+      } catch (err) {
+        console.log("[PUSH] Erro ao registrar push:", err?.message || err);
       }
     }
 

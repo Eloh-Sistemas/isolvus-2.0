@@ -4,6 +4,7 @@ import { View, StyleSheet, Platform, AppState, Text, Pressable, Alert, Linking }
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Device from "expo-device";
+import Constants from "expo-constants";
 import * as Network from "expo-network";
 import * as Location from "expo-location";
 import * as Battery from "expo-battery";
@@ -23,6 +24,121 @@ import screenMirrorService from "./src/services/screenMirrorService";
 // Nome da task de localização em background (deve ser definida fora de qualquer componente)
 const LOCATION_BG_TASK = "isolvus-location-bg";
 const STORAGE_USO_TOTAL_MS = "monitoramento_uso_total_ms";
+const STORAGE_LAST_KNOWN_LOCATION = "last_known_location";
+const LOCATION_MIN_DISTANCE_METERS = 5;
+const LOCATION_MAX_ACCEPTABLE_ACCURACY_METERS = 100;
+
+function toRad(value) {
+  return (value * Math.PI) / 180;
+}
+
+function calcularDistanciaMetros(origem, destino) {
+  const latitudeOrigem = Number(origem?.latitude);
+  const longitudeOrigem = Number(origem?.longitude);
+  const latitudeDestino = Number(destino?.latitude);
+  const longitudeDestino = Number(destino?.longitude);
+
+  if (
+    !Number.isFinite(latitudeOrigem)
+    || !Number.isFinite(longitudeOrigem)
+    || !Number.isFinite(latitudeDestino)
+    || !Number.isFinite(longitudeDestino)
+  ) {
+    return null;
+  }
+
+  const raioTerraMetros = 6371000;
+  const dLat = toRad(latitudeDestino - latitudeOrigem);
+  const dLon = toRad(longitudeDestino - longitudeOrigem);
+  const lat1 = toRad(latitudeOrigem);
+  const lat2 = toRad(latitudeDestino);
+
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return raioTerraMetros * c;
+}
+
+function normalizarLocationInfo(posicao, source) {
+  if (!posicao?.coords) return null;
+
+  return {
+    latitude: posicao.coords.latitude ?? null,
+    longitude: posicao.coords.longitude ?? null,
+    accuracy_meters: posicao.coords.accuracy ?? null,
+    captured_at: posicao.timestamp ? new Date(posicao.timestamp).toISOString() : new Date().toISOString(),
+    source,
+  };
+}
+
+function devePersistirLocalizacao(proximaLocalizacao, localizacaoAnterior) {
+  if (!proximaLocalizacao) {
+    return { salvar: false, motivo: "sem_coordenadas" };
+  }
+
+  const accuracy = Number(proximaLocalizacao.accuracy_meters);
+  if (Number.isFinite(accuracy) && accuracy > LOCATION_MAX_ACCEPTABLE_ACCURACY_METERS) {
+    return { salvar: false, motivo: "precisao_baixa" };
+  }
+
+  if (localizacaoAnterior?.latitude == null || localizacaoAnterior?.longitude == null) {
+    return { salvar: true, motivo: "primeira_localizacao" };
+  }
+
+  const distanciaMetros = calcularDistanciaMetros(localizacaoAnterior, proximaLocalizacao);
+  if (!Number.isFinite(distanciaMetros)) {
+    return { salvar: true, motivo: "distancia_indisponivel" };
+  }
+
+  const accuracyAnterior = Number(localizacaoAnterior?.accuracy_meters);
+  const accuracyAtual = Number(proximaLocalizacao.accuracy_meters);
+  const margemRuido = Math.max(
+    LOCATION_MIN_DISTANCE_METERS,
+    Number.isFinite(accuracyAnterior) ? accuracyAnterior : 0,
+    Number.isFinite(accuracyAtual) ? accuracyAtual : 0,
+  );
+
+  if (distanciaMetros < margemRuido) {
+    return { salvar: false, motivo: "sem_movimento_significativo", distanciaMetros, margemRuido };
+  }
+
+  return { salvar: true, motivo: "movimento_significativo", distanciaMetros, margemRuido };
+}
+
+async function salvarLocalizacaoSeHouverMovimento(posicao, source) {
+  const proximaLocalizacao = normalizarLocationInfo(posicao, source);
+  if (!proximaLocalizacao) {
+    return { salvou: false, motivo: "sem_coordenadas", locationInfo: null };
+  }
+
+  let localizacaoAnterior = null;
+  try {
+    const json = await AsyncStorage.getItem(STORAGE_LAST_KNOWN_LOCATION);
+    if (json) {
+      localizacaoAnterior = JSON.parse(json);
+    }
+  } catch {}
+
+  const decisao = devePersistirLocalizacao(proximaLocalizacao, localizacaoAnterior);
+  if (!decisao.salvar) {
+    return { salvou: false, ...decisao, locationInfo: localizacaoAnterior || proximaLocalizacao };
+  }
+
+  await AsyncStorage.setItem(STORAGE_LAST_KNOWN_LOCATION, JSON.stringify(proximaLocalizacao));
+  return { salvou: true, ...decisao, locationInfo: proximaLocalizacao };
+}
+
+async function obterDeviceIdBackground() {
+  try {
+    if (Platform.OS === "android") {
+      return Application.getAndroidId() || null;
+    }
+    return await Application.getIosIdForVendorAsync().catch(() => null);
+  } catch {
+    return null;
+  }
+}
 
 // Task executada pelo OS mesmo com o app fechado ou após reboot do dispositivo
 TaskManager.defineTask(LOCATION_BG_TASK, async ({ data, error }) => {
@@ -30,18 +146,13 @@ TaskManager.defineTask(LOCATION_BG_TASK, async ({ data, error }) => {
   const posicao = data?.locations?.[0];
   if (!posicao) return;
   try {
-    const locationInfo = {
-      latitude: posicao.coords.latitude,
-      longitude: posicao.coords.longitude,
-      accuracy_meters: posicao.coords.accuracy ?? null,
-      captured_at: new Date(posicao.timestamp).toISOString(),
-      source: "background_task",
-    };
-    // Salva localmente — heartbeat usa ao abrir o app
-    await AsyncStorage.setItem("last_known_location", JSON.stringify(locationInfo));
+    const { salvou, locationInfo } = await salvarLocalizacaoSeHouverMovimento(posicao, "background_task");
+    if (!salvou || !locationInfo) return;
+
     // Envia para a API imediatamente, sem esperar o heartbeat
     const [[, ativacaoId], [, baseUrl]] = await AsyncStorage.multiGet(["ativacao_id", "api_base_url"]);
     if (ativacaoId && baseUrl) {
+      const deviceId = await obterDeviceIdBackground();
       setBaseUrl(baseUrl);
       await api.post(`/v1/mobile/ativacao/${ativacaoId}/monitorar`, {
         dispositivo: "background",
@@ -49,6 +160,12 @@ TaskManager.defineTask(LOCATION_BG_TASK, async ({ data, error }) => {
           captured_at: locationInfo.captured_at,
           source: "background_task",
           location: { ...locationInfo, permission: "granted" },
+          hardware: {
+            device_id: deviceId,
+          },
+          app: {
+            platform: Platform.OS,
+          },
         },
       }).catch(() => {});
     }
@@ -453,7 +570,7 @@ async function montarPayloadHeartbeat(locationCached = null, usageStats = null) 
         total_memory_bytes: Device.totalMemory ?? null,
         cpu_architectures: Device.supportedCpuArchitectures ?? null,
         device_id: Platform.OS === "android"
-          ? (Application.androidId || null)
+          ? (Application.getAndroidId() || null)
           : await Application.getIosIdForVendorAsync().catch(() => null),
       },
       permissoes,
@@ -699,7 +816,7 @@ export default function App() {
 
   // Carrega última posição conhecida (salva pela task de background) ao iniciar
   useEffect(() => {
-    AsyncStorage.getItem("last_known_location").then((json) => {
+    AsyncStorage.getItem(STORAGE_LAST_KNOWN_LOCATION).then((json) => {
       if (json) {
         try { locationCacheRef.current = JSON.parse(json); } catch {}
       }
@@ -714,35 +831,39 @@ export default function App() {
 
         // watchPositionAsync: atualiza cache em tempo real quando app está aberto
         locationWatcherRef.current = await Location.watchPositionAsync(
-          { accuracy: Location.Accuracy.Balanced, distanceInterval: 10 },
-          (posicao) => {
-            const loc = {
-              latitude: posicao?.coords?.latitude ?? null,
-              longitude: posicao?.coords?.longitude ?? null,
-              accuracy_meters: posicao?.coords?.accuracy ?? null,
-              captured_at: posicao?.timestamp ? new Date(posicao.timestamp).toISOString() : null,
-            };
-            locationCacheRef.current = loc;
-            // Persiste também para background
-            AsyncStorage.setItem("last_known_location", JSON.stringify(loc)).catch(() => {});
+          {
+            accuracy: Location.Accuracy.Balanced,
+            distanceInterval: LOCATION_MIN_DISTANCE_METERS,
+            timeInterval: 30000,
+          },
+          async (posicao) => {
+            const resultado = await salvarLocalizacaoSeHouverMovimento(posicao, "foreground_watch");
+            if (!resultado.salvou || !resultado.locationInfo) return;
+            locationCacheRef.current = resultado.locationInfo;
           }
         );
 
         // startLocationUpdatesAsync: continua rodando com app fechado e após reboot
+        // Expo Go não suporta background location no Android — ignora para evitar warning
+        const isExpoGo = Constants.appOwnership === "expo"
+          || String(Constants.executionEnvironment || "").toLowerCase() === "storeclient";
+
         const bgPerm = await Location.getBackgroundPermissionsAsync();
-        if (bgPerm.status === "granted") {
+        if (!isExpoGo && bgPerm.status === "granted") {
           const jaAtiva = await Location.hasStartedLocationUpdatesAsync(LOCATION_BG_TASK).catch(() => false);
           if (!jaAtiva) {
             await Location.startLocationUpdatesAsync(LOCATION_BG_TASK, {
               accuracy: Location.Accuracy.Balanced,
-              distanceInterval: 50,
+              distanceInterval: LOCATION_MIN_DISTANCE_METERS,
               timeInterval: 60000,
+              deferredUpdatesDistance: LOCATION_MIN_DISTANCE_METERS,
+              deferredUpdatesInterval: 60000,
               foregroundService: {
                 notificationTitle: "ISOLVUS Monitoramento",
                 notificationBody: "Monitorando localização do dispositivo.",
                 notificationColor: "#3f6cf6",
               },
-              pausesUpdatesAutomatically: false,
+              pausesUpdatesAutomatically: true,
             });
           }
         }
@@ -837,7 +958,7 @@ export default function App() {
     await Location.hasStartedLocationUpdatesAsync(LOCATION_BG_TASK)
       .then((ativa) => ativa ? Location.stopLocationUpdatesAsync(LOCATION_BG_TASK) : null)
       .catch(() => {});
-    await AsyncStorage.removeItem("last_known_location").catch(() => {});
+    await AsyncStorage.removeItem(STORAGE_LAST_KNOWN_LOCATION).catch(() => {});
     comandosProcessadosRef.current.clear();
     setEspelhamentoAtivo(false);
     setUsuarioLogado(null);
@@ -1010,6 +1131,7 @@ export default function App() {
   }, [apiBaseUrl, vinculoConfirmado, limparAtivacaoLocal, obterResumoUso]);
 
   // Ainda carregando AsyncStorage ou verificando permissões
+  console.log("[APP] Estado:", { apiBaseUrl: apiBaseUrl === null ? "null" : (apiBaseUrl === false ? "false" : "url-ok"), permissoesOk, vinculoConfirmado, permissoesStatuses });
   if (apiBaseUrl === null || permissoesOk === null) return null;
 
   // Com API ativa, so libera o uso apos validar vinculo no backend.

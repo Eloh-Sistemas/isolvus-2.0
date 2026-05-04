@@ -1,6 +1,95 @@
 import crypto from "node:crypto";
 import { executeQuery } from "../config/database.js";
 
+const LOCATION_INSERT_MIN_DISTANCE_METERS = 5;
+
+function parseJsonObjectSafe(value) {
+  if (!value) return null;
+  if (typeof value === "object") return value;
+  try {
+    const parsed = JSON.parse(String(value));
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function mergeMonitoramentoInfo(base, incoming) {
+  if (!base || typeof base !== "object") return incoming;
+  if (!incoming || typeof incoming !== "object") return base;
+
+  const merged = { ...base };
+  for (const [key, incomingValue] of Object.entries(incoming)) {
+    const baseValue = merged[key];
+    if (
+      incomingValue
+      && typeof incomingValue === "object"
+      && !Array.isArray(incomingValue)
+      && baseValue
+      && typeof baseValue === "object"
+      && !Array.isArray(baseValue)
+    ) {
+      merged[key] = mergeMonitoramentoInfo(baseValue, incomingValue);
+    } else {
+      merged[key] = incomingValue;
+    }
+  }
+
+  return merged;
+}
+
+function toRad(value) {
+  return (value * Math.PI) / 180;
+}
+
+function calcularDistanciaMetros(origem, destino) {
+  const latitudeOrigem = Number(origem?.latitude);
+  const longitudeOrigem = Number(origem?.longitude);
+  const latitudeDestino = Number(destino?.latitude);
+  const longitudeDestino = Number(destino?.longitude);
+
+  if (
+    !Number.isFinite(latitudeOrigem)
+    || !Number.isFinite(longitudeOrigem)
+    || !Number.isFinite(latitudeDestino)
+    || !Number.isFinite(longitudeDestino)
+  ) {
+    return null;
+  }
+
+  const raioTerraMetros = 6371000;
+  const dLat = toRad(latitudeDestino - latitudeOrigem);
+  const dLon = toRad(longitudeDestino - longitudeOrigem);
+  const lat1 = toRad(latitudeOrigem);
+  const lat2 = toRad(latitudeDestino);
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return raioTerraMetros * c;
+}
+
+function devePersistirPontoRota(pontoAtual, ultimoPonto) {
+  if (!ultimoPonto) return true;
+
+  const distanciaMetros = calcularDistanciaMetros(ultimoPonto, pontoAtual);
+  if (!Number.isFinite(distanciaMetros)) return true;
+
+  const accuracyAtual = Number(pontoAtual?.accuracy);
+  const accuracyAnterior = Number(ultimoPonto?.accuracy);
+  const margemRuido = Math.max(
+    LOCATION_INSERT_MIN_DISTANCE_METERS,
+    Number.isFinite(accuracyAtual) ? accuracyAtual : 0,
+    Number.isFinite(accuracyAnterior) ? accuracyAnterior : 0,
+  );
+
+  if (distanciaMetros >= margemRuido) {
+    return true;
+  }
+
+  return false;
+}
+
 function gerarCodigoAtivacao() {
   const numero = Math.floor(100000 + Math.random() * 900000);
   return String(numero);
@@ -20,7 +109,7 @@ export async function obterApiBaseUrlPorParametro({ id_grupo_empresa, id_empresa
       FROM BSTAB_PARAMETROPORGRUPOEMPRESA P
       JOIN BSTAB_EMPRESAS E
         ON E.ID_GRUPO_EMPRESA = P.ID_GRUPO_EMPRESA
-     WHERE P.ID_PARAMETRO = 1
+     WHERE P.ID_PARAMENTRO = 1
        AND (
             (:id_grupo_empresa IS NOT NULL AND P.ID_GRUPO_EMPRESA = :id_grupo_empresa)
          OR (:id_grupo_empresa IS NULL AND (TO_CHAR(E.ID_ERP) = :id_empresa OR LPAD(E.ID_ERP, 4, '0') = :id_empresa))
@@ -534,7 +623,20 @@ export async function registrarMonitoramentoAtivacaoMobile({
   dispositivo_info,
   ip_utilizacao,
 }) {
-  const dispositivoInfoJson = dispositivo_info ? JSON.stringify(dispositivo_info) : null;
+  const monitoramentoAtual = await executeQuery(
+    `
+      SELECT DISPOSITIVO_INFO_JSON
+        FROM BSTAB_MOBILE_ATIVACAO
+       WHERE ID_ATIVACAO = TO_NUMBER(:id_ativacao)
+         AND STATUS = 'U'
+    `,
+    { id_ativacao: String(id_ativacao || "0") }
+  ).catch(() => []);
+
+  const infoAtual = parseJsonObjectSafe(monitoramentoAtual?.[0]?.dispositivo_info_json);
+  const infoRecebida = parseJsonObjectSafe(dispositivo_info);
+  const infoFinal = mergeMonitoramentoInfo(infoAtual, infoRecebida);
+  const dispositivoInfoJson = infoFinal ? JSON.stringify(infoFinal) : null;
 
   const updateSql = `
     UPDATE BSTAB_MOBILE_ATIVACAO
@@ -555,6 +657,79 @@ export async function registrarMonitoramentoAtivacaoMobile({
 
   const rowsAffected = Number(updateResult?.rowsAffected || 0);
 
+  // Persiste histórico da rota quando houver coordenadas válidas no heartbeat
+  const latitude = Number(dispositivo_info?.location?.latitude);
+  const longitude = Number(dispositivo_info?.location?.longitude);
+  const accuracy = Number(dispositivo_info?.location?.accuracy_meters);
+  const speed = Number(dispositivo_info?.location?.speed);
+  const altitude = Number(dispositivo_info?.location?.altitude);
+  const source = String(dispositivo_info?.source || "heartbeat").slice(0, 40);
+
+  if (rowsAffected > 0 && Number.isFinite(latitude) && Number.isFinite(longitude)) {
+    const ultimoPonto = await executeQuery(
+      `
+        SELECT LATITUDE, LONGITUDE, ACCURACY_METERS
+          FROM (
+            SELECT LATITUDE, LONGITUDE, ACCURACY_METERS
+              FROM BSTAB_MOBILE_ATIVACAO_LOC
+             WHERE ID_ATIVACAO = TO_NUMBER(:id_ativacao)
+             ORDER BY ID_PONTO DESC
+          )
+         WHERE ROWNUM = 1
+      `,
+      { id_ativacao: String(id_ativacao || "0") }
+    ).catch(() => []);
+
+    const deveInserirPonto = devePersistirPontoRota(
+      {
+        latitude,
+        longitude,
+        accuracy: Number.isFinite(accuracy) ? accuracy : null,
+      },
+      ultimoPonto?.[0] || null,
+    );
+
+    if (deveInserirPonto) {
+      await executeQuery(
+        `
+          INSERT INTO BSTAB_MOBILE_ATIVACAO_LOC (
+            ID_PONTO,
+            ID_ATIVACAO,
+            LATITUDE,
+            LONGITUDE,
+            ACCURACY_METERS,
+            SPEED_MPS,
+            ALTITUDE_METERS,
+            DT_CAPTURA,
+            SOURCE,
+            DT_CRIACAO
+          ) VALUES (
+            SEQ_BSTAB_MOBILE_ATIVACAO_LOC.NEXTVAL,
+            TO_NUMBER(:id_ativacao),
+            :latitude,
+            :longitude,
+            :accuracy,
+            :speed,
+            :altitude,
+            SYSTIMESTAMP,
+            :source,
+            SYSTIMESTAMP
+          )
+        `,
+        {
+          id_ativacao: String(id_ativacao || "0"),
+          latitude,
+          longitude,
+          accuracy: Number.isFinite(accuracy) ? accuracy : null,
+          speed: Number.isFinite(speed) ? speed : null,
+          altitude: Number.isFinite(altitude) ? altitude : null,
+          source,
+        },
+        true
+      ).catch(() => {});
+    }
+  }
+
   const consulta = await executeQuery(
     `SELECT STATUS FROM BSTAB_MOBILE_ATIVACAO WHERE ID_ATIVACAO = TO_NUMBER(:id_ativacao)`,
     { id_ativacao: String(id_ativacao || "0") }
@@ -564,6 +739,72 @@ export async function registrarMonitoramentoAtivacaoMobile({
     rowsAffected,
     statusAtual: consulta?.[0]?.status || null,
   };
+}
+
+export async function listarRotaAtivacaoMobile({ id_ativacao, minutos, dt_inicio, dt_fim }) {
+  const parseFiltroData = (value) => {
+    if (!value) return null;
+    const dt = new Date(String(value));
+    return Number.isNaN(dt.getTime()) ? null : dt;
+  };
+
+  const janelaMinutos = Number(minutos || 1440);
+  const limiteMinutos = Number.isFinite(janelaMinutos) && janelaMinutos > 0
+    ? Math.min(janelaMinutos, 10080)
+    : 1440;
+
+  const dataInicioRaw = parseFiltroData(dt_inicio);
+  const dataFimRaw = parseFiltroData(dt_fim);
+
+  let dataInicio = dataInicioRaw;
+  let dataFim = dataFimRaw;
+
+  if (dataInicio && dataFim && dataInicio.getTime() > dataFim.getTime()) {
+    dataInicio = dataFimRaw;
+    dataFim = dataInicioRaw;
+  }
+
+  const filtroPorData = Boolean(dataInicio || dataFim);
+  const filtroPeriodoSql = filtroPorData
+    ? `
+        AND (:dt_inicio IS NULL OR DT_CAPTURA >= :dt_inicio)
+        AND (:dt_fim IS NULL OR DT_CAPTURA <= :dt_fim)
+      `
+    : `
+        AND DT_CAPTURA >= (SYSTIMESTAMP - NUMTODSINTERVAL(:minutos, 'MINUTE'))
+      `;
+
+  const bindParams = filtroPorData
+    ? {
+        id_ativacao: String(id_ativacao || "0"),
+        dt_inicio: dataInicio,
+        dt_fim: dataFim,
+      }
+    : {
+        id_ativacao: String(id_ativacao || "0"),
+        minutos: limiteMinutos,
+      };
+
+  return executeQuery(
+    `
+      SELECT
+        ID_PONTO,
+        ID_ATIVACAO,
+        LATITUDE,
+        LONGITUDE,
+        ACCURACY_METERS,
+        SPEED_MPS,
+        ALTITUDE_METERS,
+        DT_CAPTURA,
+        SOURCE,
+        DT_CRIACAO
+      FROM BSTAB_MOBILE_ATIVACAO_LOC
+      WHERE ID_ATIVACAO = TO_NUMBER(:id_ativacao)
+        ${filtroPeriodoSql}
+      ORDER BY DT_CAPTURA ASC
+    `,
+    bindParams
+  );
 }
 
 export async function enfileirarComandoAtivacaoMobile({

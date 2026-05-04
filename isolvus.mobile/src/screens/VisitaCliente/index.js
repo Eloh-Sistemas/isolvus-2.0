@@ -1,5 +1,6 @@
 import { ActivityIndicator, FlatList, Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useVisitaCliente } from "./hooks/useVisitaCliente";
 import { styles } from "./styles";
 import Step1Selecao from "./steps/Step1Selecao";
@@ -11,6 +12,8 @@ import ModalAtividade from "./modals/ModalAtividade";
 
 export default function VisitaClienteScreen({ user }) {
   const ctx = useVisitaCliente(user);
+  const insets = useSafeAreaInsets();
+  const footerBottomPadding = Math.max(16, (insets?.bottom || 0) + 12);
 
   return (
     <View style={styles.root}>
@@ -66,16 +69,38 @@ export default function VisitaClienteScreen({ user }) {
             setStep={ctx.setStep}
           />
         </View>
+      ) : ctx.step === 3 ? (
+        <View style={[styles.scrollContent, { flex: 1, paddingBottom: 44 }]}> 
+          <Step3Checkin
+            clienteSelecionado={ctx.clienteSelecionado}
+            distancia={ctx.distancia}
+            idJustificativa={ctx.idJustificativa}
+            regionCheckin={ctx.regionCheckin}
+            localizacaoPromotor={ctx.localizacaoPromotor}
+            clienteTemCoordenada={ctx.clienteTemCoordenada}
+            clienteLat={ctx.clienteLat}
+            clienteLng={ctx.clienteLng}
+            gpsAguardando={ctx.gpsAguardando}
+            dataCheckin={ctx.dataCheckin}
+            enderecoPromotor={ctx.enderecoPromotor}
+            enderecoCliente={ctx.enderecoCliente}
+            checkinMapRef={ctx.checkinMapRef}
+            voltar={ctx.voltar}
+            atualizarDadosCheckin={ctx.atualizarDadosCheckin}
+            avancar={ctx.avancar}
+            setShowJustificativaModal={ctx.setShowJustificativaModal}
+          />
+        </View>
       ) : (
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={[
             styles.scrollContent,
-            ctx.step === 3 && { paddingBottom: 16 },
+            ctx.step === 5 && { paddingBottom: 110 },
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          scrollEnabled={ctx.step !== 3}
+          nestedScrollEnabled
         >
           {ctx.step === 1 && (
             <Step1Selecao
@@ -98,28 +123,6 @@ export default function VisitaClienteScreen({ user }) {
               consultarClienteCompleto={ctx.consultarClienteCompleto}
               promotorDescricao={ctx.promotorDescricao}
               avancar={ctx.avancar}
-            />
-          )}
-
-          {ctx.step === 3 && (
-            <Step3Checkin
-              clienteSelecionado={ctx.clienteSelecionado}
-              distancia={ctx.distancia}
-              idJustificativa={ctx.idJustificativa}
-              regionCheckin={ctx.regionCheckin}
-              localizacaoPromotor={ctx.localizacaoPromotor}
-              clienteTemCoordenada={ctx.clienteTemCoordenada}
-              clienteLat={ctx.clienteLat}
-              clienteLng={ctx.clienteLng}
-              gpsAguardando={ctx.gpsAguardando}
-              dataCheckin={ctx.dataCheckin}
-              enderecoPromotor={ctx.enderecoPromotor}
-              enderecoCliente={ctx.enderecoCliente}
-              checkinMapRef={ctx.checkinMapRef}
-              voltar={ctx.voltar}
-              atualizarDadosCheckin={ctx.atualizarDadosCheckin}
-              avancar={ctx.avancar}
-              setShowJustificativaModal={ctx.setShowJustificativaModal}
             />
           )}
 
@@ -156,10 +159,45 @@ export default function VisitaClienteScreen({ user }) {
 
       {/* Botão fixo Nova Visita no step 2 */}
       {ctx.step === 2 && (
-        <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, paddingHorizontal: 14, paddingBottom: 24, paddingTop: 8, backgroundColor: "transparent" }}>
+        <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, paddingHorizontal: 14, paddingBottom: footerBottomPadding, paddingTop: 8, backgroundColor: "transparent", zIndex: 40, elevation: 40 }}>
           <Pressable style={({ pressed }) => [styles.btnPrimaryFull, pressed && styles.btnPressed]} onPress={ctx.avancar}>
             <LinearGradient colors={["#3f6cf6", "#2f59d9"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.btnGradient}>
               <Text style={styles.btnPrimaryText}>Nova Visita</Text>
+            </LinearGradient>
+          </Pressable>
+        </View>
+      )}
+
+      {/* Botão fixo Fazer CheckIn no step 3 */}
+      {ctx.step === 3 && (
+        <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, paddingHorizontal: 14, paddingBottom: footerBottomPadding, paddingTop: 8, backgroundColor: "transparent", zIndex: 40, elevation: 40 }}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.btnPrimaryFull,
+              Number(ctx.distancia) > 3 && !ctx.idJustificativa ? styles.btnDisabledWrapper : null,
+              pressed && styles.btnPressed,
+            ]}
+            onPress={ctx.avancar}
+            disabled={Number(ctx.distancia) > 3 && !ctx.idJustificativa}
+          >
+            <LinearGradient
+              colors={Number(ctx.distancia) > 3 && !ctx.idJustificativa ? ["#94a3b8", "#94a3b8"] : ["#3f6cf6", "#2f59d9"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.btnGradient}
+            >
+              <Text style={styles.btnPrimaryText}>Fazer CheckIn</Text>
+            </LinearGradient>
+          </Pressable>
+        </View>
+      )}
+
+      {/* Botão fixo Fazer CheckOut no step 5 */}
+      {ctx.step === 5 && (
+        <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, paddingHorizontal: 14, paddingBottom: footerBottomPadding, paddingTop: 8, backgroundColor: "transparent", zIndex: 40, elevation: 40 }}>
+          <Pressable style={({ pressed }) => [styles.btnPrimaryFull, pressed && styles.btnPressed]} onPress={ctx.fazerCheckout}>
+            <LinearGradient colors={["#1db96a", "#198754"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.btnGradient}>
+              <Text style={styles.btnPrimaryText}>Fazer CheckOut</Text>
             </LinearGradient>
           </Pressable>
         </View>
